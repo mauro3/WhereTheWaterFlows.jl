@@ -22,7 +22,7 @@ function ele(x, y; withpit=false, randfac=0.0)
     if withpit
         out -= 2*exp(-(x^2 + y^2)*50)
     end
-    out += randfac*randn(size(out))
+    out += randfac*randn()
     return out<0 ? 0.0 : out
 end
 
