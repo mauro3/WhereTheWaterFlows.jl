@@ -6,7 +6,7 @@ export waterflows, fill_dem, catchments,
 # Note, I use the conversion (as in VAWTools) that the x-axis corresponds
 # to the row of the matrix and the y-axis the columns.  To print them in this "normal"
 # coordinate system use `showme`
-using PyPlot, StaticArrays
+using StaticArrays, Requires
 
 """
 Direction numbers.  E.g. dirnums[1,1] will return the number
@@ -488,56 +488,9 @@ function _fill_ij!(ele, dem, ij, dir, small)
     end
 end
 
-
-"Plot DEM, uparea, flow-dir"
-function plotit(xs, ys, dem)
-    dx2 = step(xs)/2
-    area, slen, dir, nout, nin, pits  = waterflows(dem)
-
-    fig, axs = subplots(3,1)
-    sca(axs[1])
-    contour(xs, ys, Array(dem'))
-    colorbar()
-    sca(axs[2])
-    heatmap(xs, ys, log10.(area))
-    sca(axs[3])
-    plotdir(xs, ys, dir)
-end
-
-function plotdir(xs, ys, dir)
-    vecfield = dir2vec.(dir)
-    vecfieldx = [v[1] for v in vecfield]
-    vecfieldy = [v[2] for v in vecfield]
-    quiver(repeat(xs,1, length(ys)), repeat(ys,length(xs),1), vecfieldx, vecfieldy)
-end
-
-pits2inds(pits) = ([p.I[1] for p in pits],
-                   [p.I[2] for p in pits])
-pits2vecs(xs, ys, pits) = (xs[[p.I[1] for p in pits if p!=CartesianIndex(-1,-1)]],
-                           ys[[p.I[2] for p in pits if p!=CartesianIndex(-1,-1)]])
-
-"Plot uparea"
-function plotarea(xs, ys, dem; prefn=log10)
-    area, slen, dir, nout, nin, pits  = waterflows(dem)
-    plotarea(xs, ys, area, pits, prefn=prefn)
-end
-function plotarea(xs, ys, area, pits; prefn=log10)
-    px, py = pits2vecs(xs, ys, pits)
-    fig, axs = subplots()
-    heatmap(xs, ys, prefn.(area))
-    scatter(px, py, 1, "w")
-end
-
-function plotlakedepth(x, y, dem)
-    area, slen, dir, nout, nin, pits  = waterflows(dem)
-    demf = fill_dem(dem, pits, dir)
-    heatmap(x, y, demf.-dem)
-end
-
-function heatmap(xs, ys, mat)
-    dx2 = step(xs)/2
-    imshow(Array(mat'), origin="lower", extent=(xs[1]-dx2,xs[end]+dx2,ys[1]-dx2,ys[end]+dx2))
-    colorbar()
+## Plotting
+function __init__()
+    @require PyPlot="d330b81b-6aea-500a-939a-2ce795aea3ee" include("plotting.jl")
 end
 
 end # module

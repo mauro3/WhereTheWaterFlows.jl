@@ -102,8 +102,6 @@ area, slen, dir, nout, nin, pits, c, bnds = WWF.waterflows(dem, fillpits=true);
 @test sum(diff(c[:])) == 5
 @test sort(unique(c))[[1,end]] ==[1,8]
 @test bnds isa Array{Array{CartesianIndex,1},1}
-#WWF.plotarea(xs,ys,area,pits)
-
 
 # check DEM fill
 dx = 0.1
@@ -114,7 +112,3 @@ area, slen, dir, nout, nin, pits = WWF.waterflows(dem)
 demf = WWF.fill_dem(dem, pits, dir)
 @test sum(demf.-dem) ≈ 2.1499674517313414
 @test sum(demf.-dem .> 0) == 5
-
-
-demf = WWF.fill_dem(dem, pits, dir)
-WWF.heatmap(xs,ys,demf)
