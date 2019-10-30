@@ -17,6 +17,10 @@ efficient.  The algorithm seems to be of order Q(n) where n is the
 number of grid points (provided the number of pits is constant).  For
 a 1000x1000 map with 8 pits, it runs in 5s on my laptop from 2012.
 
+![Upslope area](https://user-images.githubusercontent.com/4098145/67853636-e319b880-fb06-11e9-933d-9f55ace99ce1.png)
+
+Example of upslope area calculated in below example.
+
 ## Manual
 
 ```julia
@@ -30,7 +34,7 @@ function peaks2(n=100, randfac=0.05)
         0.7*(sin.(coords.+1) .* cos.(coords')).^8 .+
         randfac*randn(n,n)
 end
-x,y,dem = peaks2()
+x,y,dem = peaks2(200)
 area, slen, dir, nout, nin, pits, c, bnds = waterflows(dem)
 
 # log-upslope area as well as pits (sinks)

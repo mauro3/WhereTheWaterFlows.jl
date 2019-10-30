@@ -1,7 +1,6 @@
 # Also needs packages Parameters and VAWTools
 
 plotyes = true
-import Pkg
 using PyPlot
 using WhereTheWaterFlows
 if !(@isdefined WWF)
