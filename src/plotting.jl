@@ -1,7 +1,11 @@
 
 using .PyPlot
 
-"Plot DEM, uparea, flow-dir"
+"""
+    plotit(xs, ys, dem)
+
+Plot DEM, uparea, flow-dir
+"""
 function plotit(xs, ys, dem)
     dx2 = step(xs)/2
     area, slen, dir, nout, nin, pits  = waterflows(dem)
@@ -17,7 +21,7 @@ function plotit(xs, ys, dem)
 end
 
 function plotdir(xs, ys, dir)
-    vecfield = dir2vec.(dir)
+    vecfield = dir2vec_0.(dir)
     vecfieldx = [v[1] for v in vecfield]
     vecfieldy = [v[2] for v in vecfield]
     quiver(repeat(xs,1, length(ys)), repeat(ys,length(xs),1), vecfieldx, vecfieldy)
@@ -28,7 +32,12 @@ pits2inds(pits) = ([p.I[1] for p in pits],
 pits2vecs(xs, ys, pits) = (xs[[p.I[1] for p in pits if p!=CartesianIndex(-1,-1)]],
                            ys[[p.I[2] for p in pits if p!=CartesianIndex(-1,-1)]])
 
-"Plot uparea"
+"""
+    plotarea(xs, ys, dem; prefn=log10)
+    plotarea(xs, ys, area, pits; prefn=log10)
+
+Plot uparea
+"""
 function plotarea(xs, ys, dem; prefn=log10)
     area, slen, dir, nout, nin, pits  = waterflows(dem)
     plotarea(xs, ys, area, pits, prefn=prefn)
@@ -37,7 +46,7 @@ function plotarea(xs, ys, area, pits; prefn=log10)
     px, py = pits2vecs(xs, ys, pits)
     fig, axs = subplots()
     heatmap(xs, ys, prefn.(area))
-    scatter(px, py, 1, "w")
+    scatter(px, py, 1, "r")
 end
 
 function plotlakedepth(x, y, dem)

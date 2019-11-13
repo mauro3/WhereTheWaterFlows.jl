@@ -1,12 +1,13 @@
 module WhereTheWaterFlows
 
+using StaticArrays, Requires
+
 export waterflows, fill_dem, catchments,
     plotarea
 
 # Note, I use the conversion (as in VAWTools) that the x-axis corresponds
 # to the row of the matrix and the y-axis the columns.  To print them in this "normal"
 # coordinate system use `showme`
-using StaticArrays, Requires
 
 """
 Direction numbers.  E.g. dirnums[1,1] will return the number
@@ -39,6 +40,9 @@ flowsinto(J::CartesianIndex, dirJ, I::CartesianIndex) = dirnums_0[I-J+I22] == di
 
 "Translate a D8 direction number into a CartesianIndex"
 dir2ind(dir) = findfirst(x->x==dir, dirnums) - I22
+"Translate a D8 direction number (with 0 at center) into a CartesianIndex"
+dir2ind_0(dir) = findfirst(x->x==dir, dirnums_0) - I22
+
 "Translate a D8 direction number into a 2D vector."
 dir2vec(dir) = [dir2ind(dir).I...]
 "Translate a CartesianIndex, giving the offset, into a direction number"
@@ -55,7 +59,7 @@ end
 """
     d8dir_feature(dem)
 
-D8 directions of a DEM and drainage features.
+D8 directions of a DEM and drainage features. Elevations with NaN map to dir==0.
 
 Return
 - dir - direction, see `dirnums`
@@ -77,12 +81,18 @@ function d8dir_feature(dem)
     for I in CartesianIndices((1:sx, 1:size(dem,2)))
         ele = dem[I]
         dir = 5
-        for J in iterate_D9(I, Iend)
-            ele2 = dem[J]
-            if ele > ele2
-                ele = ele2
-                dir = ind2dir(J-I) # equivalent to dir = i
-                # @assert ind2dir(J-I)==i
+        if isnan(ele)
+            dir = 0
+        else
+            for J in iterate_D9(I, Iend)
+                ele2 = dem[J]
+                if isnan(ele2)
+                    continue
+                elseif ele > ele2
+                    ele = ele2
+                    dir = ind2dir(J-I) # equivalent to dir = i
+                    # @assert ind2dir(J-I)==i
+                end
             end
         end
         diro[I] = dir
@@ -167,7 +177,7 @@ end
 #     diro[sx,sy] = dem[sx,sy]>dem[sx-1,sy-1] ? 1 : 5
 
 #     # flow features
-#     for I in R
+#     for I in Rmake_boundaries(c, 1:np)
 #         nout[I] = diro[I]==5 ? false : true
 #         for J in iterate_D9(I, Iend)
 #             # if I==CartesianIndex(1,1)
@@ -210,6 +220,7 @@ function waterflows(dem, cellarea=ones(size(dem));
         dir, nin, nout, pits, c, bnds = drainpits(dem, dir, nin, nout, pits, (c,bnds))
         area, slen = _waterflows(dir, nout, nin, pits)
     end
+    area[isnan.(dem)] .= NaN
     return area, slen, dir, nout, nin, pits, c, bnds
 end
 function _waterflows(dir, nout, nin, pits, cellarea=ones(size(dir)); maxitr=1000, calc_streamlength=true)
@@ -250,16 +261,19 @@ end
 Calculate catchments from
 - dir
 - pits
+
+Return: catchments Matrix{Int}.  Value==0 corresponds to NaNs in the DEM.
 """
 function catchments(dir, pits)
     c = zeros(Int, size(dir))
     np = length(pits)
-    # recursively traverse the drainage tree
+    # recursively traverse the drainage tree in up-flow direction,
+    # starting at all pits
     for (n, pit) in enumerate(pits)
         _catchments!(n, c, dir, pit)
     end
 
-    return c, make_boundaries(c, 1:np)
+    return c , make_boundaries(c, 1:np)
 end
 function _catchments!(n, c, dir, ij)
     c[ij] = n
@@ -281,6 +295,7 @@ function make_boundaries(catchments, colors)
     bnds = [CartesianIndex[] for c in colors]
     for R in CartesianIndices(size(catchments))
         c = catchments[R]
+        c==0 && continue
         bnd = bnds[c]
         for I in iterate_D9(R, catchments)
             if catchments[I]!=c
@@ -288,7 +303,7 @@ function make_boundaries(catchments, colors)
                 break
             end
         end
-    end
+    end#
     bnds
 end
 
@@ -351,19 +366,23 @@ function drainpits(dem, dir, nin, nout, pits, (c, bnds)=catchments(dir, pits);
             end
             # point on boundary with minimum elevation
             Imin = bnds_[color][findmin(getindex.(Ref(dem), bnds_[color]))[2]]
-            @assert c_[Imin]==c_[P]
+            @assert c_[Imin]==c_[P] # Something is amiss if the found minimum is the pit!
             # make the outflow and find the next catchment
             min_ = Inf
             target = Imin
             for J in iterate_D9(Imin, dem)
-                Imin==J && continue # not the point itself
+                Imin==J && continue # do not look at the point itself
                 c_[J] == color && continue # J is in Imin's catchment
+                c_[J] == 0 && continue # J is a NaN in the DEM
                 if dem[J] < min_
                     min_ = dem[J]
                     target = J
                 end
             end
-            @assert target!=Imin
+            if target==Imin
+                # this means that point is on a NaN boundary -> don't process
+                continue
+            end
             # do the flow across the boundary
             _flow_from_to!(Imin, target, dir_, nin_, nout_)
 
