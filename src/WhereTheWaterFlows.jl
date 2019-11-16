@@ -5,48 +5,56 @@ using StaticArrays, Requires
 export waterflows, fill_dem, catchments,
     plotarea
 
-# Note, I use the conversion (as in VAWTools) that the x-axis corresponds
-# to the row of the matrix and the y-axis the columns.  To print them in this "normal"
-# coordinate system use `showme`
+const I11 = CartesianIndex(1,1)
+const I22 = CartesianIndex(2,2)
+#const NaNflow = -99
+const NOFLOW = 5 # direction number indicating no flow.  Use a constant to better keep track.
 
 """
 Direction numbers.  E.g. dirnums[1,1] will return the number
-corresponding to the direction top left.
+corresponding to the direction top-left.
 
 Note, I use the conversion that the x-axis corresponds to the row of
 the matrix and the y-axis the columns.  To print them in this "normal"
 coordinate system use `showme`
 """
-const dirnums = SMatrix{3,3}(reverse([ 7 8 9
-                                       4 5 6
-                                       1 2 3]', dims=2))
-"As dirnums but with dirnums..."
-const dirnums_0 = SMatrix{3,3}(reverse([ 7 8 9
-                                         4 0 6
-                                         1 2 3]', dims=2))
+const dirnums = SMatrix{3,3}(reverse([ 7      8 9
+                                       4 NOFLOW 6
+                                       1      2 3]',
+                                     dims=2))
+# "As dirnums but with no-flow encoded as NaNflow."
+# const dirnums_nan = SMatrix{3,3}(reverse([ 7       8 9
+#                                            4 NaNflow 6
+#                                            1       2 3]',
+#                                          dims=2))
+
+"Translation from dirnums to CartesianIndex"
+const cartesian = SMatrix{3,3}(reverse(permutedims([CartesianIndex(-1,1)  CartesianIndex(0,1)  CartesianIndex(1,1)
+                                                    CartesianIndex(-1,0)  CartesianIndex(0,0)  CartesianIndex(1,0)
+                                                    CartesianIndex(-1,-1) CartesianIndex(0,-1) CartesianIndex(1,-1)]),
+                                       dims=2))
 """
 Show an array with its axes oriented such that they correspond
 to x and y direction.
 """
 showme(ar) = (display(reverse(ar',dims=1)); println(" "))
 
-const I11 = CartesianIndex(1,1)
-const I22 = CartesianIndex(2,2)
+"Translate a CartesianIndex, giving the offset, into a direction number"
+ind2dir(ind::CartesianIndex) = dirnums[ind + I22]
+# ind2dir_nan(ind::CartesianIndex) = dirnums_nan[ind + I22]
+
+"Translate a D8 direction number into a CartesianIndex"
+dir2ind(dir) = cartesian[dir]
+# "Translate a D8 direction number (with NaNflow at center) into a CartesianIndex"
+# dir2ind_nan(dir) = dir==0 ? CartesianIndex(0,0) : dir2ind(dir)
+
+"Translate a D8 direction number into a 2D vector."
+dir2vec(dir) = [dir2ind(dir).I...]
 
 """
 Tests whether a cell `J` with flowdir `dirJ` flows into cell `I`.
 """
-flowsinto(J::CartesianIndex, dirJ, I::CartesianIndex) = dirnums_0[I-J+I22] == dirJ
-
-"Translate a D8 direction number into a CartesianIndex"
-dir2ind(dir) = findfirst(x->x==dir, dirnums) - I22
-"Translate a D8 direction number (with 0 at center) into a CartesianIndex"
-dir2ind_0(dir) = findfirst(x->x==dir, dirnums_0) - I22
-
-"Translate a D8 direction number into a 2D vector."
-dir2vec(dir) = [dir2ind(dir).I...]
-"Translate a CartesianIndex, giving the offset, into a direction number"
-ind2dir(ind::CartesianIndex) = dirnums[ind + I22]
+flowsinto(J::CartesianIndex, dirJ, I::CartesianIndex) = ind2dir(I-J) == dirJ
 
 "Return CartesianIndices corresponding to the 8 neighbors and the point itself"
 iterate_D9(I, Iend, I1=I11) = max(I1, I-I1):min(Iend, I+I1)
@@ -57,41 +65,78 @@ function iterate_D9(I, ar::AbstractMatrix)
 end
 
 """
-    d8dir_feature(dem)
+    on_outer_boundary(ar, I::CartesianIndex)
 
-D8 directions of a DEM and drainage features. Elevations with NaN map to dir==0.
+Check whether on outer boundary of ar
+"""
+function on_outer_boundary(ar, I::CartesianIndex)
+    i,j = I.I
+    iend, jend = size(ar)
+    if i==1 || i==iend || j==1 || j==jend
+        return true
+    else
+        return false
+    end
+end
+
+"""
+    d8dir_feature(dem, bnd_as_pits)
+
+D8 directions of a DEM and drainage features.
+
+Elevations with NaN map to dir==NOFLOW, i.e. just like pits.
+However, they are not treated in the pits-filling function `drainpits`.
+
+The argument `bnd_as_pits` determines whether neighboring cells
+flow out of the domain or into NaN-cells (`bnd_as_pits==true`)
+or not.
 
 Return
-- dir - direction, see `dirnums`
-- nout - number of  outflow cells of a cell (0 or 1)
-- nin - number of inflow cells of a cell (0-8)
+- dir  - direction, encoded as `dirnums`
+- nout - number of outflow cells of a cell (0 or 1)
+- nin  - number of inflow cells of a cell (0-8)
+- pits - location of pits as a `Vector{CartesianIndex{2}}` (sorted)
 """
-function d8dir_feature(dem)
-    # TODO this does not do the "right" thing at the edges.  Although, maybe that is just fine.
-
+function d8dir_feature(dem, bnd_as_pits)
+    # outputs
     diro = zeros(Int8, size(dem))
     nout = falses(size(dem))
     nin = zeros(Int8, size(dem))
-    sx,sy = size(dem)
-    # https://julialang.org/blog/2016/02/iteration
-    # https://discourse.julialang.org/t/psa-replacement-of-ind2sub-sub2ind-in-julia-0-7/14666
+    pits = CartesianIndex{2}[]
+
     R = CartesianIndices(size(dem))
     Iend = last(R)
-    # inner points
-    for I in CartesianIndices((1:sx, 1:size(dem,2)))
-        ele = dem[I]
-        dir = 5
+
+    # get dir for all points
+    for I in R
+        # make pits on boundary if bnd_as_pits is set
+        if bnd_as_pits && on_outer_boundary(dem,I)
+            # make it a pit
+            diro[I] = NOFLOW
+            continue
+        end
+
+        ele = dem[I] # keeps track of lowest elevation of all 9 cells
+        dir = NOFLOW
         if isnan(ele)
-            dir = 0
+            # just mark as NOFLOW
         else
             for J in iterate_D9(I, Iend)
+                I==J && continue
                 ele2 = dem[J]
                 if isnan(ele2)
-                    continue
+                    if bnd_as_pits
+                        # flow into first found NaN-cell
+                        dir = ind2dir(J-I)
+                        break
+                    else
+                        # ignore NaN-Cell
+                        continue
+                    end
                 elseif ele > ele2
+                    # lower elevation found, adjust dir
                     ele = ele2
-                    dir = ind2dir(J-I) # equivalent to dir = i
-                    # @assert ind2dir(J-I)==i
+                    dir = ind2dir(J-I)
                 end
             end
         end
@@ -99,134 +144,72 @@ function d8dir_feature(dem)
     end
     # flow features
     for I in R
-        nout[I] = diro[I]==5 ? false : true
         for J in iterate_D9(I, Iend)
+            J==I && continue
             nin[I] += flowsinto(J, diro[J], I)
+        end
+        if diro[I]==NOFLOW
+            nout[I] = false
+            if !isnan(dem[I])
+                push!(pits, I)
+            elseif nin[I]>0
+                # mark NaN points only as pits if something is flowing into them
+                push!(pits, I)
+            end
+        else
+            nout[I] = true
         end
     end
 
-    pits = findall(nout.==false)
     return diro, nout, nin, pits
 end
 
-## This does the right thing at the edges but is ugly; and probably buggy.
-# function d8dir_feature1(dem)
-#     diro = zeros(Int8, size(dem))
-#     nout = falses(size(dem))
-#     nin = zeros(Int8, size(dem))
-#     sx,sy = size(dem)
-#     # https://julialang.org/blog/2016/02/iteration
-#     # https://discourse.julialang.org/t/psa-replacement-of-ind2sub-sub2ind-in-julia-0-7/14666/8
-#     R = CartesianIndices(size(dem))
-#     I1, Iend = first(R), last(R)
-#     # inner points
-#     for I in CartesianIndices((2:sx-1, 2:size(dem,2)-1))
-#         ele = dem[I]
-#         dir = 5
-#         for (i,J) in enumerate(iterate_D9(I, Iend, I1))
-#             ele2 = dem[J]
-#             if ele > ele2
-#                 ele = ele2
-#                 dir = ind2dir(J-I) # equivalent to dir = i
-#                 # @assert ind2dir(J-I)==i
-#             end
-#         end
-#         diro[I] = dir
-#     end
-#     # along edges
-#     for x=1:2
-#         dirs = ((7,8,9), (1,2,3))[x]
-#         iy = (1,sy)[x]
-#         iyy = (2,sy-1)[x]
-#         for ix=2:sx-1
-#             ele = dem[ix,iy]
-#             dir = 5
-#             for (i, ixx) = zip(dirs, ix-1:ix+1)
-#                 ele2 = dem[ixx,iyy]
-#                 if ele > ele2
-#                     ele = ele2
-#                     dir = i
-#                 end
-#             end
-#             diro[ix,iy] = dir
-#         end
-#     end
-
-#     for y=1:2
-#         dirs = ((3,6,9), (1,4,7))[y]
-#         ix = (1,sx)[y]
-#         ixx = (2,sx-1)[y]
-#         for iy=2:sy-1
-#             ele = dem[ix,iy]
-#             dir = 5
-#             for (i, iyy) = zip(dirs, iy-1:iy+1)
-#                 ele2 = dem[ixx,iyy]
-#                 if ele > ele2
-#                     ele = ele2
-#                     dir = i
-#                 end
-#             end
-#             diro[ix,iy] = dir
-#         end
-#     end
-
-#     # corners
-#     diro[1,1] = dem[1,1]>dem[2,2] ? 9 : 5
-#     diro[1,sy] = dem[1,sy]>dem[2,sy-1] ? 3 : 5
-#     diro[sx,1] = dem[sx,1]>dem[sx-1,2] ? 7 : 5
-#     diro[sx,sy] = dem[sx,sy]>dem[sx-1,sy-1] ? 1 : 5
-
-#     # flow features
-#     for I in Rmake_boundaries(c, 1:np)
-#         nout[I] = diro[I]==5 ? false : true
-#         for J in iterate_D9(I, Iend)
-#             # if I==CartesianIndex(1,1)
-#             #     @show J, diro[J], I
-#             #     @show flowsinto(J, diro[J], I)
-#             # end
-#             nin[I] += flowsinto(J, diro[J], I)
-#         end
-#     end
-
-#     return diro, nout, nin, findall(nout.==false)
-# end
-
-
 """
-    waterflows(dem, cellarea=ones(size(dem))
-    waterflows(dir, nout, nin, ic_area=ones(size(dir)), calc_streamlength=true)
+    waterflows(dem, cellarea=ones(size(dem));
+               maxitr=1000, calc_streamlength=true, drain_pits=true, bnd_as_pits=false)
+
+Does the water flow routing according the D8 algorithm.
 
 kwargs:
-- fillpits -- whether to route through pits
+- drain_pits -- whether to route through pits
 - maxiter -- maximum iterations of the algorithm
 - calc_streamlength -- whether to calculate stream length
+- bnd_as_pits -- whether the domain boundary an NaNs should be pits,
+                 i.e. adjacent cells can drain into them,
+                 or whether to ignore them
+
+TODO: if bnd_as_pits rout water along boundary edges first. This would probably
+substantially reduce the number of catchments, as currently every boundary point
+is a pit and thus a catchment (if bnd_as_pits==true).
 
 Returns
-- upslope area (for a D8 direction field)
-- stream-length -- number of upstream cells for each cell
+- area -- upslope area
+- stream-length -- length of stream to the farthest source
 - dir -- flow direction at each location
 - nout -- whether the point has outlflow.  I.e. nout[I]==0 --> I is a pit
 - nin -- number of inflow cells
 - pits -- location of pits as Vector{CartesianIndex{2}}
 - c -- catchment map
-- bnds -- boundaries between catchments
+- bnds -- boundaries between catchments.  The boundary to the exterior/NaNs is not in here.
 """
-function waterflows end
 function waterflows(dem, cellarea=ones(size(dem));
-                     maxitr=1000, calc_streamlength=true, fillpits=true)
-    area, slen, dir, nout, nin, pits = _waterflows(d8dir_feature(dem)..., cellarea; maxitr=maxitr, calc_streamlength=calc_streamlength)
-    c, bnds = catchments(dir, pits)
-    if fillpits
+                     maxitr=1000, calc_streamlength=true, drain_pits=true, bnd_as_pits=false)
+    area, slen, dir, nout, nin, pits = _waterflows(d8dir_feature(dem, bnd_as_pits)..., cellarea; maxitr=maxitr, calc_streamlength=calc_streamlength)
+    c, bnds = catchments(dir, pits, bnd_as_pits)
+    if drain_pits
         dir, nin, nout, pits, c, bnds = drainpits(dem, dir, nin, nout, pits, (c,bnds))
         area, slen = _waterflows(dir, nout, nin, pits)
     end
-    area[isnan.(dem)] .= NaN
+    #area[isnan.(dem)] .= NaN
     return area, slen, dir, nout, nin, pits, c, bnds
 end
+# this function does the actual routing
 function _waterflows(dir, nout, nin, pits, cellarea=ones(size(dir)); maxitr=1000, calc_streamlength=true)
     area = copy(cellarea)
     tmp = convert(Matrix{Int}, nin)
     tmp2 = calc_streamlength ? copy(tmp) : tmp
+
+
     for counter = 1:maxitr
         n = 0
         for R in CartesianIndices(size(dir))
@@ -237,7 +220,7 @@ function _waterflows(dir, nout, nin, pits, cellarea=ones(size(dir)); maxitr=1000
                     tmp2[R] = -counter # done with it
                 end
                 d = dir[R]
-                if d!=5
+                if d!=NOFLOW
                     receiver = R + dir2ind(d)
                     area[receiver] += area[R]
                     tmp2[receiver] -= 1
@@ -250,21 +233,25 @@ function _waterflows(dir, nout, nin, pits, cellarea=ones(size(dir)); maxitr=1000
             #@show counter
             break
         end
+        if counter==maxitr
+            error("Maximum number of iterations reached in `_waterflows`: $counter")
+        end
         copyto!(tmp, tmp2)
     end
     return area, -tmp, dir, nout, nin, pits
 end
 
 """
-    catchments(dir, pits)
+    catchments(dir, pits, bnd_as_pits)
 
 Calculate catchments from
 - dir
 - pits
 
-Return: catchments Matrix{Int}.  Value==0 corresponds to NaNs in the DEM.
+Return: catchments Matrix{Int}.  Value==0 corresponds to NaNs in the DEM
+which are not pits (i.e. where no water flows into).
 """
-function catchments(dir, pits)
+function catchments(dir, pits, bnd_as_pits)
     c = zeros(Int, size(dir))
     np = length(pits)
     # recursively traverse the drainage tree in up-flow direction,
@@ -273,7 +260,7 @@ function catchments(dir, pits)
         _catchments!(n, c, dir, pit)
     end
 
-    return c , make_boundaries(c, 1:np)
+    return c, make_boundaries(c, 1:np)
 end
 function _catchments!(n, c, dir, ij)
     c[ij] = n
@@ -287,7 +274,11 @@ function _catchments!(n, c, dir, ij)
 end
 
 """
-Make vectors of boundary points.
+    make_boundaries(catchments, colors, bnd_as_pits)
+
+Make vectors of boundary points.  Note that points along the
+edge of the domain as well as points bordering NaN-cells with no
+inflow do not count as boundaries.
 
 TODO: this is brute force...
 """
@@ -295,10 +286,11 @@ function make_boundaries(catchments, colors)
     bnds = [CartesianIndex[] for c in colors]
     for R in CartesianIndices(size(catchments))
         c = catchments[R]
-        c==0 && continue
+        c==0 && continue # don't find boundaries for c==0 (NaNs with no inflow)
         bnd = bnds[c]
         for I in iterate_D9(R, catchments)
-            if catchments[I]!=c
+            co = catchments[I]
+            if co!=c && co!=0
                 push!(bnd, R)
                 break
             end
@@ -319,7 +311,8 @@ function _prune_boundary!(bnds, catchments::Matrix, color)
         # check cells around it
         for PP in iterate_D9(P, catchments)
             # if one is of different color, keep it.
-            if catchments[PP]!=color
+            co = catchments[PP]
+            if co!=color && co!=0
                 keep = true
                 break
             end
@@ -333,16 +326,30 @@ function _prune_boundary!(bnds, catchments::Matrix, color)
 end
 
 """
-Return an update direction field which drains pits.
+     drainpits(dem, dir, nin, nout, pits, (c, bnds)=catchments(dir, pits);
+               maxitr=100)
 
-Returns new dir, nin, nout, pits, c.
+Return an update direction field which drains (interior) pits.
+This is done by reversing the flow connecting the lowest boundary point
+to the pits.
+
+There needs to be a decision on how to treat the outer boundary and boundaries
+to NaN-cells.  Possibilities:
+- do not treat boundary cells as pits but do treat pits at the boundary as terminal.
+- treat boundary cells as pits, i.e. flow reaching such a cell will vanish.  Again
+  such cells would be terminal.
+
+What to do if there are no terminal pits in the DEM?  Fill to the uppermost pit?  Or take
+the lowermost as terminal?
+
+Returns new dir, nin, nout, pits (sorted), c.
 
 TODO: this is the performance bottleneck.
 """
 function drainpits(dem, dir, nin, nout, pits, (c, bnds)=catchments(dir, pits);
                    maxitr=100)
     dir_ = copy(dir)
-    dir2 = copy(dir_)
+    dir2 = copy(dir)
     nin_ = copy(nin)
     nout_ = copy(nout)
     pits_ = copy(pits)
@@ -352,19 +359,42 @@ function drainpits(dem, dir, nin, nout, pits, (c, bnds)=catchments(dir, pits);
     Iend = CartesianIndex(size(dem))
 
     pits_to_keep = trues(length(pits_))
+
+    no_drainage_across_boundary = false
     # iterate until all interior pits are removed
-    # TODO: warn when maxiter is exceeded
     for i=1:maxitr
         n_removed = 0
         for (color, P) in enumerate(pits_)
             copyto!(dir2, dir_) # TODO hack...
 
-            P==CartesianIndex(-1,-1) && continue # already removed pit, skip
-            if P.I[1]==1 || P.I[2]==1 || P.I[1]==size(dir,1) || P.I[2]==size(dir,2)
-                # don't process pits on the DEM boundary
-                continue
+            # Already removed pit, skip
+            P==CartesianIndex(-1,-1) && continue
+            # Don't process pits on the DEM boundary, because there water disappears.
+            (P.I[1]==1 || P.I[2]==1 || P.I[1]==size(dir,1) || P.I[2]==size(dir,2)) && continue
+            # Don't process pits which are NaNs, because there water disappears.
+            # See also bnd_as_pits.
+            isnan(dem[P]) && continue
+            # If there are no more boundaries left, stop.  This should only occur when
+            # bnd_as_pits==false and when there are only interior pits.
+            if all(isempty.(bnds_))
+                no_drainage_across_boundary = true # set flag to warn later
+                break
             end
-            # point on boundary with minimum elevation
+
+            ## Debug plotting
+            # cls = [c=>sum(c_.==c) for c=1:6]
+            # @show color, size(bnds_[color])
+            # @show cls
+            # imshow(Array(c_'), origin="lower")
+            # if color==1
+            #     colorbar()
+            # end
+            # readline(stdin)
+            # if color==6
+            #     imshow(Array(c_'), origin="lower")
+            # end
+
+            # find point on catchment boundary with minimum elevation
             Imin = bnds_[color][findmin(getindex.(Ref(dem), bnds_[color]))[2]]
             @assert c_[Imin]==c_[P] # Something is amiss if the found minimum is the pit!
             # make the outflow and find the next catchment
@@ -373,7 +403,6 @@ function drainpits(dem, dir, nin, nout, pits, (c, bnds)=catchments(dir, pits);
             for J in iterate_D9(Imin, dem)
                 Imin==J && continue # do not look at the point itself
                 c_[J] == color && continue # J is in Imin's catchment
-                c_[J] == 0 && continue # J is a NaN in the DEM
                 if dem[J] < min_
                     min_ = dem[J]
                     target = J
@@ -422,6 +451,14 @@ function drainpits(dem, dir, nin, nout, pits, (c, bnds)=catchments(dir, pits);
             n_removed +=1
         end
         n_removed==0 && break
+        if i==maxitr
+            error("Maximum number of iterations reached in `drainpits`: $i")
+        end
+    end
+
+    if no_drainage_across_boundary
+        @warn """Water cannot leave this DEM!  Instead it drains into a random interior pit.
+                 Consider setting `bnd_as_pits=true`."""
     end
 
     # remove removed pits
@@ -432,7 +469,7 @@ function drainpits(dem, dir, nin, nout, pits, (c, bnds)=catchments(dir, pits);
         c_[i] = cols[c_[i]]
     end
 
-    return dir_, nin_, nout_, pits_, c_, bnds_
+    return dir_, nin_, nout_, sort(pits_), c_, bnds_
 end
 
 """

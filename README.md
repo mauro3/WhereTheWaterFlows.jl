@@ -40,9 +40,14 @@ area, slen, dir, nout, nin, pits, c, bnds = waterflows(dem)
 
 # log-upslope area as well as pits (sinks)
 plotarea(x, y, area, pits)
+
+# log-upslope area over contours of the dem
+plotarea_dem(x, y, dem, area, pits)
+
 # catchments
 figure()
 WWF.heatmap(x,y,c)
+
 # stream length
 figure()
 WWF.heatmap(x,y,slen)
@@ -56,4 +61,4 @@ WWF.heatmap(x,y,demf.-dem)
 # References
 [1] O’Callaghan, J. and Mark, D.: The extraction of drainage networks
     from digital elevation data, Comput. Vision Graph., 28, 323–344,
-    1984.
+    1984. (behind a pay-wall)
