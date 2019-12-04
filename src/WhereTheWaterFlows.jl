@@ -171,12 +171,12 @@ end
 Does the water flow routing according the D8 algorithm.
 
 kwargs:
-- drain_pits -- whether to route through pits
-- maxiter -- maximum iterations of the algorithm
-- calc_streamlength -- whether to calculate stream length
-- bnd_as_pits -- whether the domain boundary an NaNs should be pits,
+- drain_pits -- whether to route through pits (true)
+- maxiter -- maximum iterations of the algorithm (1000)
+- calc_streamlength -- whether to calculate stream length (true)
+- bnd_as_pits (false) -- whether the domain boundary an NaNs should be pits,
                  i.e. adjacent cells can drain into them,
-                 or whether to ignore them
+                 or whether to ignore them.
 
 TODO: if bnd_as_pits rout water along boundary edges first. This would probably
 substantially reduce the number of catchments, as currently every boundary point
@@ -193,12 +193,12 @@ Returns
 - bnds -- boundaries between catchments.  The boundary to the exterior/NaNs is not in here.
 """
 function waterflows(dem, cellarea=ones(size(dem));
-                     maxitr=1000, calc_streamlength=true, drain_pits=true, bnd_as_pits=false)
+                    maxitr=1000, calc_streamlength=true, drain_pits=true, bnd_as_pits=false)
     area, slen, dir, nout, nin, pits = _waterflows(d8dir_feature(dem, bnd_as_pits)..., cellarea; maxitr=maxitr, calc_streamlength=calc_streamlength)
     c, bnds = catchments(dir, pits, bnd_as_pits)
     if drain_pits
         dir, nin, nout, pits, c, bnds = drainpits(dem, dir, nin, nout, pits, (c,bnds))
-        area, slen = _waterflows(dir, nout, nin, pits)
+        area, slen = _waterflows(dir, nout, nin, pits; maxitr=maxitr, calc_streamlength=calc_streamlength)
     end
     #area[isnan.(dem)] .= NaN
     return area, slen, dir, nout, nin, pits, c, bnds
