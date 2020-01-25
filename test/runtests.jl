@@ -149,6 +149,10 @@ end
     @test nout == Bool[false true false false; true true true true; false true true true]
     @test nin == Int8[0 0 4 0; 0 0 0 0; 2 1 1 0]
     @test pits ==CartesianIndex{2}[CartesianIndex(1, 1), CartesianIndex(3, 1), CartesianIndex(1, 3), CartesianIndex(1, 4)]
+
+    # non default cellarea
+    area, _ = WWF.waterflows(dem, fill(10.0, size(dem)))
+    @test area == [10.0 10.0 50.0 10.0; 10.0 10.0 10.0 10.0; 50.0 30.0 20.0 10.0]
 end
 
 @testset "DEM: peaks2" begin

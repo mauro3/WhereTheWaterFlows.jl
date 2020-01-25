@@ -198,7 +198,7 @@ function waterflows(dem, cellarea=ones(size(dem));
     c, bnds = catchments(dir, pits, bnd_as_pits)
     if drain_pits
         dir, nin, nout, pits, c, bnds = drainpits(dem, dir, nin, nout, pits, (c,bnds))
-        area, slen = _waterflows(dir, nout, nin, pits; maxitr=maxitr, calc_streamlength=calc_streamlength)
+        area, slen = _waterflows(dir, nout, nin, pits, cellarea; maxitr=maxitr, calc_streamlength=calc_streamlength)
     end
     #area[isnan.(dem)] .= NaN
     return area, slen, dir, nout, nin, pits, c, bnds
