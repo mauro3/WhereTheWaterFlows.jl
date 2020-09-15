@@ -166,7 +166,7 @@ end
 
 """
     waterflows(dem, cellarea=ones(size(dem));
-               maxitr=1000, calc_streamlength=true, drain_pits=true, bnd_as_pits=false)
+               maxiter=1000, calc_streamlength=true, drain_pits=true, bnd_as_pits=false)
 
 Does the water flow routing according the D8 algorithm.
 
@@ -193,24 +193,24 @@ Returns
 - bnds -- boundaries between catchments.  The boundary to the exterior/NaNs is not in here.
 """
 function waterflows(dem, cellarea=ones(size(dem));
-                    maxitr=1000, calc_streamlength=true, drain_pits=true, bnd_as_pits=false)
-    area, slen, dir, nout, nin, pits = _waterflows(d8dir_feature(dem, bnd_as_pits)..., cellarea; maxitr=maxitr, calc_streamlength=calc_streamlength)
+                    maxiter=1000, calc_streamlength=true, drain_pits=true, bnd_as_pits=false)
+    area, slen, dir, nout, nin, pits = _waterflows(d8dir_feature(dem, bnd_as_pits)..., cellarea; maxiter=maxiter, calc_streamlength=calc_streamlength)
     c, bnds = catchments(dir, pits, bnd_as_pits)
     if drain_pits
         dir, nin, nout, pits, c, bnds = drainpits(dem, dir, nin, nout, pits, (c,bnds))
-        area, slen = _waterflows(dir, nout, nin, pits, cellarea; maxitr=maxitr, calc_streamlength=calc_streamlength)
+        area, slen = _waterflows(dir, nout, nin, pits, cellarea; maxiter=maxiter, calc_streamlength=calc_streamlength)
     end
     #area[isnan.(dem)] .= NaN
     return area, slen, dir, nout, nin, pits, c, bnds
 end
 # this function does the actual routing
-function _waterflows(dir, nout, nin, pits, cellarea=ones(size(dir)); maxitr=1000, calc_streamlength=true)
+function _waterflows(dir, nout, nin, pits, cellarea=ones(size(dir)); maxiter=1000, calc_streamlength=true)
     area = copy(cellarea)
     tmp = convert(Matrix{Int}, nin)
     tmp2 = calc_streamlength ? copy(tmp) : tmp
 
 
-    for counter = 1:maxitr
+    for counter = 1:maxiter
         n = 0
         for R in CartesianIndices(size(dir))
             # Consider only points with less than `counter` upstream points
@@ -233,7 +233,7 @@ function _waterflows(dir, nout, nin, pits, cellarea=ones(size(dir)); maxitr=1000
             #@show counter
             break
         end
-        if counter==maxitr
+        if counter==maxiter
             error("Maximum number of iterations reached in `_waterflows`: $counter")
         end
         copyto!(tmp, tmp2)
@@ -327,7 +327,7 @@ end
 
 """
      drainpits(dem, dir, nin, nout, pits, (c, bnds)=catchments(dir, pits);
-               maxitr=100)
+               maxiter=100)
 
 Return an update direction field which drains (interior) pits.
 This is done by reversing the flow connecting the lowest boundary point
@@ -347,7 +347,7 @@ Returns new dir, nin, nout, pits (sorted), c.
 TODO: this is the performance bottleneck.
 """
 function drainpits(dem, dir, nin, nout, pits, (c, bnds)=catchments(dir, pits);
-                   maxitr=100)
+                   maxiter=100)
     dir_ = copy(dir)
     dir2 = copy(dir)
     nin_ = copy(nin)
@@ -362,7 +362,7 @@ function drainpits(dem, dir, nin, nout, pits, (c, bnds)=catchments(dir, pits);
 
     no_drainage_across_boundary = false
     # iterate until all interior pits are removed
-    for i=1:maxitr
+    for i=1:maxiter
         n_removed = 0
         for (color, P) in enumerate(pits_)
             copyto!(dir2, dir_) # TODO hack...
@@ -451,7 +451,7 @@ function drainpits(dem, dir, nin, nout, pits, (c, bnds)=catchments(dir, pits);
             n_removed +=1
         end
         n_removed==0 && break
-        if i==maxitr
+        if i==maxiter
             error("Maximum number of iterations reached in `drainpits`: $i")
         end
     end
