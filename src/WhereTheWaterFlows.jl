@@ -174,7 +174,7 @@ kwargs:
 - drain_pits -- whether to route through pits (true)
 - maxiter -- maximum iterations of the algorithm (1000)
 - calc_streamlength -- whether to calculate stream length (true)
-- bnd_as_pits (false) -- whether the domain boundary an NaNs should be pits,
+- bnd_as_pits (false) -- whether the domain boundary and NaNs should be pits,
                  i.e. adjacent cells can drain into them,
                  or whether to ignore them.
 
@@ -380,6 +380,8 @@ function drainpits(dem, dir, nin, nout, pits, (c, bnds)=catchments(dir, pits);
                 no_drainage_across_boundary = true # set flag to warn later
                 break
             end
+            # If there are no boundaries for this point, go to next point
+            isempty(bnds_[color]) && continue
 
             ## Debug plotting
             # cls = [c=>sum(c_.==c) for c=1:6]
