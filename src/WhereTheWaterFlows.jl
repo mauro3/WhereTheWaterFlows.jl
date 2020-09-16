@@ -174,7 +174,7 @@ kwargs:
 - drain_pits -- whether to route through pits (true)
 - maxiter -- maximum iterations of the algorithm (1000)
 - calc_streamlength -- whether to calculate stream length (true)
-- bnd_as_pits (false) -- whether the domain boundary and NaNs should be pits,
+- bnd_as_pits (true) -- whether the domain boundary and NaNs should be pits,
                  i.e. adjacent cells can drain into them,
                  or whether to ignore them.
 
@@ -193,7 +193,7 @@ Returns
 - bnds -- boundaries between catchments.  The boundary to the exterior/NaNs is not in here.
 """
 function waterflows(dem, cellarea=ones(size(dem));
-                    maxiter=1000, calc_streamlength=true, drain_pits=true, bnd_as_pits=false)
+                    maxiter=1000, calc_streamlength=true, drain_pits=true, bnd_as_pits=true)
     area, slen, dir, nout, nin, pits = _waterflows(d8dir_feature(dem, bnd_as_pits)..., cellarea; maxiter=maxiter, calc_streamlength=calc_streamlength)
     c, bnds = catchments(dir, pits, bnd_as_pits)
     if drain_pits
