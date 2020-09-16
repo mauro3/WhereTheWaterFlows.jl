@@ -177,7 +177,7 @@ end
     @test pits ==CartesianIndex{2}[CartesianIndex(1, 1), CartesianIndex(3, 1), CartesianIndex(1, 3), CartesianIndex(1, 4)]
 
     # non default cellarea
-    area, _ = WWF.waterflows(dem, fill(10.0, size(dem)))
+    area, _ = WWF.waterflows(dem, fill(10.0, size(dem)), bnd_as_pits=false)
     @test area == [10.0 10.0 50.0 10.0; 10.0 10.0 10.0 10.0; 50.0 30.0 20.0 10.0]
 end
 
@@ -185,7 +185,7 @@ end
     xs, dem = peaks2()
     ys = xs
     @test size(dem)==(length(xs), length(ys))
-    area, slen, dir, nout, nin, pits, c, bnds = WWF.waterflows(dem, drain_pits=false);
+    area, slen, dir, nout, nin, pits, c, bnds = WWF.waterflows(dem, drain_pits=false, bnd_as_pits=false);
     #plotarea_dem(xs, ys, dem, area, pits)
     @test length(pits) == 6
     @test maximum(slen)==67
@@ -195,7 +195,7 @@ end
     @test sum(diff(c[:])) == 5
     @test sort(unique(c))[[1,end]] ==[1,6]
 
-    area, slen, dir, nout, nin, pits, c, bnds = WWF.waterflows(dem, drain_pits=true);
+    area, slen, dir, nout, nin, pits, c, bnds = WWF.waterflows(dem, drain_pits=true, bnd_as_pits=false)
     # plotarea_dem(xs, ys, dem, area, pits)
     @test length(pits) == 4
     @test maximum(slen)==118
@@ -312,7 +312,7 @@ end
     xs = -1.5:dx:1
     ys = -0.5:dx:3.0
     dem = dem1.(xs, ys', withpit=true)
-    area, slen, dir, nout, nin, pits = WWF.waterflows(dem)
+    area, slen, dir, nout, nin, pits = WWF.waterflows(dem, bnd_as_pits=false)
     demf = WWF.fill_dem(dem, pits, dir)
     @test sum(demf.-dem) ≈ 2.1499674517313414
     @test sum(demf.-dem .> 0) == 5
@@ -323,7 +323,7 @@ end
     (xs, ys), dem = dem_one_point()
     mask = .!isnan.(dem)
     #should not error
-    area, slen, dir, nout, nin, pits = WWF.waterflows(dem, drain_pits=true)
+    area, slen, dir, nout, nin, pits = WWF.waterflows(dem, drain_pits=true, bnd_as_pits=false)
     @test mask[pits[1]]
     @test length(pits)==1
     #@test all(getindex.(Ref(mask), pits).==0) # tests that there are no interior pits left
@@ -334,7 +334,7 @@ end
     (xs, ys), dem = dem_two_points()
     mask = .!isnan.(dem)
     #should not error
-    area, slen, dir, nout, nin, pits = WWF.waterflows(dem, drain_pits=true)
+    area, slen, dir, nout, nin, pits = WWF.waterflows(dem, drain_pits=true, bnd_as_pits=false)
     @test mask[pits[1]]
     @test mask[pits[2]]
     @test length(pits)==2
@@ -345,7 +345,7 @@ end
     (xs, ys), dem = dem_patho1()
     mask = .!isnan.(dem)
     #should not error
-    area, slen, dir, nout, nin, pits = WWF.waterflows(dem, drain_pits=true)
+    area, slen, dir, nout, nin, pits = WWF.waterflows(dem, drain_pits=true, bnd_as_pits=false)
     @test length(pits)==2
     area, slen, dir, nout, nin, pits = WWF.waterflows(dem, drain_pits=true, bnd_as_pits=true)
     @test all(getindex.(Ref(mask), pits).==0)
@@ -357,7 +357,7 @@ end
     # also mask border points
     mask[1,:] .= false; mask[end,:] .= false; mask[:,1] .= false; mask[:,end] .= false
     # should not have a pit in the interior
-    area, slen, dir, nout, nin, pits = WWF.waterflows(dem, drain_pits=true)
+    area, slen, dir, nout, nin, pits = WWF.waterflows(dem, drain_pits=true, bnd_as_pits=false)
     @test all(getindex.(Ref(mask), pits).==0)
     area, slen, dir, nout, nin, pits = WWF.waterflows(dem, drain_pits=true, bnd_as_pits=true)
     @test all(getindex.(Ref(mask), pits).==0)
