@@ -365,7 +365,6 @@ function drainpits(dem, dir, nin, nout, pits, (c, bnds)=catchments(dir, pits);
     for i=1:maxiter
         n_removed = 0
         for (color, P) in enumerate(pits_)
-            copyto!(dir2, dir_) # TODO hack...
 
             # Already removed pit, skip
             P==CartesianIndex(-1,-1) && continue
@@ -414,30 +413,20 @@ function drainpits(dem, dir, nin, nout, pits, (c, bnds)=catchments(dir, pits);
                 # this means that point is on a NaN boundary -> don't process
                 continue
             end
-            # do the flow across the boundary
+
+            # Reverse directions on path going from Imin to P
+            P1 = Imin
+            P2 = dir2ind(dir_[P1]) + P1
+            # first, do the flow across the boundary
             _flow_from_to!(Imin, target, dir_, nin_, nout_)
+            while P1!=P
+                # get down-downstream point (do ahead lookup as a undisturbed dir_ is needed)
+                P3 = dir2ind(dir_[P2]) + P2
+                # reverse
+                _flow_from_to!(P2, P1, dir_, nin_, nout_)
 
-            # reverse directions on path going from Imin to P
-            if Imin!=P
-                P1 = Imin
-                while true
-                    # get downstream point
-                    P2 = dir2ind(dir2[P1]) + P1 # note usage of `dir2`
-                    # The need for dir2 could be removed by first
-                    # traversing the flow path without modifying it.
-                    # And then do the modification in a second traversal.
-                    if P2==P1
-                        # With dir2, this should be fixed now.
-                        println("This should not happen!")
-                        @show color, Imin, P, P1
-                        break
-                    end
-                    # reverse
-                    _flow_from_to!(P2, P1, dir_, nin_, nout_)
-
-                    P2==P && break # reached the pit
-                    P1 = P2
-                end
+                P1 = P2
+                P2 = P3
             end
 
             # remove from list of pits
