@@ -201,8 +201,8 @@ end
     @test maximum(slen)==118
     @test maximum(area)==7714
     @test length(unique(c))==4
-    @test sum(c) == 21990
-    @test sum(diff(c[:])) == 2
+    @test sum(c) == 23933
+    @test sum(diff(c[:])) == 3
     @test sort(unique(c))[[1,end]] ==[1,4]
     @test bnds isa Array{Array{CartesianIndex,1},1}
 end
@@ -210,6 +210,7 @@ end
 @testset "DEM: peaks2_nan" begin
     xs, dem = peaks2_nan()
     ys = xs
+    nanlocs = findall(isnan.(dem))
     @test size(dem)==(length(xs), length(ys))
 
     area, slen, dir, nout, nin, pits, c, bnds = WWF.waterflows(dem, drain_pits=false, bnd_as_pits=false);
@@ -221,6 +222,7 @@ end
     @test sum(c) == 36607
     @test sum(diff(c[:])) == 6
     @test sort(unique(c))[[1,end]] ==[0,7]
+    @test all(c[nanlocs].==0)
 
     area, slen, dir, nout, nin, pits, c, bnds = WWF.waterflows(dem, drain_pits=false, bnd_as_pits=true);
     # plotarea_dem(xs, ys, dem, area, pits)
@@ -231,6 +233,7 @@ end
     @test sum(c) == 2083959
     @test sum(diff(c[:])) == 407
     @test sort(unique(c))[[1,end]] ==[0,408]
+    @test all(c[ [n for n in nanlocs if !(n in pits)]].==0)
 
     # fill pits
     area, slen, dir, nout, nin, pits, c, bnds = WWF.waterflows(dem, drain_pits=true, bnd_as_pits=false);
@@ -239,10 +242,11 @@ end
     @test maximum(slen)==116
     @test maximum(area[.!isnan.(area)])==7707
     @test length(unique(c))==5
-    @test sum(c) == 24117
+    @test sum(c) == 23915
     @test sum(diff(c[:])) == 3
-    @test sort(unique(c))[[1,end]] ==[1,5]
+    @test sort(unique(c))[[1,end]] ==[0,4]
     @test bnds isa Array{Array{CartesianIndex,1},1}
+    @test all(c[nanlocs].==0)
 
     area, slen, dir, nout, nin, pits, c, bnds = WWF.waterflows(dem, drain_pits=true, bnd_as_pits=true);
     # plotarea_dem(xs, ys, dem, area, pits)
@@ -250,10 +254,11 @@ end
     @test maximum(slen)==75
     @test maximum(area[.!isnan.(area)])==4115
     @test length(unique(c))==407
-    @test sum(c) == 1444498
-    @test sum(diff(c[:])) == 406
-    @test sort(unique(c))[[1,end]] ==[1,407]
+    @test sum(c) == 2072390
+    @test sum(diff(c[:])) == 405
+    @test sort(unique(c))[[1,end]] ==[0,406]
     @test bnds isa Array{Array{CartesianIndex,1},1}
+    @test all(c[ [n for n in nanlocs if !(n in pits)]].==0)
 end
 
 @testset "DEM: peaks2_nan_edge" begin
@@ -288,9 +293,9 @@ end
     @test maximum(slen)==165
     @test maximum(area[.!isnan.(area)])==9605
     @test length(unique(c))==2
-    @test sum(c) == 19605
+    @test sum(c) == 9605
     @test sum(diff(c[:])) == 0
-    @test sort(unique(c))[[1,end]] ==[1,2]
+    @test sort(unique(c))[[1,end]] ==[0,1]
     @test bnds isa Array{Array{CartesianIndex,1},1}
 
     area, slen, dir, nout, nin, pits, c, bnds = WWF.waterflows(dem, drain_pits=true, bnd_as_pits=true);
@@ -299,9 +304,9 @@ end
     @test maximum(slen)==81
     @test maximum(area[.!isnan.(area)])==4831
     @test length(unique(c))==389
-    @test sum(c) == 1372917
-    @test sum(diff(c[:])) == 98
-    @test sort(unique(c))[[1,end]] ==[1,389]
+    @test sum(c) == 1983749
+    @test sum(diff(c[:])) == -1
+    @test sort(unique(c))[[1,end]] ==[0,388]
     @test bnds isa Array{Array{CartesianIndex,1},1}
 end
 

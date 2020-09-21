@@ -194,17 +194,17 @@ Returns
 """
 function waterflows(dem, cellarea=ones(size(dem));
                     maxiter=1000, calc_streamlength=true, drain_pits=true, bnd_as_pits=true)
-    area, slen, dir, nout, nin, pits = _waterflows(d8dir_feature(dem, bnd_as_pits)..., cellarea; maxiter=maxiter, calc_streamlength=calc_streamlength)
+    area, slen, dir, nout, nin, pits = flowrouting(d8dir_feature(dem, bnd_as_pits)..., cellarea; maxiter=maxiter, calc_streamlength=calc_streamlength)
     c, bnds = catchments(dir, pits, bnd_as_pits)
     if drain_pits
         dir, nin, nout, pits, c, bnds = drainpits(dem, dir, nin, nout, pits, (c,bnds))
-        area, slen = _waterflows(dir, nout, nin, pits, cellarea; maxiter=maxiter, calc_streamlength=calc_streamlength)
+        area, slen = flowrouting(dir, nout, nin, pits, cellarea; maxiter=maxiter, calc_streamlength=calc_streamlength)
     end
     #area[isnan.(dem)] .= NaN
     return area, slen, dir, nout, nin, pits, c, bnds
 end
 # this function does the actual routing
-function _waterflows(dir, nout, nin, pits, cellarea=ones(size(dir)); maxiter=1000, calc_streamlength=true)
+function flowrouting(dir, nout, nin, pits, cellarea=ones(size(dir)); maxiter=1000, calc_streamlength=true)
     area = copy(cellarea)
     tmp = convert(Matrix{Int}, nin)
     tmp2 = calc_streamlength ? copy(tmp) : tmp
@@ -230,11 +230,10 @@ function _waterflows(dir, nout, nin, pits, cellarea=ones(size(dir)); maxiter=100
             end
         end
         if n==0
-            #@show counter
             break
         end
         if counter==maxiter
-            error("Maximum number of iterations reached in `_waterflows`: $counter")
+            error("Maximum number of iterations reached in `flowrouting`: $counter")
         end
         copyto!(tmp, tmp2)
     end
@@ -303,7 +302,7 @@ end
 Checks that all points in `bnds[color]` are indeed on the
 boundary; removes them otherwise.
 """
-function _prune_boundary!(bnds, catchments::Matrix, color)
+function _prune_boundary!(bnds, catchments::Matrix, color, colormap)
     del = Int[]
     # loop over all boundary cells
     for (i,P) in enumerate(bnds[color])
@@ -311,7 +310,8 @@ function _prune_boundary!(bnds, catchments::Matrix, color)
         # check cells around it
         for PP in iterate_D9(P, catchments)
             # if one is of different color, keep it.
-            co = catchments[PP]
+            cc = catchments[PP]
+            co = cc==0 ? 0 : colormap[cc]
             if co!=color && co!=0
                 keep = true
                 break
@@ -360,12 +360,16 @@ function drainpits(dem, dir, nin, nout, pits, (c, bnds)=catchments(dir, pits);
 
     pits_to_keep = trues(length(pits_))
 
+    # Table which translates the old color to the new color.
+    # Note that only the currently processed color might change.
+    # Initialize to the id-map (0 is used for off-points)
+    colormap = collect(1:length(pits_))
+
     no_drainage_across_boundary = false
     # iterate until all interior pits are removed
     for i=1:maxiter
         n_removed = 0
         for (color, P) in enumerate(pits_)
-
             # Already removed pit, skip
             P==CartesianIndex(-1,-1) && continue
             # Don't process pits on the DEM boundary, because there water disappears.
@@ -375,7 +379,7 @@ function drainpits(dem, dir, nin, nout, pits, (c, bnds)=catchments(dir, pits);
             isnan(dem[P]) && continue
             # If there are no more boundaries left, stop.  This should only occur when
             # bnd_as_pits==false and when there are only interior pits.
-            if all(isempty.(bnds_))
+            if all((isempty(b) for b in bnds_))
                 no_drainage_across_boundary = true # set flag to warn later
                 break
             end
@@ -397,13 +401,15 @@ function drainpits(dem, dir, nin, nout, pits, (c, bnds)=catchments(dir, pits);
 
             # find point on catchment boundary with minimum elevation
             Imin = bnds_[color][findmin(getindex.(Ref(dem), bnds_[color]))[2]]
-            @assert c_[Imin]==c_[P] # Something is amiss if the found minimum is the pit!
+            @assert colormap[c_[Imin]]==c_[P]==color # Something is amiss if the found minimum is the pit!
             # make the outflow and find the next catchment
             min_ = Inf
             target = Imin
             for J in iterate_D9(Imin, dem)
                 Imin==J && continue # do not look at the point itself
-                c_[J] == color && continue # J is in Imin's catchment
+                cc = c_[J]
+                cc = cc==0 ? 0 : colormap[cc]
+                cc == color && continue # J is in Imin's catchment
                 if dem[J] < min_
                     min_ = dem[J]
                     target = J
@@ -433,12 +439,17 @@ function drainpits(dem, dir, nin, nout, pits, (c, bnds)=catchments(dir, pits);
             pits_to_keep[color] = false
             pits_[color] = CartesianIndex(-1,-1)
 
-            # update catchments
-            othercolor = c_[target]
-            c_[c_.==color] .= othercolor
+            # update boundaries
+            othercolor = colormap[c_[target]]
+            for i in eachindex(colormap)
+                if color==colormap[i]
+                    colormap[i] = othercolor
+                end
+            end
+
             append!(bnds_[othercolor], bnds_[color])
             empty!(bnds_[color])
-            _prune_boundary!(bnds_, c_, othercolor)
+            _prune_boundary!(bnds_, c_, othercolor, colormap)
             n_removed +=1
         end
         n_removed==0 && break
@@ -452,15 +463,23 @@ function drainpits(dem, dir, nin, nout, pits, (c, bnds)=catchments(dir, pits);
                  Consider setting `bnd_as_pits=true`."""
     end
 
-    # remove removed pits
-    pits_ = pits_[pits_.!=Ref(CartesianIndex(-1, -1))]
-    # redo colors
-    cols = Dict([c=>i for (i,c) in enumerate(unique(c_))])
-    for i in eachindex(c_)
-        c_[i] = cols[c_[i]]
-    end
+    # make new colors consecutive
+    newcolors = unique(colormap)
+    d = Dict((c=>i for (i,c) in enumerate(newcolors)))
+    colormap2 = [d[c] for c in colormap]
 
-    return dir_, nin_, nout_, sort(pits_), c_, bnds_
+    # remove removed pits and bnds
+    pits_ = pits_[pits_to_keep]
+    bnds_ = bnds_[pits_to_keep]
+
+    # update catchments
+    for i in eachindex(c_)
+        cc = c_[i]
+        if cc!=0
+            c_[i] = colormap2[cc]
+        end
+    end
+    return dir_, nin_, nout_, pits_, c_, bnds_
 end
 
 """
