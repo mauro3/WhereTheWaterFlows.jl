@@ -143,6 +143,7 @@ function d8dir_feature(dem, bnd_as_pits)
         diro[I] = dir
     end
     # flow features
+    # (not thread-safe as nin, nout would get updated from many threads)
     for I in R
         for J in iterate_D9(I, Iend)
             J==I && continue
@@ -173,12 +174,13 @@ Does the water flow routing according the D8 algorithm.
 kwargs:
 - drain_pits -- whether to route through pits (true)
 - maxiter -- maximum iterations of the algorithm (1000)
-- calc_streamlength -- whether to calculate stream length (true)
+- calc_streamlength -- whether to calculate stream length (true).
+                       Not calculating stream-length can speed up calculations considerably.
 - bnd_as_pits (true) -- whether the domain boundary and NaNs should be pits,
                  i.e. adjacent cells can drain into them,
                  or whether to ignore them.
 
-TODO: if bnd_as_pits rout water along boundary edges first. This would probably
+TODO: if bnd_as_pits routes water along boundary edges first. This would probably
 substantially reduce the number of catchments, as currently every boundary point
 is a pit and thus a catchment (if bnd_as_pits==true).
 
@@ -194,54 +196,60 @@ Returns
 """
 function waterflows(dem, cellarea=ones(size(dem));
                     maxiter=1000, calc_streamlength=true, drain_pits=true, bnd_as_pits=true)
-    area, slen, dir, nout, nin, pits = flowrouting(d8dir_feature(dem, bnd_as_pits)..., cellarea; maxiter=maxiter, calc_streamlength=calc_streamlength)
-    c, bnds = catchments(dir, pits, bnd_as_pits)
+    dir, nout, nin, pits = d8dir_feature(dem, bnd_as_pits)
+    area, slen = flowrouting(dir, nin, cellarea; maxiter=maxiter, calc_streamlength=calc_streamlength)
+    c, bnds = catchments(dir, pits)
     if drain_pits
         dir, nin, nout, pits, c, bnds = drainpits(dem, dir, nin, nout, pits, (c,bnds))
-        area, slen = flowrouting(dir, nout, nin, pits, cellarea; maxiter=maxiter, calc_streamlength=calc_streamlength)
+        area, slen = flowrouting(dir, nin, cellarea; maxiter=maxiter, calc_streamlength=calc_streamlength)
     end
     #area[isnan.(dem)] .= NaN
-    return area, slen, dir, nout, nin, pits, c, bnds
+    return area, calc_streamlength ? slen : nothing, dir, nout, nin, pits, c, bnds
 end
-# this function does the actual routing
-function flowrouting(dir, nout, nin, pits, cellarea=ones(size(dir)); maxiter=1000, calc_streamlength=true)
-    area = copy(cellarea)
-    tmp = convert(Matrix{Int}, nin)
-    tmp2 = calc_streamlength ? copy(tmp) : tmp
 
+function flowrouting(dir, nin, cellarea; maxiter=1000, calc_streamlength=true)
+    area = copy(cellarea)
+    nin = convert(Matrix{Int}, nin)
+    process = trues(size(nin))
 
     for counter = 1:maxiter
         n = 0
+        # not thread safe as `area` is updated in-place
         for R in CartesianIndices(size(dir))
             # Consider only points with less than `counter` upstream points
-            if tmp[R]==0
-                tmp[R] = -counter # done with it
-                if calc_streamlength
-                    tmp2[R] = -counter # done with it
-                end
+            if nin[R]==0 && process[R]
+                nin[R] = -counter # done with it
                 d = dir[R]
                 if d!=NOFLOW
                     receiver = R + dir2ind(d)
                     area[receiver] += area[R]
-                    tmp2[receiver] -= 1
-                    tmp2[receiver] < 0 && error("This should not happen!")
+                    nin[receiver] -= 1
+                    nin[receiver] < 0 && error("This should not happen!")
+                    if calc_streamlength
+                        # to calculate stream length, only one update per iteration is allowed
+                        process[receiver] = false
+                    end
                 end
                 n +=1
             end
         end
         if n==0
+            #@show counter
             break
         end
         if counter==maxiter
             error("Maximum number of iterations reached in `flowrouting`: $counter")
         end
-        copyto!(tmp, tmp2)
+        if calc_streamlength
+            fill!(process, true)
+        end
     end
-    return area, -tmp, dir, nout, nin, pits
+    return area, -nin
 end
 
+
 """
-    catchments(dir, pits, bnd_as_pits)
+    catchments(dir, pits)
 
 Calculate catchments from
 - dir
@@ -250,12 +258,14 @@ Calculate catchments from
 Return: catchments Matrix{Int}.  Value==0 corresponds to NaNs in the DEM
 which are not pits (i.e. where no water flows into).
 """
-function catchments(dir, pits, bnd_as_pits)
+function catchments(dir, pits)
     c = zeros(Int, size(dir))
     np = length(pits)
     # recursively traverse the drainage tree in up-flow direction,
     # starting at all pits
-    for (n, pit) in enumerate(pits)
+    # for (n, pit) in enumerate(pits)
+    Threads.@threads for n=1:length(pits)
+        pit = pits[n]
         _catchments!(n, c, dir, pit)
     end
 
@@ -273,7 +283,7 @@ function _catchments!(n, c, dir, ij)
 end
 
 """
-    make_boundaries(catchments, colors, bnd_as_pits)
+    make_boundaries(catchments, colors)
 
 Make vectors of boundary points.  Note that points along the
 edge of the domain as well as points bordering NaN-cells with no
@@ -283,7 +293,8 @@ TODO: this is brute force...
 """
 function make_boundaries(catchments, colors)
     bnds = [CartesianIndex[] for c in colors]
-    for R in CartesianIndices(size(catchments))
+    # This loop is thread-save but speedup only occurs for large DEMs (>1e6 points)
+    Threads.@threads for R in CartesianIndices(size(catchments))
         c = catchments[R]
         c==0 && continue # don't find boundaries for c==0 (NaNs with no inflow)
         bnd = bnds[c]
@@ -310,11 +321,13 @@ function _prune_boundary!(bnds, catchments::Matrix, color, colormap)
         # check cells around it
         for PP in iterate_D9(P, catchments)
             # if one is of different color, keep it.
-            cc = catchments[PP]
-            co = cc==0 ? 0 : colormap[cc]
-            if co!=color && co!=0
-                keep = true
-                break
+            co = catchments[PP]
+            if co!=0
+                co = colormap[co]
+                if co!=color
+                    keep = true
+                    break
+                end
             end
         end
         if !keep
@@ -329,20 +342,20 @@ end
      drainpits(dem, dir, nin, nout, pits, (c, bnds)=catchments(dir, pits);
                maxiter=100)
 
-Return an update direction field which drains (interior) pits.
-This is done by reversing the flow connecting the lowest boundary point
-to the pits.
+Return an updated direction field which drains (interior) pits.
+This is done by reversing the flow connecting the lowest point on the catchment boundary
+to the pit for each catchment.
 
 There needs to be a decision on how to treat the outer boundary and boundaries
 to NaN-cells.  Possibilities:
 - do not treat boundary cells as pits but do treat pits at the boundary as terminal.
 - treat boundary cells as pits, i.e. flow reaching such a cell will vanish.  Again
-  such cells would be terminal.
+  such cells would be terminal.  This is currently done
 
 What to do if there are no terminal pits in the DEM?  Fill to the uppermost pit?  Or take
 the lowermost as terminal?
 
-Returns new dir, nin, nout, pits (sorted), c.
+Returns new dir, nin, nout, pits (sorted), c, bnds
 
 TODO: this is the performance bottleneck.
 """
@@ -491,6 +504,8 @@ It can potentially modify `dir, nin, nout` at three locations
 - P2: nin
   - if allow_reversion==true, then P2's dir, nout can also be modified.
 - P3 (previous receiver cell of P1): nin
+
+Note that if P1 and P2 lie in the same catchment, then P3 is also in that catchment.
 """
 function _flow_from_to!(P1, P2, dir, nin, nout, allow_reversion=false)
     # already right
