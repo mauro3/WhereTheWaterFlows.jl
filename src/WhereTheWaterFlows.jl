@@ -173,7 +173,7 @@ Does the water flow routing according the D8 algorithm.
 
 kwargs:
 - drain_pits -- whether to route through pits (true)
-- maxiter -- maximum iterations of the algorithm (1000)
+- maxiter -- maximum iterations of the algorithm (max(size(dem)...)*2)
 - calc_streamlength -- whether to calculate stream length (true).
                        Not calculating stream-length can speed up calculations considerably.
 - bnd_as_pits (true) -- whether the domain boundary and NaNs should be pits,
@@ -195,7 +195,7 @@ Returns
 - bnds -- boundaries between catchments.  The boundary to the exterior/NaNs is not in here.
 """
 function waterflows(dem, cellarea=ones(size(dem));
-                    maxiter=1000, calc_streamlength=true, drain_pits=true, bnd_as_pits=true)
+                    maxiter=max(size(dem)...)*2, calc_streamlength=true, drain_pits=true, bnd_as_pits=true)
     dir, nout, nin, pits = d8dir_feature(dem, bnd_as_pits)
     area, slen = flowrouting(dir, nin, cellarea; maxiter=maxiter, calc_streamlength=calc_streamlength)
     c, bnds = catchments(dir, pits)
@@ -207,7 +207,7 @@ function waterflows(dem, cellarea=ones(size(dem));
     return area, calc_streamlength ? slen : nothing, dir, nout, nin, pits, c, bnds
 end
 
-function flowrouting(dir, nin, cellarea; maxiter=1000, calc_streamlength=true)
+function flowrouting(dir, nin, cellarea; maxiter=max(size(dir)...)*2, calc_streamlength=true)
     area = copy(cellarea)
     nin = convert(Matrix{Int}, nin)
     process = trues(size(nin))
