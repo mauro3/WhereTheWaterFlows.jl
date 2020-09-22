@@ -1,6 +1,6 @@
 module WhereTheWaterFlows
 
-using StaticArrays, Requires, Statistics
+using StaticArrays, Requires
 
 export waterflows, fill_dem, catchments,
     plotarea
@@ -337,7 +337,7 @@ TODO: this is brute force...
 function make_boundaries(catchments, colors)
     bnds = [CartesianIndex[] for c in colors]
     # This loop is thread-save but speedup only occurs for large DEMs (>1e6 points)
-    Threads.@threads for R in CartesianIndices(size(catchments))
+    for R in CartesianIndices(size(catchments))
         c = catchments[R]
         c==0 && continue # don't find boundaries for c==0 (NaNs with no inflow)
         bnd = bnds[c]
