@@ -207,14 +207,31 @@ function waterflows(dem, cellarea=ones(size(dem));
     return area, calc_streamlength ? slen : nothing, dir, nout, nin, pits, c, bnds
 end
 
+"""
+    flowrouting(dir, nin, cellarea; maxiter=max(size(dir)...)*2, calc_streamlength=true)
+
+Do the actual routing
+
+Input:
+- `dir` direction field
+- `nin` number of inputs into cell
+- `cellarea` water input per cell
+
+KW:
+- `maxiter=max(size(dir)...)*2` -- may need to be increased for very sinous drainage paths
+- `calc_streamlength=true` -- calculate stream length.  Will slow-down calculation somewhat
+
+Return
+- upstream area
+- stream-length (or something irrelevant if calc_streamlength==false)
+"""
 function flowrouting(dir, nin, cellarea; maxiter=max(size(dir)...)*2, calc_streamlength=true)
     area = copy(cellarea)
     nin = convert(Matrix{Int}, nin)
-    process = trues(size(nin))
+    process = trues(size(nin)) # Matrix{Bool} is not faster on the one case I checked
 
     for counter = 1:maxiter
         n = 0
-        # not thread safe as `area` is updated in-place
         for R in CartesianIndices(size(dir))
             # Consider only points with less than `counter` upstream points
             if nin[R]==0 && process[R]
@@ -547,6 +564,7 @@ is easier) which may lead to a stack overflow on a large DEM.
 """
 function fill_dem(dem, pits, dir; small=0.0)
     dem = copy(dem)
+    # could used threading.
     for pit in pits
         npts = _fill_ij!(0.0, dem, pit, dir, small)
     end
