@@ -1,6 +1,6 @@
 module WhereTheWaterFlows
 
-using StaticArrays, Requires
+using StaticArrays, Requires, Statistics
 
 export waterflows, fill_dem, catchments,
     plotarea
@@ -195,53 +195,65 @@ Returns
 - bnds -- boundaries between catchments.  The boundary to the exterior/NaNs is not in here.
 """
 function waterflows(dem, cellarea=ones(size(dem));
-                    maxiter=1000, calc_streamlength=true, drain_pits=true, bnd_as_pits=true)
-    dir, nout, nin, pits = d8dir_feature(dem, bnd_as_pits)
-    area, slen = flowrouting(dir, nin, cellarea; maxiter=maxiter, calc_streamlength=calc_streamlength)
-    c, bnds = catchments(dir, pits)
+                    maxiter=max(size(dem)...)*2, calc_streamlength=true, drain_pits=true, bnd_as_pits=true)
+@time    dir, nout, nin, pits = d8dir_feature(dem, bnd_as_pits)
+    @time    c, cl, nc = catchments(dir, pits)
+@time    cln = merge_cl(cl, length(c))
+    @time        bnds = make_boundaries(c, 1:nc)
+    @time    area, slen = flowrouting(dir, nin, cln, cellarea; maxiter=maxiter, calc_streamlength=calc_streamlength)
+
     if drain_pits
-        dir, nin, nout, pits, c, bnds = drainpits(dem, dir, nin, nout, pits, (c,bnds))
-        area, slen = flowrouting(dir, nin, cellarea; maxiter=maxiter, calc_streamlength=calc_streamlength)
+        @time        dir, nin, nout, pits, c, bnds = drainpits(dem, dir, nin, nout, pits, c, bnds)
+        @time    c, cl, nc = catchments(dir, pits)
+        cln = merge_cl(cl, length(c))
+@time        area, slen = flowrouting(dir, nin, cln, cellarea; maxiter=maxiter, calc_streamlength=calc_streamlength)
     end
     #area[isnan.(dem)] .= NaN
     return area, calc_streamlength ? slen : nothing, dir, nout, nin, pits, c, bnds
 end
 
-function flowrouting(dir, nin, cellarea; maxiter=1000, calc_streamlength=true)
+# This is an attempt of doing the calculation catchment by catchment.  That way threading could be used.  However, threading does not help.
+# Serial execution is tiny a bit slower than the original.
+function flowrouting(dir, nin, cl, cellarea;
+                     maxiter=max(size(dir)...)*2,
+                     calc_streamlength=true)
     area = copy(cellarea)
     nin = convert(Matrix{Int}, nin)
     process = trues(size(nin))
 
-    for counter = 1:maxiter
-        n = 0
-        # not thread safe as `area` is updated in-place
-        for R in CartesianIndices(size(dir))
-            # Consider only points with less than `counter` upstream points
-            if nin[R]==0 && process[R]
-                nin[R] = -counter # done with it
-                d = dir[R]
-                if d!=NOFLOW
-                    receiver = R + dir2ind(d)
-                    area[receiver] += area[R]
-                    nin[receiver] -= 1
-                    nin[receiver] < 0 && error("This should not happen!")
-                    if calc_streamlength
-                        # to calculate stream length, only one update per iteration is allowed
-                        process[receiver] = false
+    Threads.@threads for l=1:length(cl) # this is much much slower than without @threads?  Even when Threads.nthreads()==1
+#    for l=1:length(cl)
+        for counter = 1:maxiter
+            n = 0
+            # not thread safe as `area` is updated in-place
+            for R in cl[l] #CartesianIndices(size(dir))
+                # Consider only points with less than `counter` upstream points
+                if nin[R]==0 && process[R]
+                    nin[R] = -counter # done with it
+                    d = dir[R]
+                    if d!=NOFLOW
+                        receiver = R + dir2ind(d)
+                        area[receiver] += area[R]
+                        nin[receiver] -= 1
+                        nin[receiver] < 0 && error("This should not happen!")
+                        if calc_streamlength
+                            # to calculate stream length, only one update per iteration is allowed
+                            process[receiver] = false
+                        end
                     end
+                    n +=1
                 end
-                n +=1
             end
-        end
-        if n==0
-            #@show counter
-            break
-        end
-        if counter==maxiter
-            error("Maximum number of iterations reached in `flowrouting`: $counter")
-        end
-        if calc_streamlength
-            fill!(process, true)
+            if n==0
+                #@show counter
+                break
+            end
+            if counter==maxiter
+                error("Maximum number of iterations reached in `flowrouting`: $counter")
+            end
+            if calc_streamlength
+                process[cl[l]] .= true
+            end
         end
     end
     return area, -nin
@@ -255,32 +267,63 @@ Calculate catchments from
 - dir
 - pits
 
-Return: catchments Matrix{Int}.  Value==0 corresponds to NaNs in the DEM
-which are not pits (i.e. where no water flows into).
+Return:
+- catchments Matrix{Int}.  Value==0 corresponds to NaNs in the DEM
+  which are not pits (i.e. where no water flows into).
+- Catchment list, and number of catchments.
 """
 function catchments(dir, pits)
     c = zeros(Int, size(dir))
     np = length(pits)
+    cl = [CartesianIndex{2}[] for i=1:np]
     # recursively traverse the drainage tree in up-flow direction,
     # starting at all pits
     # for (n, pit) in enumerate(pits)
-    Threads.@threads for n=1:length(pits)
+    Threads.@threads for n=1:np
         pit = pits[n]
-        _catchments!(n, c, dir, pit)
+        _catchments!(n, c, cl, dir, pit)
     end
 
-    return c, make_boundaries(c, 1:np)
+    return c, cl, np
 end
-function _catchments!(n, c, dir, ij)
+function _catchments!(n, c, cl, dir, ij)
     c[ij] = n
+    push!(cl[n], ij)
     # proc upstream points
     for IJ in iterate_D9(ij, c)
         ij==IJ && continue
         if flowsinto(IJ, dir[IJ], ij)
-            _catchments!(n, c, dir, IJ)
+            _catchments!(n, c, cl, dir, IJ)
         end
     end
 end
+
+# TODO: catchment calculation using an algo from
+# http://dx.doi.org/10.1016/j.patcog.2017.04.018
+# ?  Although, the current algo is not the bottelneck
+
+# merges small cls together
+function merge_cl(cl, lenc)
+    nth = Threads.nthreads()
+    siz = lenc ÷ nth
+    cln = [CartesianIndex{2}[] for i=1:nth]
+    i = 1
+    for l in cln
+        while length(l)<siz && i<=length(cl)
+            append!(l, cl[i])
+            i += 1
+        end
+    end
+    j = 1
+    while i<=length(cl)
+        l = cln[1]
+        append!(l, cl[i])
+        i += 1
+        j += 1
+    end
+    return cln
+end
+
 
 """
     make_boundaries(catchments, colors)
@@ -339,7 +382,7 @@ function _prune_boundary!(bnds, catchments::Matrix, color, colormap)
 end
 
 """
-     drainpits(dem, dir, nin, nout, pits, (c, bnds)=catchments(dir, pits);
+     drainpits(dem, dir, nin, nout, pits, c, bnds;
                maxiter=100)
 
 Return an updated direction field which drains (interior) pits.
@@ -359,7 +402,7 @@ Returns new dir, nin, nout, pits (sorted), c, bnds
 
 TODO: this is the performance bottleneck.
 """
-function drainpits(dem, dir, nin, nout, pits, (c, bnds)=catchments(dir, pits);
+function drainpits(dem, dir, nin, nout, pits, c, bnds;
                    maxiter=100)
     dir_ = copy(dir)
     dir2 = copy(dir)
