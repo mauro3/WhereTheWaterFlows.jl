@@ -364,8 +364,10 @@ function drainpits!(dir, nin, nout, pits, c, bnds, dem)
     # Initialize to the id-map (0 is used for off-points)
     colormap = collect(1:length(pits))
 
+    colormap_inv = [[i] for i=1:length(pits)] # note that the total length
+
     no_drainage_across_boundary = false
-    # iterate until all interior pits are removed
+    # iterate until all interior pits are removed (not really needed, I think)
     @inbounds for i=1:maxiter
         n_removed = 0
         for (color, P) in enumerate(pits)
@@ -384,19 +386,6 @@ function drainpits!(dir, nin, nout, pits, c, bnds, dem)
             end
             # If there are no boundaries for this point, go to next point
             isempty(bnds[color]) && continue
-
-            ## Debug plotting
-            # cls = [c=>sum(c_.==c) for c=1:6]
-            # @show color, size(bnds[color])
-            # @show cls
-            # imshow(Array(c_'), origin="lower")
-            # if color==1
-            #     colorbar()
-            # end
-            # readline(stdin)
-            # if color==6
-            #     imshow(Array(c_'), origin="lower")
-            # end
 
             # find point on catchment boundary with minimum elevation
             minn = typemax(eltype(dem))
@@ -447,10 +436,17 @@ function drainpits!(dir, nin, nout, pits, c, bnds, dem)
 
             # update colormap and boundaries
             othercolor = colormap[c[target]]
-            Threads.@threads for i in eachindex(colormap)
-                if color==colormap[i]
-                    colormap[i] = othercolor
-                end
+            ## this is slow
+            # Threads.@threads for i in eachindex(colormap)
+            #     if color==colormap[i]
+            #         colormap[i] = othercolor
+            #     end
+            # end
+            # thus go round-about
+            append!(colormap_inv[othercolor], colormap_inv[color])
+            empty!(colormap_inv[color])
+            for color in colormap_inv[othercolor]
+                colormap[color] = othercolor
             end
 
             append!(bnds[othercolor], bnds[color])
