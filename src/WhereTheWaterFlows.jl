@@ -195,16 +195,15 @@ Returns
 - bnds -- boundaries between catchments.  The boundary to the exterior/NaNs is not in here.
 """
 function waterflows(dem, cellarea=ones(size(dem));
-                    maxiter=max(size(dem)...)*2, calc_streamlength=true, drain_pits=true, bnd_as_pits=true)
+                    maxiter=max(size(dem)...)*2, drain_pits=true, bnd_as_pits=true)
     dir, nout, nin, pits = d8dir_feature(dem, bnd_as_pits)
-    area, slen = flowrouting(dir, nin, cellarea; maxiter=maxiter, calc_streamlength=calc_streamlength)
-    c, bnds = catchments(dir, pits)
+    area, slen, c, bnds = flowrouting_catchments(dir, pits, cellarea)
     if drain_pits
-        dir, nin, nout, pits, c, bnds = drainpits(dem, dir, nin, nout, pits, (c,bnds))
-        area, slen = flowrouting(dir, nin, cellarea; maxiter=maxiter, calc_streamlength=calc_streamlength)
+        dir, nin, nout, pits = drainpits(dem, dir, nin, nout, pits, (c,bnds))
+        area, slen, c, bnds = flowrouting_catchments(dir, pits, cellarea)
     end
     #area[isnan.(dem)] .= NaN
-    return area, calc_streamlength ? slen : nothing, dir, nout, nin, pits, c, bnds
+    return area, slen, dir, nout, nin, pits, c, bnds
 end
 
 """
@@ -225,78 +224,56 @@ Return
 - upstream area
 - stream-length (or something irrelevant if calc_streamlength==false)
 """
-function flowrouting(dir, nin, cellarea; maxiter=max(size(dir)...)*2, calc_streamlength=true)
-    area = copy(cellarea)
-    nin = convert(Matrix{Int}, nin)
-    process = trues(size(nin)) # Matrix{Bool} is not faster on the one case I checked
-
-    for counter = 1:maxiter
-        n = 0
-        for R in CartesianIndices(size(dir))
-            # Consider only points with less than `counter` upstream points
-            if nin[R]==0 && process[R]
-                nin[R] = -counter # done with it
-                d = dir[R]
-                if d!=NOFLOW
-                    receiver = R + dir2ind(d)
-                    area[receiver] += area[R]
-                    nin[receiver] -= 1
-                    nin[receiver] < 0 && error("This should not happen!")
-                    if calc_streamlength
-                        # to calculate stream length, only one update per iteration is allowed
-                        process[receiver] = false
-                    end
-                end
-                n +=1
-            end
-        end
-        if n==0
-            #@show counter
-            break
-        end
-        if counter==maxiter
-            error("Maximum number of iterations reached in `flowrouting`: $counter")
-        end
-        if calc_streamlength
-            fill!(process, true)
-        end
-    end
-    return area, -nin
-end
-
 
 """
-    catchments(dir, pits)
+    flowrouting_catchments(dir, pits, cellarea)
 
-Calculate catchments from
-- dir
-- pits
+Recursively calculate flow-routing and catchments from
+- dir - direction field
+- pits - pit coordinates
+- cellarea - water input
 
-Return: catchments Matrix{Int}.  Value==0 corresponds to NaNs in the DEM
-which are not pits (i.e. where no water flows into).
+Return:
+- upstream area
+- stream length
+- catchments Matrix{Int}.  Value==0 corresponds to NaNs in the DEM
+  which are not pits (i.e. where no water flows into).
+- boundaries
 """
-function catchments(dir, pits)
+function flowrouting_catchments(dir, pits, cellarea)
     c = zeros(Int, size(dir))
+    area = zeros(size(cellarea))
+    slen = zeros(Int, size(dir))
     np = length(pits)
     # recursively traverse the drainage tree in up-flow direction,
     # starting at all pits
-    # for (n, pit) in enumerate(pits)
-    Threads.@threads for n=1:length(pits)
-        pit = pits[n]
-        _catchments!(n, c, dir, pit)
+    Threads.@threads for color = 1:length(pits)
+        pit = pits[color]
+        _flowrouting_catchments!(area, slen, c, dir, cellarea, color, pit)
     end
 
-    return c, make_boundaries(c, 1:np)
+    return area, slen, c, make_boundaries(c, 1:np)
 end
-function _catchments!(n, c, dir, ij)
-    c[ij] = n
+# modifies C and area
+function _flowrouting_catchments!(area, len, c, dir, cellarea, color, ij)
+    c[ij] = color
+
     # proc upstream points
+    uparea = 0.0
+    slen = 0
     for IJ in iterate_D9(ij, c)
-        ij==IJ && continue
-        if flowsinto(IJ, dir[IJ], ij)
-            _catchments!(n, c, dir, IJ)
+        if ij==IJ
+            uparea += cellarea[ij]
+            slen = max(slen, 1)
+        elseif flowsinto(IJ, dir[IJ], ij)
+            uparea_, slen_ = _flowrouting_catchments!(area, len, c, dir, cellarea, color, IJ)
+            uparea += uparea_
+            slen = max(slen, slen_+1)
         end
     end
+    area[ij] = uparea
+    len[ij] = slen
+    return uparea, slen
 end
 
 """
@@ -310,7 +287,6 @@ TODO: this is brute force...
 """
 function make_boundaries(catchments, colors)
     bnds = [CartesianIndex[] for c in colors]
-    # This loop is thread-save but speedup only occurs for large DEMs (>1e6 points)
     for R in CartesianIndices(size(catchments))
         c = catchments[R]
         c==0 && continue # don't find boundaries for c==0 (NaNs with no inflow)
