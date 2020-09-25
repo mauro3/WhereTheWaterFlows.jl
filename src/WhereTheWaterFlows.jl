@@ -283,8 +283,6 @@ end
 Make vectors of boundary points.  Note that points along the
 edge of the domain as well as points bordering NaN-cells with no
 inflow do not count as boundaries.
-
-TODO: this is brute force...
 """
 function make_boundaries(catchments, colors)
     bnds = [CartesianIndex{2}[] for c in colors]
@@ -306,6 +304,8 @@ end
 """
 Checks that all points in `bnds[color]` are indeed on the
 boundary; removes them otherwise.
+
+TODO: this is one of the performance bottlenecks.
 """
 function _prune_boundary!(bnds, catchments::Matrix, color, colormap)
     del = Int[]
@@ -442,7 +442,7 @@ function drainpits!(dir, nin, nout, pits, c, bnds, dem)
             #         colormap[i] = othercolor
             #     end
             # end
-            # thus go round-about
+            ## thus do this instead:
             append!(colormap_inv[othercolor], colormap_inv[color])
             empty!(colormap_inv[color])
             for color in colormap_inv[othercolor]
@@ -474,13 +474,7 @@ function drainpits!(dir, nin, nout, pits, c, bnds, dem)
     deleteat!(pits, .!pits_to_keep)
     deleteat!(bnds, .!pits_to_keep)
 
-    # # update catchments
-    # for i in eachindex(c)
-    #     cc = c[i]
-    #     if cc!=0
-    #         c[i] = colormap2[cc]
-    #     end
-    # end
+    # # update catchments -> done with `flowrouting_catchments`
     return nothing
 end
 
