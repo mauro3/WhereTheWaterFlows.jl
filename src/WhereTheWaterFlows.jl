@@ -197,10 +197,11 @@ Returns
 function waterflows(dem, cellarea=ones(size(dem));
                     maxiter=max(size(dem)...)*2, drain_pits=true, bnd_as_pits=true)
     dir, nout, nin, pits = d8dir_feature(dem, bnd_as_pits)
-    area, slen, c, bnds = flowrouting_catchments(dir, pits, cellarea)
+    area, slen, c = flowrouting_catchments(dir, pits, cellarea)
+    bnds = make_boundaries(c, 1:length(pits))
     if drain_pits
-        dir, nin, nout, pits = drainpits(dem, dir, nin, nout, pits, (c,bnds))
-        area, slen, c, bnds = flowrouting_catchments(dir, pits, cellarea)
+        drainpits!(dir, nin, nout, pits, c, bnds, dem)
+        area, slen, c = flowrouting_catchments(dir, pits, cellarea)
     end
     #area[isnan.(dem)] .= NaN
     return area, slen, dir, nout, nin, pits, c, bnds
@@ -252,7 +253,7 @@ function flowrouting_catchments(dir, pits, cellarea)
         _flowrouting_catchments!(area, slen, c, dir, cellarea, color, pit)
     end
 
-    return area, slen, c, make_boundaries(c, 1:np)
+    return area, slen, c
 end
 # modifies C and area
 function _flowrouting_catchments!(area, len, c, dir, cellarea, color, ij)
@@ -286,7 +287,7 @@ inflow do not count as boundaries.
 TODO: this is brute force...
 """
 function make_boundaries(catchments, colors)
-    bnds = [CartesianIndex[] for c in colors]
+    bnds = [CartesianIndex{2}[] for c in colors]
     for R in CartesianIndices(size(catchments))
         c = catchments[R]
         c==0 && continue # don't find boundaries for c==0 (NaNs with no inflow)
@@ -332,7 +333,7 @@ function _prune_boundary!(bnds, catchments::Matrix, color, colormap)
 end
 
 """
-     drainpits(dem, dir, nin, nout, pits, (c, bnds)=catchments(dir, pits);
+     drainpits!(dir, nin, nout, pits, c, bnds, dem;
                maxiter=100)
 
 Return an updated direction field which drains (interior) pits.
@@ -352,30 +353,22 @@ Returns new dir, nin, nout, pits (sorted), c, bnds
 
 TODO: this is the performance bottleneck.
 """
-function drainpits(dem, dir, nin, nout, pits, (c, bnds)=catchments(dir, pits);
-                   maxiter=100)
-    dir_ = copy(dir)
-    dir2 = copy(dir)
-    nin_ = copy(nin)
-    nout_ = copy(nout)
-    pits_ = copy(pits)
-    c_ = copy(c)
-    bnds_ = deepcopy(bnds)
-
+function drainpits!(dir, nin, nout, pits, c, bnds, dem)
+    maxiter = 100
     Iend = CartesianIndex(size(dem))
 
-    pits_to_keep = trues(length(pits_))
+    pits_to_keep = trues(length(pits))
 
     # Table which translates the old color to the new color.
     # Note that only the currently processed color might change.
     # Initialize to the id-map (0 is used for off-points)
-    colormap = collect(1:length(pits_))
+    colormap = collect(1:length(pits))
 
     no_drainage_across_boundary = false
     # iterate until all interior pits are removed
-    for i=1:maxiter
+    @inbounds for i=1:maxiter
         n_removed = 0
-        for (color, P) in enumerate(pits_)
+        for (color, P) in enumerate(pits)
             # Already removed pit, skip
             P==CartesianIndex(-1,-1) && continue
             # Don't process pits on the DEM boundary, because there water disappears.
@@ -385,16 +378,16 @@ function drainpits(dem, dir, nin, nout, pits, (c, bnds)=catchments(dir, pits);
             isnan(dem[P]) && continue
             # If there are no more boundaries left, stop.  This should only occur when
             # bnd_as_pits==false and when there are only interior pits.
-            if all((isempty(b) for b in bnds_))
+            if all((isempty(b) for b in bnds))
                 no_drainage_across_boundary = true # set flag to warn later
                 break
             end
             # If there are no boundaries for this point, go to next point
-            isempty(bnds_[color]) && continue
+            isempty(bnds[color]) && continue
 
             ## Debug plotting
             # cls = [c=>sum(c_.==c) for c=1:6]
-            # @show color, size(bnds_[color])
+            # @show color, size(bnds[color])
             # @show cls
             # imshow(Array(c_'), origin="lower")
             # if color==1
@@ -406,14 +399,21 @@ function drainpits(dem, dir, nin, nout, pits, (c, bnds)=catchments(dir, pits);
             # end
 
             # find point on catchment boundary with minimum elevation
-            Imin = bnds_[color][findmin(getindex.(Ref(dem), bnds_[color]))[2]]
-            @assert colormap[c_[Imin]]==c_[P]==color # Something is amiss if the found minimum is the pit!
+            minn = typemax(eltype(dem))
+            Imin = CartesianIndex(-1,-1)
+            for I in bnds[color]
+                if dem[I] < minn
+                    minn = dem[I]
+                    Imin = I
+                end
+            end
+            @assert colormap[c[Imin]]==c[P]==color # Something is amiss if the found minimum is the pit!
             # make the outflow and find the next catchment
             min_ = Inf
             target = Imin
             for J in iterate_D9(Imin, dem)
                 Imin==J && continue # do not look at the point itself
-                cc = c_[J]
+                cc = c[J]
                 cc = cc==0 ? 0 : colormap[cc]
                 cc == color && continue # J is in Imin's catchment
                 if dem[J] < min_
@@ -428,14 +428,14 @@ function drainpits(dem, dir, nin, nout, pits, (c, bnds)=catchments(dir, pits);
 
             # Reverse directions on path going from Imin to P
             P1 = Imin
-            P2 = dir2ind(dir_[P1]) + P1
+            P2 = dir2ind(dir[P1]) + P1
             # first, do the flow across the boundary
-            _flow_from_to!(Imin, target, dir_, nin_, nout_)
+            _flow_from_to!(Imin, target, dir, nin, nout)
             while P1!=P
-                # get down-downstream point (do ahead lookup as a undisturbed dir_ is needed)
-                P3 = dir2ind(dir_[P2]) + P2
+                # get down-downstream point (do ahead lookup as a undisturbed dir is needed)
+                P3 = dir2ind(dir[P2]) + P2
                 # reverse
-                _flow_from_to!(P2, P1, dir_, nin_, nout_)
+                _flow_from_to!(P2, P1, dir, nin, nout)
 
                 P1 = P2
                 P2 = P3
@@ -443,19 +443,19 @@ function drainpits(dem, dir, nin, nout, pits, (c, bnds)=catchments(dir, pits);
 
             # remove from list of pits
             pits_to_keep[color] = false
-            pits_[color] = CartesianIndex(-1,-1)
+            pits[color] = CartesianIndex(-1,-1)
 
-            # update boundaries
-            othercolor = colormap[c_[target]]
-            for i in eachindex(colormap)
+            # update colormap and boundaries
+            othercolor = colormap[c[target]]
+            Threads.@threads for i in eachindex(colormap)
                 if color==colormap[i]
                     colormap[i] = othercolor
                 end
             end
 
-            append!(bnds_[othercolor], bnds_[color])
-            empty!(bnds_[color])
-            _prune_boundary!(bnds_, c_, othercolor, colormap)
+            append!(bnds[othercolor], bnds[color])
+            empty!(bnds[color])
+            _prune_boundary!(bnds, c, othercolor, colormap)
             n_removed +=1
         end
         n_removed==0 && break
@@ -475,17 +475,17 @@ function drainpits(dem, dir, nin, nout, pits, (c, bnds)=catchments(dir, pits);
     colormap2 = [d[c] for c in colormap]
 
     # remove removed pits and bnds
-    pits_ = pits_[pits_to_keep]
-    bnds_ = bnds_[pits_to_keep]
+    deleteat!(pits, .!pits_to_keep)
+    deleteat!(bnds, .!pits_to_keep)
 
-    # update catchments
-    for i in eachindex(c_)
-        cc = c_[i]
-        if cc!=0
-            c_[i] = colormap2[cc]
-        end
-    end
-    return dir_, nin_, nout_, pits_, c_, bnds_
+    # # update catchments
+    # for i in eachindex(c)
+    #     cc = c[i]
+    #     if cc!=0
+    #         c[i] = colormap2[cc]
+    #     end
+    # end
+    return nothing
 end
 
 """
@@ -540,8 +540,8 @@ is easier) which may lead to a stack overflow on a large DEM.
 """
 function fill_dem(dem, pits, dir; small=0.0)
     dem = copy(dem)
-    # could used threading.
-    for pit in pits
+    # could use threading.
+    Threads.@threads for pit in pits
         npts = _fill_ij!(0.0, dem, pit, dir, small)
     end
     return dem
