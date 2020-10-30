@@ -2,8 +2,7 @@ module WhereTheWaterFlows
 
 using StaticArrays, Requires
 
-export waterflows, fill_dem, catchments,
-    plotarea
+export waterflows, fill_dem, catchments, catchment, plotarea
 
 const I11 = CartesianIndex(1,1)
 const I22 = CartesianIndex(2,2)
@@ -143,7 +142,7 @@ function d8dir_feature(dem, bnd_as_pits)
         diro[I] = dir
     end
     # flow features
-    # (not thread-safe as nin, nout would get updated from many threads)
+    # (not thread-safe because of push!)
     for I in R
         for J in iterate_D9(I, Iend)
             J==I && continue
@@ -207,24 +206,25 @@ function waterflows(dem, cellarea=ones(size(dem));
     return area, slen, dir, nout, nin, pits, c, bnds
 end
 
-"""
-    flowrouting(dir, nin, cellarea; maxiter=max(size(dir)...)*2, calc_streamlength=true)
+# TODO: implement this instead of waterflows
+# """
+#     flowrouting(dir, nin, cellarea; maxiter=max(size(dir)...)*2, calc_streamlength=true)
 
-Do the actual routing
+# Do the actual routing
 
-Input:
-- `dir` direction field
-- `nin` number of inputs into cell
-- `cellarea` water input per cell
+# Input:
+# - `dir` direction field
+# - `nin` number of inputs into cell
+# - `cellarea` water input per cell
 
-KW:
-- `maxiter=max(size(dir)...)*2` -- may need to be increased for very sinous drainage paths
-- `calc_streamlength=true` -- calculate stream length.  Will slow-down calculation somewhat
+# KW:
+# - `maxiter=max(size(dir)...)*2` -- may need to be increased for very sinous drainage paths
+# - `calc_streamlength=true` -- calculate stream length.  Will slow-down calculation somewhat
 
-Return
-- upstream area
-- stream-length (or something irrelevant if calc_streamlength==false)
-"""
+# Return
+# - upstream area
+# - stream-length (or something irrelevant if calc_streamlength==false)
+# """
 
 """
     flowrouting_catchments(dir, pits, cellarea)
@@ -239,7 +239,6 @@ Return:
 - stream length
 - catchments Matrix{Int}.  Value==0 corresponds to NaNs in the DEM
   which are not pits (i.e. where no water flows into).
-- boundaries
 """
 function flowrouting_catchments(dir, pits, cellarea)
     c = zeros(Int, size(dir))
@@ -255,7 +254,7 @@ function flowrouting_catchments(dir, pits, cellarea)
 
     return area, slen, c
 end
-# modifies C and area
+# modifies c and area
 function _flowrouting_catchments!(area, len, c, dir, cellarea, color, ij)
     c[ij] = color
 
@@ -275,6 +274,41 @@ function _flowrouting_catchments!(area, len, c, dir, cellarea, color, ij)
     area[ij] = uparea
     len[ij] = slen
     return uparea, slen
+end
+
+"""
+    catchment(dir, ij)
+
+Calculates the catchment of a grid-point ij.  If desired, its
+boundary can be calculated with `make_boundaries([c], [1])`.
+
+Input
+- dir -- direction field
+- ij -- indices of the point
+
+Returns
+- catchment -- BitArray
+
+Tip: only being off by one grid-point can make the difference
+     between a tiny and a huge catchment!
+"""
+catchment(dir, ij::Vector) = catchment(dir, CartesianIndex(ij...))
+function catchment(dir, ij::CartesianIndex)
+    c = falses(size(dir))
+    # recursively traverse the drainage tree in up-flow direction,
+    # starting at all pits
+    _catchments!(c, dir, ij)
+    return c
+end
+function _catchments!(c, dir, ij)
+    c[ij] = true
+    # proc upstream points
+    for IJ in iterate_D9(ij, c)
+        ij==IJ && continue
+        if flowsinto(IJ, dir[IJ], ij)
+            _catchments!(c, dir, IJ)
+        end
+    end
 end
 
 """

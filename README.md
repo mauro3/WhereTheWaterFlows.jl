@@ -48,6 +48,11 @@ WWF.plotarea_dem(x, y, dem, area, pits)
 figure()
 WWF.heatmap(x,y,c)
 
+# a single catchment of some point
+cc, bnd = catchment(dir, CartesianIndex(53,99))
+WWF.heatmap(x,y,cc)
+plot(x[53], y[99], "<r", ms=10)
+
 # stream length
 figure()
 WWF.heatmap(x,y,slen)
