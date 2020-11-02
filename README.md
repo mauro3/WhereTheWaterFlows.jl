@@ -48,10 +48,11 @@ WWF.plotarea_dem(x, y, dem, area, pits)
 figure()
 WWF.heatmap(x,y,c)
 
-# a single catchment of some point
-cc, bnd = catchment(dir, CartesianIndex(53,99))
+# A single catchment of some point.  Choose one with large catchment:
+i, j = 50, findmax(area[50,:])[2]
+cc = catchment(dir, CartesianIndex(i,j))
 WWF.heatmap(x,y,cc)
-plot(x[53], y[99], "<r", ms=10)
+plot(x[i], y[j], "<r", ms=10)
 
 # stream length
 figure()
