@@ -2,7 +2,7 @@ module WhereTheWaterFlows
 
 using StaticArrays, Requires
 
-export waterflows, fill_dem, catchments, catchment, plotarea
+export waterflows, fill_dem, catchment, plotarea
 
 const I11 = CartesianIndex(1,1)
 const I22 = CartesianIndex(2,2)
@@ -591,5 +591,8 @@ end
 function __init__()
     @require PyPlot="d330b81b-6aea-500a-939a-2ce795aea3ee" include("plotting.jl")
 end
+
+## Post processing
+include("postproc.jl")
 
 end # module

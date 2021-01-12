@@ -38,14 +38,14 @@ pits2vecs(x, y, pits) = (x[[p.I[1] for p in pits if p!=CartesianIndex(-1,-1)]],
 
 Plot uparea
 """
-function plotarea(x, y, dem; prefn=log10)
+function plotarea(x, y, dem; prefn=log10, cbar=true)
     area, slen, dir, nout, nin, pits  = waterflows(dem)
-    plotarea(x, y, area, pits, prefn=prefn)
+    plotarea(x, y, area, pits, prefn=prefn, cbar=cbar)
 end
-function plotarea(x, y, area, pits; prefn=log10)
+function plotarea(x, y, area, pits; prefn=log10, cbar=true)
     px, py = pits2vecs(x, y, pits)
     fig, axs = subplots()
-    heatmap(x, y, prefn.(area))
+    heatmap(x, y, prefn.(area), cbar=cbar)
     scatter(px, py, 1, "r")
 end
 
@@ -75,15 +75,15 @@ function plotlakedepth(x, y, dem)
     heatmap(x, y, demf.-dem)
 end
 
-function heatmap(x, y, mat)
+function heatmap(x, y, mat; cbar=true)
     dx2 = step(x)/2
     imshow(Array(mat'), origin="lower", extent=(x[1]-dx2,x[end]+dx2,y[1]-dx2,y[end]+dx2))
-    colorbar()
+    cbar && colorbar()
 end
 
-function mycontour(x, y, mat; levels=50)
+function mycontour(x, y, mat; levels=50, cbar=true)
     contour(x, y, Array(mat'), levels, linewidths=1)
-    colorbar()
+    cbar && colorbar()
 end
 
 function plot_catchments(x, y, c, lim=10)

@@ -68,7 +68,8 @@ WWF.heatmap(x,y,demf.-dem)
 [1] O’Callaghan, J. and Mark, D.: The extraction of drainage networks
     from digital elevation data, Comput. Vision Graph., 28, 323–344,
     1984. [link](http://www.academia.edu/download/47710594/s0734-189x_2884_2980011-020160801-5103-19m2b12.pdf)
+
 [2] Braun, J. and Willett, S.D.: A very efficient O(n), implicit and
     parallel method to solve the stream power equation governing
-    fluvial incision and landscape evolution Author links open overlay
+    fluvial incision and landscape evolution
     panel [doi](https://doi.org/10.1016/j.geomorph.2012.10.008)
