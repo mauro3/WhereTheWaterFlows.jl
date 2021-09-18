@@ -47,6 +47,7 @@ function plotarea(x, y, area, pits; prefn=log10, cbar=true)
     fig, axs = subplots()
     heatmap(x, y, prefn.(area), cbar=cbar)
     scatter(px, py, 1, "r")
+    fig
 end
 
 function plotarea_dem(x, y, dem, area, pits; levels=50, threshold=1/100, prefn=log10)
