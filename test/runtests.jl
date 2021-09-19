@@ -159,6 +159,17 @@ end
     end
 end
 
+@testset "diagonal gradient adjustment" begin
+    dem = ones(4,4)
+    dem[2,2] = 0.5
+    dem[2,3] = 0.45
+    area, slen, dir, nout, nin, pits, c, bnds = WWF.waterflows(dem);
+    @test dir==[5  5  5  5
+                5  8  1  5
+                5  4  4  5 # without adjustment this row would be '5  7  4  5'
+                5  5  5  5]
+end
+
 
 # Test high-level functions
 @testset "DEM: dem1" begin
@@ -169,16 +180,16 @@ end
     @test size(dem)==(length(xs), length(ys))
 
     area, slen, dir, nout, nin, pits, c, bnds = WWF.waterflows(dem, bnd_as_pits=false)
-    @test area == [1.0 1.0 5.0 1.0; 1.0 1.0 1.0 1.0; 5.0 3.0 2.0 1.0]
-    @test slen == [1 1 2 1; 1 1 1 1; 4 3 2 1]
-    @test dir == Int8[5 8 5 5; 6 7 4 1; 5 2 2 2]
+    @test area == [1.0 1.0 4.0 2.0; 1.0 1.0 1.0 1.0; 5.0 3.0 2.0 1.0]
+    @test slen == [1 1 2 2; 1 1 1 1; 4 3 2 1]
+    @test dir == Int8[5 8 5 5; 6 7 4 4; 5 2 2 2]
     @test nout == Bool[false true false false; true true true true; false true true true]
-    @test nin == Int8[0 0 4 0; 0 0 0 0; 2 1 1 0]
+    @test nin == Int8[0 0 3 1; 0 0 0 0; 2 1 1 0]
     @test pits ==CartesianIndex{2}[CartesianIndex(1, 1), CartesianIndex(3, 1), CartesianIndex(1, 3), CartesianIndex(1, 4)]
 
     # non default cellarea
     area, _ = WWF.waterflows(dem, fill(10.0, size(dem)), bnd_as_pits=false)
-    @test area == [10.0 10.0 50.0 10.0; 10.0 10.0 10.0 10.0; 50.0 30.0 20.0 10.0]
+    @test area == [10.0 10.0 40.0 20.0; 10.0 10.0 10.0 10.0; 50.0 30.0 20.0 10.0]
 end
 
 @testset "DEM: peaks2" begin
@@ -188,10 +199,10 @@ end
     area, slen, dir, nout, nin, pits, c, bnds = WWF.waterflows(dem, drain_pits=false, bnd_as_pits=false);
     #plotarea_dem(xs, ys, dem, area, pits)
     @test length(pits) == 6
-    @test maximum(slen)==67
-    @test maximum(area)==4831
+    @test maximum(slen)==86
+    @test maximum(area)==4759
     @test length(unique(c))==6
-    @test sum(c) == 33876
+    @test sum(c) == 33862
     @test sum(diff(c[:])) == 5
     @test sort(unique(c))[[1,end]] ==[1,6]
     @test all([c[pits[cc]]==cc  for cc=1:length(pits)]) # pit in catchment of same color
@@ -199,10 +210,10 @@ end
     area, slen, dir, nout, nin, pits, c, bnds = WWF.waterflows(dem, drain_pits=true, bnd_as_pits=false)
     # plotarea_dem(xs, ys, dem, area, pits)
     @test length(pits) == 4
-    @test maximum(slen)==118
-    @test maximum(area)==7714
+    @test maximum(slen)==129
+    @test maximum(area)==7702
     @test length(unique(c))==4
-    @test sum(c) == 23933
+    @test sum(c) == 23855
     @test sum(diff(c[:])) == 3
     @test sort(unique(c))[[1,end]] ==[1,4]
     @test bnds isa Array{Array{CartesianIndex{2},1},1}
@@ -218,10 +229,10 @@ end
     area, slen, dir, nout, nin, pits, c, bnds = WWF.waterflows(dem, drain_pits=false, bnd_as_pits=false);
     # plotarea_dem(xs, ys, dem, area, pits)
     @test length(pits) == 7
-    @test maximum(slen)==67
-    @test maximum(area[.!isnan.(area)])==4625
+    @test maximum(slen)==87
+    @test maximum(area[.!isnan.(area)])==4725
     @test length(unique(c))==8
-    @test sum(c) == 36607
+    @test sum(c) == 36447
     @test sum(diff(c[:])) == 6
     @test sort(unique(c))[[1,end]] ==[0,7]
     @test all(c[nanlocs].==0)
@@ -231,9 +242,9 @@ end
     # plotarea_dem(xs, ys, dem, area, pits)
     @test length(pits) == 408
     @test maximum(slen)==66
-    @test maximum(area[.!isnan.(area)])==4114
+    @test maximum(area[.!isnan.(area)])==4457
     @test length(unique(c))==409
-    @test sum(c) == 2083959
+    @test sum(c) == 2079380
     @test sum(diff(c[:])) == 407
     @test sort(unique(c))[[1,end]] ==[0,408]
     @test all(c[ [n for n in nanlocs if !(n in pits)]].==0)
@@ -243,10 +254,10 @@ end
     area, slen, dir, nout, nin, pits, c, bnds = WWF.waterflows(dem, drain_pits=true, bnd_as_pits=false);
     # plotarea_dem(xs, ys, dem, area, pits)
     @test length(pits) == 4
-    @test maximum(slen)==116
-    @test maximum(area[.!isnan.(area)])==7707
+    @test maximum(slen)==142
+    @test maximum(area[.!isnan.(area)])==7706
     @test length(unique(c))==5
-    @test sum(c) == 23915
+    @test sum(c) == 23820
     @test sum(diff(c[:])) == 3
     @test sort(unique(c))[[1,end]] ==[0,4]
     @test bnds isa Array{Array{CartesianIndex{2},1},1}
@@ -257,9 +268,9 @@ end
     # plotarea_dem(xs, ys, dem, area, pits)
     @test length(pits) == 406
     @test maximum(slen)==75
-    @test maximum(area[.!isnan.(area)])==4115
+    @test maximum(area[.!isnan.(area)])==4458
     @test length(unique(c))==407
-    @test sum(c) == 2072390
+    @test sum(c) == 2067155
     @test sum(diff(c[:])) == 405
     @test sort(unique(c))[[1,end]] ==[0,406]
     @test bnds isa Array{Array{CartesianIndex{2},1},1}
@@ -275,10 +286,10 @@ end
     area, slen, dir, nout, nin, pits, c, bnds = WWF.waterflows(dem, drain_pits=false, bnd_as_pits=false);
     # plotarea_dem(xs, ys, dem, area, pits)
     @test length(pits) == 6
-    @test maximum(slen)==66
-    @test maximum(area[.!isnan.(area)])==4727
+    @test maximum(slen)==84
+    @test maximum(area[.!isnan.(area)])==4658
     @test length(unique(c))==7
-    @test sum(c) == 32498
+    @test sum(c) == 32486
     @test sum(diff(c[:])) == 0
     @test sort(unique(c))[[1,end]] ==[0,6]
     @test all([c[pits[cc]]==cc  for cc=1:length(pits)]) # pit in catchment of same color
@@ -286,10 +297,10 @@ end
     area, slen, dir, nout, nin, pits, c, bnds = WWF.waterflows(dem, drain_pits=false, bnd_as_pits=true);
     # plotarea_dem(xs, ys, dem, area, pits)
     @test length(pits) == 390
-    @test maximum(slen)==65
-    @test maximum(area[.!isnan.(area)])==4372
+    @test maximum(slen)==64
+    @test maximum(area[.!isnan.(area)])==4434
     @test length(unique(c))==391
-    @test sum(c) == 2003347
+    @test sum(c) == 2000894
     @test sum(diff(c[:])) == -1
     @test sort(unique(c))[[1,end]] ==[0,390]
     @test all([c[pits[cc]]==cc  for cc=1:length(pits)]) # pit in catchment of same color
@@ -297,7 +308,7 @@ end
     area, slen, dir, nout, nin, pits, c, bnds = WWF.waterflows(dem, drain_pits=true, bnd_as_pits=false);
     #plotarea_dem(xs, ys, dem, area, pits)
     @test length(pits) == 1
-    @test maximum(slen)==165
+    @test maximum(slen)==195
     @test maximum(area[.!isnan.(area)])==9605
     @test length(unique(c))==2
     @test sum(c) == 9605
@@ -310,9 +321,9 @@ end
     # plotarea_dem(xs, ys, dem, area, pits)
     @test length(pits) == 388
     @test maximum(slen)==81
-    @test maximum(area[.!isnan.(area)])==4831
+    @test maximum(area[.!isnan.(area)])==4978
     @test length(unique(c))==389
-    @test sum(c) == 1983749
+    @test sum(c) == 1980928
     @test sum(diff(c[:])) == -1
     @test sort(unique(c))[[1,end]] ==[0,388]
     @test bnds isa Array{Array{CartesianIndex{2},1},1}

@@ -32,6 +32,11 @@ const cartesian = SMatrix{3,3}(reverse(permutedims([CartesianIndex(-1,1)  Cartes
                                                     CartesianIndex(-1,0)  CartesianIndex(0,0)  CartesianIndex(1,0)
                                                     CartesianIndex(-1,-1) CartesianIndex(0,-1) CartesianIndex(1,-1)]),
                                        dims=2))
+
+"Adjustment factor for gradient in diagonal vs non-diagonal"
+diagonal_fac(J::CartesianIndex) = (J.I[1]==0 || J.I[2]==0) ?  1.0 : 1/sqrt(2)
+
+
 """
 Show an array with its axes oriented such that they correspond
 to x and y direction.
@@ -115,7 +120,8 @@ function d8dir_feature(dem, bnd_as_pits)
             continue
         end
 
-        ele = dem[I] # keeps track of lowest elevation of all 9 cells
+        ele = dem[I]
+        delta_ele = 0.0 # keeps track of biggest elevation change
         dir = NOFLOW
         if isnan(ele)
             # just mark as NOFLOW
@@ -132,9 +138,11 @@ function d8dir_feature(dem, bnd_as_pits)
                         # ignore NaN-Cell
                         continue
                     end
-                elseif ele > ele2
+                end
+                delta_ele2 = (ele2 - ele) * diagonal_fac(J-I)
+                if delta_ele2 < delta_ele
                     # lower elevation found, adjust dir
-                    ele = ele2
+                    delta_ele = delta_ele2
                     dir = ind2dir(J-I)
                 end
             end
@@ -380,8 +388,8 @@ to NaN-cells.  Possibilities:
 - treat boundary cells as pits, i.e. flow reaching such a cell will vanish.  Again
   such cells would be terminal.  This is currently done
 
-What to do if there are no terminal pits in the DEM?  Fill to the uppermost pit?  Or take
-the lowermost as terminal?
+TODO: What to do if there are no terminal pits in the DEM?  Fill to the uppermost pit?  Or take
+the lowermost as terminal? -> currently it picks a random one
 
 Returns new dir, nin, nout, pits (sorted), c, bnds
 
