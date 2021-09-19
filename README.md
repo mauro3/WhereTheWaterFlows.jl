@@ -62,8 +62,7 @@ WWF.heatmap(x,y,demf.-dem)
 # References
 [1] O’Callaghan, J. and Mark, D.: The extraction of drainage networks
     from digital elevation data, Comput. Vision Graph., 28, 323–344,
-    1984. [link](http://www.academia.edu/download/47710594/s0734-189x_2884_2980011-020160801-5103-19m2b12.pdf)
-
+    1984. [download via google scholar](https://scholar.google.ch/scholar?hl=en&q=The extraction of drainage networks from digital elevation data)
 [2] Braun, J. and Willett, S.D.: A very efficient O(n), implicit and
     parallel method to solve the stream power equation governing
     fluvial incision and landscape evolution
