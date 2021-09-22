@@ -412,3 +412,26 @@ end
         end
     end
 end
+
+@testset "NOFLOWer" begin
+    xs, dem = peaks2_nan_edge()
+    ys = xs
+
+    area, slen, dir, nout, nin, pits, c, bnds = WWF.waterflows(dem, drain_pits=false, bnd_as_pits=true);
+    @test sum(c.==0) == 8
+    # add a NOFLOWer cell
+    # (Note: this will not be consistent with the routing
+    # (i.e. flow is still into NOFLOWer, i.e. NOFLOWer should be a pit) and thus
+    # leads to bongous results.  Well, let's just test the bongous results anyway,
+    # to make sure they stay the same bongous.)
+    ind = CartesianIndex(43,30)
+    dir[ind] = WWF.NOFLOWer
+    # and drain the pits
+    WWF.drainpits!(dir, nin, nout, pits, c, bnds, dem)
+    area, slen, c = WWF.flowrouting_catchments(dir, pits, ones(size(dem)))
+    @test sum(c.==0) == 42 # these are bongous...
+
+    area_flow, dir_flow = WWF.waterflows(dem, drain_pits=true, bnd_as_pits=true)[[1,3]];
+    @test sum(area.!=area_flow) == 79
+    @test sum(dir.!=dir_flow) == 1
+end
