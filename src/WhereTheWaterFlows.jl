@@ -2,7 +2,7 @@ module WhereTheWaterFlows
 
 using StaticArrays, Requires
 
-export waterflows, fill_dem, catchment, plotarea
+export waterflows
 
 const I11 = CartesianIndex(1,1)
 const I22 = CartesianIndex(2,2)
@@ -180,8 +180,6 @@ args:
 
 kwargs:
 - drain_pits -- whether to route through pits (true)
-- calc_streamlength -- whether to calculate stream length (true).
-                       Not calculating stream-length can speed up calculations considerably.
 - bnd_as_pits (true) -- whether the domain boundary and NaNs should be pits,
                  i.e. adjacent cells can drain into them,
                  or whether to ignore them.
@@ -281,41 +279,6 @@ function _flowrouting_catchments!(area, len, c, dir, cellarea, color, ij)
     area[ij] = uparea
     len[ij] = slen
     return uparea, slen
-end
-
-"""
-    catchment(dir, ij)
-
-Calculates the catchment of a grid-point ij.  If desired, its
-boundary can be calculated with `make_boundaries([c], [1])`.
-
-Input
-- dir -- direction field
-- ij -- indices of the point
-
-Returns
-- catchment -- BitArray
-
-Tip: only being off by one grid-point can make the difference
-     between a tiny and a huge catchment!
-"""
-catchment(dir, ij::Vector) = catchment(dir, CartesianIndex(ij...))
-function catchment(dir, ij::CartesianIndex)
-    c = falses(size(dir))
-    # recursively traverse the drainage tree in up-flow direction,
-    # starting at all pits
-    _catchments!(c, dir, ij)
-    return c
-end
-function _catchments!(c, dir, ij)
-    c[ij] = true
-    # proc upstream points
-    for IJ in iterate_D9(ij, c)
-        ij==IJ && continue
-        if flowsinto(IJ, dir[IJ], ij)
-            _catchments!(c, dir, IJ)
-        end
-    end
 end
 
 """
@@ -568,41 +531,6 @@ function _flow_from_to!(P1, P2, dir, nin, nout, allow_reversion=false)
     return nothing
 end
 
-"""
-    fill_dem(dem, pits, dir)
-
-Fill the pits (aka sinks) of a DEM (apply this after applying "drainpits",
-which is the default). Returns the filled DEM.
-
-Note, this is not needed as pre-processing step to use `upstream` area.
-
-This uses a tree traversal to fill the DEM. It does it depth-first (as it
-is easier) which may lead to a stack overflow on a large DEM.
-"""
-function fill_dem(dem, pits, dir; small=0.0)
-    dem = copy(dem)
-    # could use threading.
-    Threads.@threads for pit in pits
-        npts = _fill_ij!(0.0, dem, pit, dir, small)
-    end
-    return dem
-end
-
-function _fill_ij!(ele, dem, ij, dir, small)
-    if ele > dem[ij]
-        dem[ij] = ele
-        ele += small
-    else
-        ele = dem[ij]
-    end
-    # proc upstream points
-    for IJ in iterate_D9(ij, dem)
-        ij==IJ && continue
-        if flowsinto(IJ, dir[IJ], ij)
-            _fill_ij!(ele, dem, IJ, dir, small)
-        end
-    end
-end
 
 ## Plotting
 function __init__()

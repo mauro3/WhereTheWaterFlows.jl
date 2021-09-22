@@ -3,12 +3,14 @@ export plotarea, plotarea_dem
 
 """
     plotit(x, y, dem)
+    plotit(x, y, waterflows_output)
 
 Plot DEM, uparea, flow-dir
 """
-function plotit(x, y, dem)
+plotit(x, y, dem) = plotit(x, y, waterflows(dem))
+function plotit(x, y, waterflows_output::Tuple)
     dx2 = step(x)/2
-    area, slen, dir, nout, nin, pits  = waterflows(dem)
+    area, slen, dir, nout, nin, pits  = waterflows_output
 
     fig, axs = subplots(3,1)
     sca(axs[1])
@@ -33,15 +35,10 @@ pits2vecs(x, y, pits) = (x[[p.I[1] for p in pits if p!=CartesianIndex(-1,-1)]],
                            y[[p.I[2] for p in pits if p!=CartesianIndex(-1,-1)]])
 
 """
-    plotarea(x, y, dem; prefn=log10)
     plotarea(x, y, area, pits; prefn=log10)
 
-Plot uparea
+Plot uparea, or another variable.  If no pits should be plotted, use `[]`.
 """
-function plotarea(x, y, dem; prefn=log10, cbar=true)
-    area, slen, dir, nout, nin, pits  = waterflows(dem)
-    plotarea(x, y, area, pits, prefn=prefn, cbar=cbar)
-end
 function plotarea(x, y, area, pits; prefn=log10, cbar=true)
     px, py = pits2vecs(x, y, pits)
     fig, axs = subplots()
