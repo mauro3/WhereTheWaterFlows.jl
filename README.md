@@ -59,6 +59,14 @@ figure()
 WWF.heatmap(x,y,demf.-dem)
 ```
 
+### Post-processing
+
+There are the following function (see their docs for details):
+- `catchment` -- determine the catchment of one point
+- `catchment_of_points` -- determine the catchment of several points
+- `prune_catchments` -- remove catchment smaller than a certain size
+- `fill_dem` -- fill the depressions of a DEM
+
 # References
 [1] O’Callaghan, J. and Mark, D.: The extraction of drainage networks
     from digital elevation data, Comput. Vision Graph., 28, 323–344,
