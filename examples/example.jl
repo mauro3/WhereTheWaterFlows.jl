@@ -1,7 +1,9 @@
-# Also needs packages Parameters and VAWTools
-
-plotyes = true
-using PyPlot
+if !@isdefined plotyes
+    plotyes = true
+end
+if plotyes
+    @eval using PyPlot
+end
 using WhereTheWaterFlows
 if !(@isdefined WWF)
     const WWF = WhereTheWaterFlows
@@ -30,47 +32,3 @@ plotyes && WWF.heatmap(xs, ys, c)
 
 demf = WWF.fill_dem(dem, pits, dir) #, small=1e-6)
 plotyes && WWF.heatmap(xs,ys, demf.-dem)
-# WWF.plotarea(xs, ys, demf) # will show some artefacts in filled-in area unless `small` is set
-
-# ## Sorry, this only works on my machine...
-# import VAWTools
-# using Parameters
-# gorner = VAWTools.read_agr("/home/mauro/model_runs/glads/gorner/input/topo_gorner/data/dhm_gorezg2007.grid")
-# @unpack x,y,v = gorner;
-# #v = v + rand(size(v)...)*1e-2;
-# #vv = VAWTools.boxcar(v, 4); #  + rand(size(v)...)*1e-1; # add some noise to kill lakes
-# dem = v;
-
-# area, slen, dir, nout, nin, pits  = WWF.waterflows(dem);
-# c, bnds = WWF.catchments(dir, pits);
-# plotyes && WWF.plotarea(x,y,area, pits)
-
-# demf = WWF.fill_dem(dem, pits, dir)
-# plotyes && WWF.heatmap(x,y, demf.-dem)
-
-
-# dir_, nin_, nout_, pits_, c_, bnds_ = WWF.drainpits(dem, dir, nin, nout, pits);
-# area_, slen_ = WWF._waterflows(dir_, nout_, nin_, pits_);
-# WWF.plotarea(x, y, area_, pits_)
-
-# using BenchmarkTools
-# @btime WWF.d8dir_feature(v) # 51.695 ms (388933 allocations: 83.48 MiB)
-# #@btime WWF.d8dir_feature1(v)
-
-# if false # small
-#     @unpack x,y,v = VAWTools.downsample(gorner, 40);
-#     WWF.plotarea(x,y,v, prefn=x->x);
-#     dir, nout, nin, pits = WWF.d8dir_feature(v);
-#     area, slen, dir, nout, nin, pits  = WWF.waterflows(v);
-#     c, bnds = WWF.catchments(dir, pits);
-
-#     figure(); WWF.heatmap(x,y,slen)
-#     figure(); WWF.heatmap(x,y,nin)
-#     figure(); WWF.heatmap(x,y,c)
-#     figure(); WWF.plotdir(x,y,dir)
-
-#     dir_, nin_, nout_, pits_, c_, bnds_ = WWF.drainpits(v, dir, nin, nout, pits);
-#     area_, slen_ = WWF.waterflows(dir_, nout_, nin_, pits_);
-#     #figure(); plotdir(x,y,dir_); figure(); plotdir(x,y,dir)
-#     WWF.plotarea(x,y,area_, pits_)
-# end

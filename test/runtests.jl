@@ -2,6 +2,13 @@ using WhereTheWaterFlows
 const WWF = WhereTheWaterFlows
 using Test
 
+# test examples
+module Test_Examples # use a module to avoid name-space pollution
+plotyes = false
+for fl in readdir("../examples/")
+    include(joinpath("../examples/", fl))
+end
+end
 
 "An artificial DEM"
 function dem1(x, y; withpit=false, randfac=0.0)
