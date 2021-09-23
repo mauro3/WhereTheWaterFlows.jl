@@ -1,6 +1,6 @@
 # Misc post-processing functions
 
-export catchment, catchments, catchment_of_points, prune_catchments, fill_dem
+export catchment, catchments, catchment_flux, prune_catchments, fill_dem
 
 """
     prune_catchments(catchments, minsize; val=0)

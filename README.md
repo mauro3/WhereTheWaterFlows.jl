@@ -62,9 +62,11 @@ WWF.heatmap(x,y,demf.-dem)
 ### Post-processing
 
 There are the following function (see their docs for details):
-- `catchment` -- determine the catchment of one point
-- `catchment_of_points` -- determine the catchment of several points
-- `prune_catchments` -- remove catchment smaller than a certain size
+- `catchment` -- determine the catchment of a point or a set of points
+- `catchments` -- determine the catchment of several sink areas (each
+  defined by a set of points)
+- `catchment_flux` -- the total flux or source area in a particular catchment
+- `prune_catchments` -- remove catchments smaller than a certain size
 - `fill_dem` -- fill the depressions of a DEM
 
 # References
