@@ -28,5 +28,18 @@ end
             ii, jj = pits[cc], pits[dd]
             @test catchment(dir, [ii,jj]) == ((c.==cc) .| (c.==dd))
         end
+
+        ci = CartesianIndices((2:4,7:9))
+        @test catchment(dir, ci) == catchment(dir, collect(ci)[:])
+
+        @test catchment_flux(ones(size(dir)), catchment(dir, ci)) > 0
+        @test catchment_flux(ones(size(dir)), c, 5) > 0
+        @test catchment_flux(zeros(size(dir)), catchment(dir, ci)) == 0
+
+        sinks = [CartesianIndices((2:4,7:9)), CartesianIndices((5:8,1:3))]
+        ss = [collect(sinks[1])[:]; collect(sinks[2])[:]]
+        @test (catchments(dir, sinks) .> 0) == catchment(dir, ss)
+
+        @test length(unique(prune_catchments(c, 10; val=0))) < length(unique(c))
     end
 end

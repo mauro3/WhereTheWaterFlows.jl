@@ -63,7 +63,7 @@ function catchment(dir, ij::CartesianIndex)
     _catchment!(c, dir, ij)
     return c
 end
-function catchment(dir, ijs::Vector{CartesianIndex{2}})
+function catchment(dir, ijs::Union{Vector{CartesianIndex{2}}, CartesianIndices{2}})
     cout = falses(size(dir))
     for ij in ijs
         _catchment!(cout, dir, ij)
@@ -100,7 +100,7 @@ Make a map of catchments from different (non-overlapping) sinks.
 
 See also: `catchment`
 """
-function catchments(dir, sinks::Vector{Vector{CartesianIndex{2}}};
+function catchments(dir, sinks::Union{Vector{Vector{CartesianIndex{2}}}, Vector{<:CartesianIndices{2}}};
                     check_catchments_overlap=true)
 
     ncs = length(sinks)
