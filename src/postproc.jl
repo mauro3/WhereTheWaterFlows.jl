@@ -63,7 +63,7 @@ function catchment(dir, ij::CartesianIndex)
     _catchment!(c, dir, ij)
     return c
 end
-function catchment(dir, ijs::Union{Vector{CartesianIndex{2}}, CartesianIndices{2}})
+function catchment(dir, ijs::Union{<:Array{CartesianIndex{2}}, CartesianIndices{2}})
     cout = falses(size(dir))
     for ij in ijs
         _catchment!(cout, dir, ij)
