@@ -96,7 +96,7 @@ Return
 """
 function d8dir_feature(dem, bnd_as_pits)
     # outputs
-    diro = zeros(Int8, size(dem))
+    dir = zeros(Int8, size(dem))
     nout = falses(size(dem))
     nin = zeros(Int8, size(dem))
     pits = CartesianIndex{2}[]
@@ -109,13 +109,13 @@ function d8dir_feature(dem, bnd_as_pits)
         # make pits on boundary if bnd_as_pits is set
         if bnd_as_pits && on_outer_boundary(dem,I)
             # make it a pit
-            diro[I] = NOFLOW
+            dir[I] = NOFLOW
             continue
         end
 
         ele = dem[I]
         delta_ele = 0.0 # keeps track of biggest elevation change
-        dir = NOFLOW
+        dir_ = NOFLOW
         if isnan(ele)
             # just mark as NOFLOW
         else
@@ -125,7 +125,7 @@ function d8dir_feature(dem, bnd_as_pits)
                 if isnan(ele2)
                     if bnd_as_pits
                         # flow into first found NaN-cell
-                        dir = ind2dir(J-I)
+                        dir_ = ind2dir(J-I)
                         break
                     else
                         # ignore NaN-Cell
@@ -136,20 +136,20 @@ function d8dir_feature(dem, bnd_as_pits)
                 if delta_ele2 < delta_ele
                     # lower elevation found, adjust dir
                     delta_ele = delta_ele2
-                    dir = ind2dir(J-I)
+                    dir_ = ind2dir(J-I)
                 end
             end
         end
-        diro[I] = dir
+        dir[I] = dir_
     end
     # flow features
     # (not thread-safe because of push!)
     for I in R
         for J in iterate_D9(I, Iend)
             J==I && continue
-            nin[I] += flowsinto(J, diro[J], I)
+            nin[I] += flowsinto(J, dir[J], I)
         end
-        if diro[I]==NOFLOW
+        if dir[I]==NOFLOW
             nout[I] = false
             if !isnan(dem[I])
                 push!(pits, I)
@@ -162,7 +162,7 @@ function d8dir_feature(dem, bnd_as_pits)
         end
     end
 
-    return diro, nout, nin, pits, dem, nothing
+    return dir, nout, nin, pits, dem, nothing
 end
 
 """
@@ -301,7 +301,7 @@ function make_boundaries(catchments, colors)
                 break
             end
         end
-    end#
+    end
     bnds
 end
 
@@ -311,10 +311,10 @@ boundary; removes them otherwise.
 
 TODO: this is one of the performance bottlenecks.
 """
-function _prune_boundary!(bnds, catchments::Matrix, color, colormap)
-    del = Int[]
+function _prune_boundary!(del, bnds, catchments::Matrix, color, colormap)
+    empty!(del)
     # loop over all boundary cells
-    for (i,P) in enumerate(bnds[color])
+    @inbounds for (i,P) in enumerate(bnds[color])
         keep = false
         # check cells around it
         for PP in iterate_D9(P, catchments)
@@ -371,6 +371,12 @@ function drainpits!(dir, nin, nout, pits, c, bnds, dem)
     colormap_inv = [[i] for i=1:length(pits)] # note that the total length
 
     no_drainage_across_boundary = false
+
+    # work array as otherwise much time is spent allocating
+    # (if below loop is ever multi-threaded, this will need one per thread)
+    del_workarray  = Int[]
+    sizehint!(del_workarray, maximum(length.(bnds)))
+
     # iterate until all interior pits are removed (not really needed, I think)
     @inbounds for i=1:maxiter
         n_removed = 0
@@ -465,7 +471,7 @@ function drainpits!(dir, nin, nout, pits, c, bnds, dem)
 
             append!(bnds[othercolor], bnds[color])
             empty!(bnds[color])
-            _prune_boundary!(bnds, c, othercolor, colormap)
+            _prune_boundary!(del_workarray, bnds, c, othercolor, colormap)
             n_removed +=1
         end
         n_removed==0 && break

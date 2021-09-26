@@ -9,7 +9,6 @@ Plot DEM, uparea, flow-dir
 """
 plotit(x, y, dem) = plotit(x, y, waterflows(dem))
 function plotit(x, y, waterflows_output::Tuple)
-    dx2 = step(x)/2
     area, slen, dir, nout, nin, pits  = waterflows_output
 
     fig, axs = subplots(3,1)
@@ -74,7 +73,7 @@ function plotlakedepth(x, y, dem)
 end
 
 function heatmap(x, y, mat; cbar=true)
-    dx2 = step(x)/2
+    dx2 = (x[2]-x[1])/2
     imshow(Array(mat'), origin="lower", extent=(x[1]-dx2,x[end]+dx2,y[1]-dx2,y[end]+dx2))
     cbar && colorbar()
 end
