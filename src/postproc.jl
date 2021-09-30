@@ -93,7 +93,7 @@ catchment_flux(cellarea, c, color) = sum(cellarea[c.==color])
 catchment_flux(cellarea, c::Union{BitArray, Matrix{Bool}}) = sum(cellarea[c])
 
 """
-    catchments(dir, sinks::Vector{Vector{CartesianIndex{2}}};
+    catchments(dir, sinks::Union{Vector{Vector{CartesianIndex{2}}}, Vector{<:CartesianIndices{2}}};
                     check_catchments_overlap=true)
 
 Make a map of catchments from different (non-overlapping) sinks.
