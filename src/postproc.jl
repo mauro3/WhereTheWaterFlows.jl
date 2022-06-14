@@ -129,20 +129,23 @@ end
 Fill the pits (aka sinks) of a DEM (apply this after applying "drainpits",
 which is the default). Returns the filled DEM.
 
-Note, this is not needed as pre-processing step to use `upstream` area.
+Note, this is *not* needed as pre-processing step to use the flow-routing
+function `waterflows`.
 
 This uses a tree traversal to fill the DEM. It does it depth-first (as it
 is easier) which may lead to a stack overflow on a large DEM.
 """
 function fill_dem(dem, pits, dir; small=0.0)
     dem = copy(dem)
-    # could use threading.
     Threads.@threads for pit in pits
-        npts = _fill_ij!(0.0, dem, pit, dir, small)
+        _fill_ij!(-Inf, dem, pit, dir, small)
     end
     return dem
 end
 
+# The recursion goes up the catchment using `dir`.  If it ever encounters a point
+# which has lower elevation than the previous one, it will set that point's elevation
+# and all upstream points' elevation the elevation of the first point.
 function _fill_ij!(ele, dem, ij, dir, small)
     if ele > dem[ij]
         dem[ij] = ele

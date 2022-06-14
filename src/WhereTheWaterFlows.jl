@@ -245,6 +245,8 @@ Return:
 - stream length
 - catchments Matrix{Int}.  Value==0 corresponds to NaNs in the DEM
   which are not pits (i.e. where no water flows into).
+
+Note: this function may cause a stackoverflow on very big catchments.
 """
 function flowrouting_catchments(dir, pits, cellarea)
     c = zeros(Int, size(dir))

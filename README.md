@@ -4,14 +4,16 @@
 [![Build Status](https://ci.appveyor.com/api/projects/status/github/mauro3/WhereTheWaterFlows.jl?svg=true)](https://ci.appveyor.com/project/mauro3/WhereTheWaterFlows-jl)
 [![Coverage](https://codecov.io/gh/mauro3/WhereTheWaterFlows.jl/branch/master/graph/badge.svg)](https://codecov.io/gh/mauro3/WhereTheWaterFlows.jl)
 
+This package allows to calculate water flow paths on digital elevation models (DEMs).
+
 This package implements the D8 flow routing algorithm [1] as well as a
-basin-filling algorithm, also by [1].  It uses a O(n), recursive algorithm
-similar to [2]. This allows to calculate water
-pathways on a digital elevation model (DEM).
+basin-filling algorithm, also by [1].  In its implementation it uses a
+O(n), recursive algorithm similar as in [2].  Due to recursion it can run
+into a stackoverflow error on very large DEMs.
 
 This code is reasonably fast: flow routing on a DEM of Antarctica of
-about 2e8 points and with 150000 depressions takes about 30s on my
-laptop (Ryzen 4750U).
+about 2e8 points (14000x14000) with 150000 depressions takes about 30s
+on my laptop (Ryzen 4750U).
 
 ![Upslope area](https://user-images.githubusercontent.com/4098145/67853636-e319b880-fb06-11e9-933d-9f55ace99ce1.png)
 
