@@ -96,9 +96,10 @@ Return
 """
 function d8dir_feature(dem, bnd_as_pits)
     # outputs
-    dir = zeros(Int8, size(dem))
-    nout = falses(size(dem))
-    nin = zeros(Int8, size(dem))
+    dir = fill!(similar(dem, Int8), 0)
+    #nout = falses(size(dem))
+    nout = fill!(similar(dem, Bool), false)
+    nin = fill!(similar(dem, Int8), 0)
     pits = CartesianIndex{2}[]
 
     R = CartesianIndices(size(dem))
@@ -166,14 +167,14 @@ function d8dir_feature(dem, bnd_as_pits)
 end
 
 """
-    waterflows(dem, cellarea=ones(size(dem)), flowdir_fn=d8dir_feature;
+    waterflows(dem, cellarea=cellarea=fill!(similar(dem),1), flowdir_fn=d8dir_feature;
                calc_streamlength=true, drain_pits=true, bnd_as_pits=false)
 
 Does the water flow routing according the D8 algorithm.
 
 args:
 - dem -- the DEM (or hydro-potential); array
-- cellarea=ones(size(dem)) -- the source per cell, defaults to 1.  If using physical units
+- cellarea=cellarea=fill!(similar(dem),1) -- the source per cell, defaults to 1.  If using physical units
                               then use a volumetric flux per cell, e.g. m3/s.
 - flowdir_fn=d8dir_feature -- the routing function.  Defaults to the built-in `d8dir_feature`
                               function but could be customised
@@ -199,7 +200,7 @@ Returns
 - bnds -- boundaries between catchments.  The boundary to the exterior/NaNs is not in here.
 - flowdir_extra_output -- extra output of the flowdir_fn, which is `nothing` for the default
 """
-function waterflows(dem, cellarea=ones(size(dem)), flowdir_fn=d8dir_feature;
+function waterflows(dem, cellarea=fill!(similar(dem),1), flowdir_fn=d8dir_feature;
                     drain_pits=true, bnd_as_pits=true)
     dir, nout, nin, pits, dem4drainpits, flowdir_extra_output = flowdir_fn(dem, bnd_as_pits)
     area, slen, c = flowrouting_catchments(dir, pits, cellarea)
@@ -249,9 +250,9 @@ Return:
 Note: this function may cause a stackoverflow on very big catchments.
 """
 function flowrouting_catchments(dir, pits, cellarea)
-    c = zeros(Int, size(dir))
-    area = zeros(size(cellarea))
-    slen = zeros(Int, size(dir))
+    c = fill!(similar(dir, Int), 0)
+    area = fill!(similar(dir,Float64), 0)
+    slen = fill!(similar(dir, Int), 0)
     np = length(pits)
     # recursively traverse the drainage tree in up-flow direction,
     # starting at all pits
@@ -313,7 +314,7 @@ boundary; removes them otherwise.
 
 TODO: this is one of the performance bottlenecks.
 """
-function _prune_boundary!(del, bnds, catchments::Matrix, color, colormap)
+function _prune_boundary!(del, bnds, catchments::AbstractMatrix, color, colormap)
     empty!(del)
     # loop over all boundary cells
     @inbounds for (i,P) in enumerate(bnds[color])
