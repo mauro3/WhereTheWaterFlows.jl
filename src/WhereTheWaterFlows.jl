@@ -170,14 +170,15 @@ end
     waterflows(dem, cellarea=cellarea=fill!(similar(dem),1), flowdir_fn=d8dir_feature;
                calc_streamlength=true, drain_pits=true, bnd_as_pits=false)
 
-Does the water flow routing according the D8 algorithm.
+Does the water flow routing according the D8 algorithm.  Locations of the `dem`
+with `NaN`-value are ignored.
 
 args:
 - dem -- the DEM (or hydro-potential); array
 - cellarea=cellarea=fill!(similar(dem),1) -- the source per cell, defaults to 1.  If using physical units
                               then use a volumetric flux per cell, e.g. m3/s.
 - flowdir_fn=d8dir_feature -- the routing function.  Defaults to the built-in `d8dir_feature`
-                              function but could be customised
+                              function but could be customized
 
 kwargs:
 - drain_pits -- whether to route through pits (true)

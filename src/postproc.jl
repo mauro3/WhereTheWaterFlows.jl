@@ -38,7 +38,7 @@ end
 
 
 """
-    catchment(dir, ij)
+    catchment(dir, ij, dem=nothing)
 
 Calculates the catchment of one or several grid-point ij.  If desired, its
 boundary can be calculated with `make_boundaries([c], [1])`.
@@ -46,6 +46,7 @@ boundary can be calculated with `make_boundaries([c], [1])`.
 Input
 - dir -- direction field
 - ij -- index of the point (2-Tuple, or CartesianIndex) or a Vector{CartesianIndex} for several
+- dem -- if supplied, then its NaN-points will not be considered
 
 Returns
 - catchment -- BitArray
@@ -55,20 +56,28 @@ Tip: only being off by one grid-point can make the difference
 
 See also: `catchments`
 """
-catchment(dir, ij::Tuple) = catchment(dir, CartesianIndex(ij...))
-function catchment(dir, ij::CartesianIndex)
-    c = falses(size(dir))
+catchment(dir, ij::Tuple, dem=nothing) = catchment(dir, CartesianIndex(ij...), dem)
+function catchment(dir, ij::CartesianIndex, dem=nothing)
+    c = fill!(similar(dir, Bool), false)
     # recursively traverse the drainage tree in up-flow direction,
     # starting at ij
     _catchment!(c, dir, ij)
+    if dem!==nothing
+        # TODO: this is a bit non-performant
+        c[isnan.(dem)] .= false
+    end
     return c
 end
-function catchment(dir, ijs::Union{<:Array{CartesianIndex{2}}, CartesianIndices{2}})
-    cout = falses(size(dir))
+function catchment(dir, ijs::Union{<:Array{CartesianIndex{2}}, CartesianIndices{2}}, dem=nothing)
+    c = fill!(similar(dir, Bool), false)
     for ij in ijs
-        _catchment!(cout, dir, ij)
+        _catchment!(c, dir, ij)
     end
-    return cout
+    if dem!==nothing
+        # TODO: this is a bit non-performant
+        c[isnan.(dem)] .= false
+    end
+    return c
 end
 function _catchment!(c, dir, ij)
     c[ij] = true
@@ -81,6 +90,7 @@ function _catchment!(c, dir, ij)
             _catchment!(c, dir, IJ)
         end
     end
+    return nothing
 end
 
 """
@@ -90,17 +100,18 @@ end
 The total flux, i.e. input, in one catchment.
 """
 catchment_flux(cellarea, c, color) = sum(cellarea[c.==color])
-catchment_flux(cellarea, c::Union{BitArray, Matrix{Bool}}) = sum(cellarea[c])
+catchment_flux(cellarea, c::Union{BitArray, AbstractMatrix{<:Bool}}) = sum(cellarea[c])
 
 """
-    catchments(dir, sinks::Union{Vector{Vector{CartesianIndex{2}}}, Vector{<:CartesianIndices{2}}};
+    catchments(dir, sinks::Union{Vector{Vector{CartesianIndex{2}}}, Vector{<:CartesianIndices{2}}}, dem=nothing;
                     check_catchments_overlap=true)
 
 Make a map of catchments from different (non-overlapping) sinks.
 
 See also: `catchment`
 """
-function catchments(dir, sinks::Union{Vector{Vector{CartesianIndex{2}}}, Vector{<:CartesianIndices{2}}};
+function catchments(dir, sinks::Union{Vector{Vector{CartesianIndex{2}}}, Vector{<:CartesianIndices{2}}},
+                    dem=nothing;
                     check_catchments_overlap=true)
 
     ncs = length(sinks)
@@ -115,9 +126,9 @@ function catchments(dir, sinks::Union{Vector{Vector{CartesianIndex{2}}}, Vector{
         end
     end
     @assert ncs<255 "More than 255 sinks not supported (yet)." # then use something else than UInt8
-    out = zeros(UInt8, size(dir))
+    out = fill!(similar(dir, UInt8), 0)
     for (i,s) in enumerate(sinks)
-        c = catchment(dir, s)
+        c = catchment(dir, s, dem)
         out += c*i
     end
     return out
