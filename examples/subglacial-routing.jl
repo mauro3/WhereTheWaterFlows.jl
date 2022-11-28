@@ -24,16 +24,16 @@ surface = Matrix{Float32}(undef, nx, ny)
 x = Vector{Float32}(undef, nx)
 y = Vector{Float32}(undef, ny)
 
-open("data/bed.bin", "r") do f
+open(joinpath(@__DIR__, "data/bed.bin"), "r") do f
      read!(f, bed)
 end
-open("data/surface.bin", "r") do f
+open(joinpath(@__DIR__, "data/surface.bin"), "r") do f
      read!(f, surface)
 end
-open("data/x.bin", "r") do f
+open(joinpath(@__DIR__, "data/x.bin"), "r") do f
      read!(f, x)
 end
-open("data/y.bin", "r") do f
+open(joinpath(@__DIR__, "data/y.bin"), "r") do f
      read!(f, y)
 end
 
