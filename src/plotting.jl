@@ -3,12 +3,12 @@ export plotarea, plotarea_dem
 
 """
     plotit(x, y, dem)
-    plotit(x, y, waterflows_output)
+    plotit(x, y, waterflows_output, dem)
 
 Plot DEM, uparea, flow-dir
 """
-plotit(x, y, dem) = plotit(x, y, waterflows(dem))
-function plotit(x, y, waterflows_output::Tuple)
+plotit(x, y, dem) = plotit(x, y, waterflows(dem), dem)
+function plotit(x, y, waterflows_output::Tuple, dem)
     area, slen, dir, nout, nin, pits  = waterflows_output
 
     fig, axs = subplots(3,1)

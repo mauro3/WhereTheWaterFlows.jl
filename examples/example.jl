@@ -22,13 +22,15 @@ dx = 0.01
 xs = -1.5:dx:1
 ys = -0.5:dx:3.0
 dem = ele.(xs, ys', randfac=0.1, withpit=true);
-plotyes && WWF.heatmap(xs,ys,dem)
+plotyes && WWF.heatmap(xs, ys, dem)
+
 area, slen, dir, nout, nin, pits, c, bnds  = WWF.waterflows(dem, drain_pits=true);
+
 @assert size(dem)==(length(xs), length(ys))
-plotyes && WWF.plotit(xs,ys,dem)
+plotyes && WWF.plotit(xs, ys, dem)
 plotyes && WWF.plotarea(xs, ys, area, pits)
 
 plotyes && WWF.heatmap(xs, ys, c)
 
 demf = WWF.fill_dem(dem, pits, dir) #, small=1e-6)
-plotyes && WWF.heatmap(xs,ys, demf.-dem)
+plotyes && WWF.heatmap(xs, ys, demf.-dem)
