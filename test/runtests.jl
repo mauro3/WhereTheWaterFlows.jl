@@ -6,7 +6,7 @@ using Test
 module Test_Examples # use a module to avoid name-space pollution
 plotyes = false
 for fl in readdir("../examples/")
-    include(joinpath("../examples/", fl))
+    isfile(fl) && include(joinpath("../examples/", fl))
 end
 end
 
