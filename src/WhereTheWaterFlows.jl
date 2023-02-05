@@ -55,7 +55,7 @@ flowsinto(J::CartesianIndex, dirJ::Integer, I::CartesianIndex) = ind2dir(I-J) ==
 "Return CartesianIndices corresponding to the 8 neighbors and the point itself"
 iterate_D9(I, Iend, I1=I11) = max(I1, I-I1):min(Iend, I+I1)
 function iterate_D9(I, ar::AbstractMatrix)
-    R = CartesianIndices(size(ar))
+    R = CartesianIndices(ar)
     I1, Iend = first(R), last(R)
     return max(I1, I-I1):min(Iend, I+I1)
 end
