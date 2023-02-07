@@ -46,7 +46,8 @@ boundary can be calculated with `make_boundaries([c], [1])`.
 Input
 - dir -- direction field
 - ij -- index of the point (2-Tuple, or CartesianIndex) or a Vector{CartesianIndex} for several
-- dem -- if supplied, then its NaN-points will not be considered
+- dem -- if supplied, then its NaN-points will not be considered. NOTE: this slow down the calculation
+         by potentially a large amount!
 
 Returns
 - catchment -- BitArray
@@ -58,23 +59,25 @@ See also: `catchments`
 """
 catchment(dir, ij::Tuple, dem=nothing) = catchment(dir, CartesianIndex(ij...), dem)
 function catchment(dir, ij::CartesianIndex, dem=nothing)
-    c = fill!(similar(dir, Bool), false)
+    # c = fill!(similar(dir, Bool), false) # makes Matrix{Bool}
+    c = fill!(similar(BitArray, axes(dir)), false) # makes BitMatrix
     # recursively traverse the drainage tree in up-flow direction,
     # starting at ij
     _catchment!(c, dir, ij)
     if dem!==nothing
-        # TODO: this is a bit non-performant
+        # TODO: this is very non-performant
         c[isnan.(dem)] .= false
     end
     return c
 end
 function catchment(dir, ijs::Union{<:Array{CartesianIndex{2}}, CartesianIndices{2}}, dem=nothing)
-    c = fill!(similar(dir, Bool), false)
+    #c = fill!(similar(dir, Bool), false) # makes Matrix{Bool}
+    c = fill!(similar(BitArray, axes(dir)), false) # makes BitMatrix
     for ij in ijs
         _catchment!(c, dir, ij)
     end
     if dem!==nothing
-        # TODO: this is a bit non-performant
+        # TODO: this is very non-performant
         c[isnan.(dem)] .= false
     end
     return c
