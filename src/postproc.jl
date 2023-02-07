@@ -151,7 +151,8 @@ is easier) which may lead to a stack overflow on a large DEM.
 """
 function fill_dem(dem, pits, dir; small=0.0)
     dem = copy(dem)
-    Threads.@threads for pit in pits
+    #Threads.@threads for pit in pits
+    for pit in pits
         _fill_ij!(-Inf, dem, pit, dir, small)
     end
     return dem

@@ -257,7 +257,8 @@ function flowrouting_catchments(dir, pits, cellarea)
     np = length(pits)
     # recursively traverse the drainage tree in up-flow direction,
     # starting at all pits
-    Threads.@threads for color = 1:length(pits)
+    #Threads.@threads for color = 1:length(pits)
+    for color = 1:length(pits)
         pit = pits[color]
         _flowrouting_catchments!(area, slen, c, dir, cellarea, color, pit)
     end
