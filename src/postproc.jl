@@ -107,7 +107,7 @@ catchment_flux(cellarea, c::Union{BitArray, AbstractMatrix{<:Bool}}) = sum(cella
 
 """
     catchments(dir, sinks::Union{Vector{Vector{CartesianIndex{2}}}, Vector{<:CartesianIndices{2}}}, dem=nothing;
-                    check_catchments_overlap=true)
+                    check_sinks_overlap=true)
 
 Make a map of catchments from different (non-overlapping) sinks.
 
@@ -115,15 +115,15 @@ See also: `catchment`
 """
 function catchments(dir, sinks::Union{Vector{Vector{CartesianIndex{2}}}, Vector{<:CartesianIndices{2}}},
                     dem=nothing;
-                    check_catchments_overlap=true)
+                    check_sinks_overlap=true)
 
     ncs = length(sinks)
-    if check_catchments_overlap
+    if check_sinks_overlap
         for s in sinks
             for loc in s
                 for ss in sinks
                     ss===s && continue
-                    loc in ss && error("Detected overlapping catchments.")
+                    loc in ss && error("Detected overlapping skinks.")
                 end
             end
         end
