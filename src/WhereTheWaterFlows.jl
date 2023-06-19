@@ -168,7 +168,7 @@ end
 
 """
     waterflows(dem, cellarea=cellarea=fill!(similar(dem),1), flowdir_fn=d8dir_feature;
-               calc_streamlength=true, drain_pits=true, bnd_as_pits=false)
+               drain_pits=true, bnd_as_pits=false)
 
 Does the water flow routing according the D8 algorithm.  Locations of the `dem`
 with `NaN`-value are ignored.
@@ -192,7 +192,7 @@ is a pit and thus a catchment (if bnd_as_pits==true).
 
 Returns
 - area -- upslope area
-- stream-length -- length of stream to the farthest source
+- stream-length -- length of stream to the farthest source (number of cells traversed)
 - dir -- flow direction at each location
 - nout -- whether the point has outlflow.  I.e. nout[I]==0 --> I is a pit
 - nin -- number of inflow cells
@@ -213,26 +213,6 @@ function waterflows(dem, cellarea=fill!(similar(dem),1), flowdir_fn=d8dir_featur
     #area[isnan.(dem)] .= NaN
     return area, slen, dir, nout, nin, pits, c, bnds, flowdir_extra_output
 end
-
-# TODO: implement this instead of waterflows
-# """
-#     flowrouting(dir, nin, cellarea; maxiter=max(size(dir)...)*2, calc_streamlength=true)
-
-# Do the actual routing
-
-# Input:
-# - `dir` direction field
-# - `nin` number of inputs into cell
-# - `cellarea` water input per cell
-
-# KW:
-# - `maxiter=max(size(dir)...)*2` -- may need to be increased for very sinous drainage paths
-# - `calc_streamlength=true` -- calculate stream length.  Will slow-down calculation somewhat
-
-# Return
-# - upstream area
-# - stream-length (or something irrelevant if calc_streamlength==false)
-# """
 
 """
     flowrouting_catchments(dir, pits, cellarea)
