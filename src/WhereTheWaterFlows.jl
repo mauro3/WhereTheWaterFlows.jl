@@ -192,7 +192,7 @@ args:
 kwargs:
 - feedback_fn -- function which is applied to area-value(s) at each cell once all water
                  of the cell has been accumulated but before the water is routed further downstream.
-                 Signature `(uparea, dir, ij) -> new_uparea`
+                 Signature `(uparea, ij, dir) -> new_uparea`
 - drain_pits -- whether to route through pits (true)
 - bnd_as_pits (true) -- whether the domain boundary and NaNs should be pits,
                  i.e. adjacent cells can drain into them,
@@ -247,7 +247,7 @@ function flowrouting_catchments(dir, pits, cellarea, feedback_fn)
     feedback_fn_ = if feedback_fn===nothing
         nothing
     else
-        cellarea isa Tuple ? feedback_fn : (x,dir,ij) -> (feedback_fn(x[1], dir, ij),)
+        cellarea isa Tuple ? feedback_fn : (uparea, ij, dir) -> (feedback_fn(uparea[1], ij, dir),)
     end
 
     # recursively traverse the drainage tree in up-flow direction,
@@ -290,7 +290,7 @@ function _flowrouting_catchments!(area, len, c, dir, cellarea, feedback_fn, colo
     end
     # feedback of areas with each other an onto themselves
     if feedback_fn!==nothing
-        uparea = feedback_fn(uparea, dir, ij)
+        uparea = feedback_fn(uparea, ij, dir)
     end
     setindex!.(area, uparea, Ref(ij)) # the setindex! is needed for the broadcasting over the area-tuple to work
     len[ij] = slen

@@ -441,11 +441,11 @@ end
     dem = dem1.(xs, ys')
 
     # id function
-    area, _ = WWF.waterflows(dem, fill(10.0, size(dem)), bnd_as_pits=false, feedback_fn=(x,_,_)->x)
+    area, _ = WWF.waterflows(dem, fill(10.0, size(dem)), bnd_as_pits=false, feedback_fn=(uparea,_,_)->uparea)
     @test area == [10.0 10.0 40.0 20.0; 10.0 10.0 10.0 10.0; 50.0 30.0 20.0 10.0]
 
     # function
-    area, _ = WWF.waterflows(dem, fill(10.0, size(dem)), bnd_as_pits=false, feedback_fn=(x,_,_)->x+1)
+    area, _ = WWF.waterflows(dem, fill(10.0, size(dem)), bnd_as_pits=false, feedback_fn=(uparea,_,_)->uparea+1)
     @test area == [11.0 11.0 44.0 22.0; 11.0 11.0 11.0 11.0; 55.0 33.0 22.0 11.0]
 end
 
@@ -458,13 +458,13 @@ end
 
     # id function
     area, _ = WWF.waterflows(dem, (fill(1.0, size(dem)), fill(10.0, size(dem))), bnd_as_pits=false,
-                             feedback_fn=(x,_,_)->x)
+                             feedback_fn=(uparea,_,_)->uparea)
     @test area[1] == [1.0 1.0 4.0 2.0; 1.0 1.0 1.0 1.0; 5.0 3.0 2.0 1.0]
     @test area[2] == [10.0 10.0 40.0 20.0; 10.0 10.0 10.0 10.0; 50.0 30.0 20.0 10.0]
 
     # function
     area, _ = WWF.waterflows(dem, (fill(1.0, size(dem)), fill(10.0, size(dem))), bnd_as_pits=false,
-                             feedback_fn=(x,_,_)-> (x[1], x[2] + x[1]))
+                             feedback_fn=(uparea,_,_)-> (uparea[1], uparea[2] + uparea[1]))
     @test area[1] == [1.0 1.0 4.0 2.0; 1.0 1.0 1.0 1.0; 5.0 3.0 2.0 1.0]
     @test area[2] == [11.0 11.0 47.0 23.0; 11.0 11.0 11.0 11.0; 62.0 36.0 23.0 11.0]
 end
