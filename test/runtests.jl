@@ -193,10 +193,6 @@ end
     @test nout == Bool[false true false false; true true true true; false true true true]
     @test nin == Int8[0 0 3 1; 0 0 0 0; 2 1 1 0]
     @test pits ==CartesianIndex{2}[CartesianIndex(1, 1), CartesianIndex(3, 1), CartesianIndex(1, 3), CartesianIndex(1, 4)]
-
-    # non default cellarea
-    area, _ = WWF.waterflows(dem, fill(10.0, size(dem)), bnd_as_pits=false)
-    @test area == [10.0 10.0 40.0 20.0; 10.0 10.0 10.0 10.0; 50.0 30.0 20.0 10.0]
 end
 
 @testset "DEM: peaks2" begin
@@ -413,6 +409,31 @@ end
     @test sum(area.!=area_flow) == 79
     @test sum(dir.!=dir_flow) == 1
 end
+
+@testset "cellarea" begin
+    dx = 0.9
+    xs = -1.5:dx:1
+    ys = -0.5:dx:3.0
+    dem = dem1.(xs, ys')
+
+    # non default cellarea
+    area, _ = WWF.waterflows(dem, fill(10.0, size(dem)), bnd_as_pits=false)
+    @test area == [10.0 10.0 40.0 20.0; 10.0 10.0 10.0 10.0; 50.0 30.0 20.0 10.0]
+end
+
+
+@testset "cellarea: multi-flow" begin
+    dx = 0.9
+    xs = -1.5:dx:1
+    ys = -0.5:dx:3.0
+    dem = dem1.(xs, ys')
+
+    # non default cellarea
+    area, _ = WWF.waterflows(dem, (fill(1.0, size(dem)), fill(10.0, size(dem))), bnd_as_pits=false)
+    @test area[1] == [1.0 1.0 4.0 2.0; 1.0 1.0 1.0 1.0; 5.0 3.0 2.0 1.0]
+    @test area[2] == [10.0 10.0 40.0 20.0; 10.0 10.0 10.0 10.0; 50.0 30.0 20.0 10.0]
+end
+
 
 #################################
 include("postproc.jl")

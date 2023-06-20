@@ -175,8 +175,15 @@ with `NaN`-value are ignored.
 
 args:
 - dem -- the DEM (or hydro-potential); array
-- cellarea=cellarea=fill!(similar(dem),1) -- the source per cell, defaults to 1.  If using physical units
-                              then use a volumetric flux per cell, e.g. m3/s.
+- cellarea=cellarea=fill!(similar(dem),1) -- the source per cell, defaults to 1.
+     - do not use negative values
+     - If using physical units then use a volumetric flux per cell, e.g. m3/s.
+     - Alternatively, `cellarea` can be a tuple of arrays. Then they are treated/routed
+       separately, for instance `(water, tracer)`.  All quantities need to be extensive
+       (i.e. additive, e.g. use internal energy and not temperature)
+     - Alternately, `cellarea` can be a function or tuple of functions with signature
+       `(ij, uparea) -> cellarea` where `uparea` is a tuple if `cellarea` is one too.
+
 - flowdir_fn=d8dir_feature -- the routing function.  Defaults to the built-in `d8dir_feature`
                               function but could be customized
 
@@ -191,7 +198,7 @@ substantially reduce the number of catchments, as currently every boundary point
 is a pit and thus a catchment (if bnd_as_pits==true).
 
 Returns
-- area -- upslope area
+- area -- upslope area (or a tuple of upslope areas if cellarea is a tuple too)
 - stream-length -- length of stream to the farthest source (number of cells traversed)
 - dir -- flow direction at each location
 - nout -- whether the point has outlflow.  I.e. nout[I]==0 --> I is a pit
@@ -223,8 +230,8 @@ Recursively calculate flow-routing and catchments from
 - cellarea - water input
 
 Return:
-- upstream area
-- stream length
+- upslope area
+- stream length (number of cells traversed)
 - catchments Matrix{Int}.  Value==0 corresponds to NaNs in the DEM
   which are not pits (i.e. where no water flows into).
 
@@ -232,35 +239,56 @@ Note: this function may cause a stackoverflow on very big catchments.
 """
 function flowrouting_catchments(dir, pits, cellarea)
     c = fill!(similar(dir, Int), 0)
-    area = fill!(similar(dir,Float64), 0)
     slen = fill!(similar(dir, Int), 0)
+    area = init_area(dir, cellarea) # (matrix,) or tuple of matrices
     np = length(pits)
+    cellarea_ = cellarea isa Tuple ? cellarea : (cellarea, )
+
     # recursively traverse the drainage tree in up-flow direction,
     # starting at all pits
     Threads.@threads for color = 1:length(pits)
         pit = pits[color]
-        _flowrouting_catchments!(area, slen, c, dir, cellarea, color, pit)
+        _flowrouting_catchments!(area, slen, c, dir, cellarea_, color, pit)
+    end
+    # unwrap tuple if cellarea was not a tuple:
+    if !(cellarea isa Tuple)
+        area = area[1]
     end
     return area, slen, c
 end
+# initialize output cellarea:
+# - as tuple or one array
+# - as tuple, if cellarea is a tuple
+init_area(dir, cellarea) = (fill!(similar(dir,Float64), 0), )
+init_area(dir, cellarea::Tuple) = map(x -> fill!(similar(dir,Float64), 0), cellarea)
+
+# Function to retrieve "cellarea" at a location
+# a array, just index:
+get_cell(cellarea::AbstractMatrix, ij) = cellarea[ij]
+# otherwise assume a callable thing-y:
+get_cell(cellarea, ij) = cellarea(ij)
+
 # modifies c and area
 function _flowrouting_catchments!(area, len, c, dir, cellarea, color, ij)
+    # assign catchment (solely dependent on `dir`)
     c[ij] = color
 
+    n = length(cellarea)
+
     # proc upstream points
-    uparea = 0.0
-    slen = 0
+    slen = 0 # note: solely dependent on `dir`
+    uparea = zeros(Float64, n)
     for IJ in iterate_D9(ij, c)
         if ij==IJ
-            uparea += cellarea[ij]
+            uparea .+= get_cell.(cellarea, Ref(ij))
             slen = max(slen, 1)
         elseif flowsinto(IJ, dir[IJ], ij)
             uparea_, slen_ = _flowrouting_catchments!(area, len, c, dir, cellarea, color, IJ)
-            uparea += uparea_
+            uparea .+= uparea_
             slen = max(slen, slen_+1)
         end
     end
-    area[ij] = uparea
+    setindex!.(area, uparea, Ref(ij)) # the setindex! is needed for the broadcasting over the area-tuple to work
     len[ij] = slen
     return uparea, slen
 end
