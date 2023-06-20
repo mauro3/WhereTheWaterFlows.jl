@@ -277,14 +277,14 @@ function _flowrouting_catchments!(area, len, c, dir, cellarea, color, ij)
 
     # proc upstream points
     slen = 0 # note: solely dependent on `dir`
-    uparea = zeros(Float64, n)
+    uparea = get_cell.(cellarea, Ref(ij))
+    slen = max(slen, 1)
     for IJ in iterate_D9(ij, c)
         if ij==IJ
-            uparea .+= get_cell.(cellarea, Ref(ij))
-            slen = max(slen, 1)
+            continue
         elseif flowsinto(IJ, dir[IJ], ij)
             uparea_, slen_ = _flowrouting_catchments!(area, len, c, dir, cellarea, color, IJ)
-            uparea .+= uparea_
+            uparea = uparea .+ uparea_
             slen = max(slen, slen_+1)
         end
     end
