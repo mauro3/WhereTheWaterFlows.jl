@@ -61,6 +61,10 @@ figure()
 WWF.heatmap(x,y,demf.-dem)
 ```
 
+In the `example/` folder there are two more complicated examples.  One
+showcases the ability to route several quantities at once with
+self-feedback via the `feedback_fn`.
+
 ### Post-processing
 
 There are the following function (see their docs for details):

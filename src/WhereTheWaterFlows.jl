@@ -272,7 +272,6 @@ init_area(dir, cellarea::Tuple) = map(x -> fill!(similar(dir,Float64), 0), cella
 function _flowrouting_catchments!(area, len, c, dir, cellarea, feedback_fn, color, ij)
     # assign catchment (solely dependent on `dir`)
     c[ij] = color
-
     n = length(cellarea)
 
     # proc upstream points
