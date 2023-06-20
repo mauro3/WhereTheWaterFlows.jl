@@ -166,9 +166,13 @@ function d8dir_feature(dem, bnd_as_pits)
     return dir, nout, nin, pits, dem, nothing
 end
 
+
+# TODO: if bnd_as_pits routes water along boundary edges first. This would probably
+# substantially reduce the number of catchments, as currently every boundary point
+# is a pit and thus a catchment (if bnd_as_pits==true).
 """
-    waterflows(dem, cellarea=cellarea=fill!(similar(dem),1), flowdir_fn=d8dir_feature;
-               drain_pits=true, bnd_as_pits=false)
+    waterflows(dem, cellarea=fill!(similar(dem),1), flowdir_fn=d8dir_feature;
+               feedback_fn=nothing, drain_pits=true, bnd_as_pits=false)
 
 Does the water flow routing according the D8 algorithm.  Locations of the `dem`
 with `NaN`-value are ignored.
@@ -181,22 +185,18 @@ args:
      - Alternatively, `cellarea` can be a tuple of arrays. Then they are treated/routed
        separately, for instance `(water, tracer)`.  All quantities need to be extensive
        (i.e. additive, e.g. use internal energy and not temperature)
-     - Alternately, `cellarea` can be a function or tuple of functions with signature
-       `(ij, uparea) -> cellarea` where `uparea` is a tuple if `cellarea` is one too.
 
 - flowdir_fn=d8dir_feature -- the routing function.  Defaults to the built-in `d8dir_feature`
                               function but could be customized
 
 kwargs:
+- feedback_fn -- function which is applied to area-value(s) at each cell once all water
+                 of the cell has been accumulated but before the water is routed further downstream.
+                 Signature `(uparea, dir, ij) -> new_uparea`
 - drain_pits -- whether to route through pits (true)
 - bnd_as_pits (true) -- whether the domain boundary and NaNs should be pits,
                  i.e. adjacent cells can drain into them,
                  or whether to ignore them.
-
-TODO: if bnd_as_pits routes water along boundary edges first. This would probably
-substantially reduce the number of catchments, as currently every boundary point
-is a pit and thus a catchment (if bnd_as_pits==true).
-
 Returns
 - area -- upslope area (or a tuple of upslope areas if cellarea is a tuple too)
 - stream-length -- length of stream to the farthest source (number of cells traversed)
@@ -209,13 +209,13 @@ Returns
 - flowdir_extra_output -- extra output of the flowdir_fn, which is `nothing` for the default
 """
 function waterflows(dem, cellarea=fill!(similar(dem),1), flowdir_fn=d8dir_feature;
-                    drain_pits=true, bnd_as_pits=true)
+                    feedback_fn=nothing, drain_pits=true, bnd_as_pits=true)
     dir, nout, nin, pits, dem4drainpits, flowdir_extra_output = flowdir_fn(dem, bnd_as_pits)
-    area, slen, c = flowrouting_catchments(dir, pits, cellarea)
+    area, slen, c = flowrouting_catchments(dir, pits, cellarea, feedback_fn)
     bnds = make_boundaries(c, 1:length(pits))
     if drain_pits
         drainpits!(dir, nin, nout, pits, c, bnds, dem4drainpits)
-        area, slen, c = flowrouting_catchments(dir, pits, cellarea)
+        area, slen, c = flowrouting_catchments(dir, pits, cellarea, feedback_fn)
     end
     #area[isnan.(dem)] .= NaN
     return area, slen, dir, nout, nin, pits, c, bnds, flowdir_extra_output
@@ -237,18 +237,24 @@ Return:
 
 Note: this function may cause a stackoverflow on very big catchments.
 """
-function flowrouting_catchments(dir, pits, cellarea)
+function flowrouting_catchments(dir, pits, cellarea, feedback_fn)
     c = fill!(similar(dir, Int), 0)
     slen = fill!(similar(dir, Int), 0)
-    area = init_area(dir, cellarea) # (matrix,) or tuple of matrices
     np = length(pits)
+    # Some setup to allow both array and tuple-of-array inputs for cellarea and feedback_fn:
+    area = init_area(dir, cellarea) # (matrix,) or tuple of matrices
     cellarea_ = cellarea isa Tuple ? cellarea : (cellarea, )
+    feedback_fn_ = if feedback_fn===nothing
+        nothing
+    else
+        cellarea isa Tuple ? feedback_fn : (x,dir,ij) -> (feedback_fn(x[1], dir, ij),)
+    end
 
     # recursively traverse the drainage tree in up-flow direction,
     # starting at all pits
     Threads.@threads for color = 1:length(pits)
         pit = pits[color]
-        _flowrouting_catchments!(area, slen, c, dir, cellarea_, color, pit)
+        _flowrouting_catchments!(area, slen, c, dir, cellarea_, feedback_fn_, color, pit)
     end
     # unwrap tuple if cellarea was not a tuple:
     if !(cellarea isa Tuple)
@@ -262,14 +268,8 @@ end
 init_area(dir, cellarea) = (fill!(similar(dir,Float64), 0), )
 init_area(dir, cellarea::Tuple) = map(x -> fill!(similar(dir,Float64), 0), cellarea)
 
-# Function to retrieve "cellarea" at a location
-# a array, just index:
-get_cell(cellarea::AbstractMatrix, ij) = cellarea[ij]
-# otherwise assume a callable thing-y:
-get_cell(cellarea, ij) = cellarea(ij)
-
 # modifies c and area
-function _flowrouting_catchments!(area, len, c, dir, cellarea, color, ij)
+function _flowrouting_catchments!(area, len, c, dir, cellarea, feedback_fn, color, ij)
     # assign catchment (solely dependent on `dir`)
     c[ij] = color
 
@@ -277,16 +277,20 @@ function _flowrouting_catchments!(area, len, c, dir, cellarea, color, ij)
 
     # proc upstream points
     slen = 0 # note: solely dependent on `dir`
-    uparea = get_cell.(cellarea, Ref(ij))
+    uparea = getindex.(cellarea, Ref(ij))
     slen = max(slen, 1)
     for IJ in iterate_D9(ij, c)
         if ij==IJ
             continue
         elseif flowsinto(IJ, dir[IJ], ij)
-            uparea_, slen_ = _flowrouting_catchments!(area, len, c, dir, cellarea, color, IJ)
+            uparea_, slen_ = _flowrouting_catchments!(area, len, c, dir, cellarea, feedback_fn, color, IJ)
             uparea = uparea .+ uparea_
             slen = max(slen, slen_+1)
         end
+    end
+    # feedback of areas with each other an onto themselves
+    if feedback_fn!==nothing
+        uparea = feedback_fn(uparea, dir, ij)
     end
     setindex!.(area, uparea, Ref(ij)) # the setindex! is needed for the broadcasting over the area-tuple to work
     len[ij] = slen
