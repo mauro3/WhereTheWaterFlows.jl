@@ -73,8 +73,9 @@ Returns
 - water flux due to additional melt only [m3/s]
 - melt rate at each cell [m/s]
 
-Note: the melt rate can be negative in places where water is routed
-out
+Note: the melt rate is negative in places where water is routed
+out of depressions as the water flows up the hydraulic potential.
+However, freezing will always be less than melt.
 """
 function melting(uparea, ij, dir)
     # constants

@@ -79,6 +79,7 @@ There are the following function (see their docs for details):
 [1] O’Callaghan, J. and Mark, D.: The extraction of drainage networks
     from digital elevation data, Comput. Vision Graph., 28, 323–344,
     1984. [download via google scholar](https://scholar.google.ch/scholar?hl=en&q=The extraction of drainage networks from digital elevation data)
+
 [2] Braun, J. and Willett, S.D.: A very efficient O(n), implicit and
     parallel method to solve the stream power equation governing
     fluvial incision and landscape evolution
