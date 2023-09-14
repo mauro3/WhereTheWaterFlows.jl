@@ -83,13 +83,13 @@ function melting(uparea, ij, dir)
     rho_i = 910 # density ice (repeat because non-const)
 
     dirij = dir[ij]
-    Q = uparea[1]
+    Q_total, Q_extra_melt = uparea[1], uparea[2]
     ds = iseven(dirij) ? dx : sqrt(2)*dx
     phi2 = phi_[ij + WWF.dir2ind(dirij)]
     phi1 = phi_[ij]
     ∇phi = isnan(phi2) ? 0.0 : (phi2 - phi1) / ds
-    melt = -Q*∇phi / rho_w / L
-    return Q+melt, uparea[2]+melt, melt/dx^2
+    melt = -Q_total*∇phi / rho_w / L
+    return Q_total+melt, Q_extra_melt+melt, melt/dx^2
 end
 
 
@@ -101,6 +101,8 @@ area, slen, dir, nout, nin, pits, c, bnds  = WWF.waterflows(phi, drain_pits=true
 # Plot it
 plotyes && WWF.plotit(x, y, phi)
 plotyes && WWF.plotarea(x, y, area[1], pits)
+plotyes && WWF.plotarea(x, y, area[2], pits)
+@show extrema(area[3])
 
 plotyes && WWF.heatmap(x, y, c)
 
