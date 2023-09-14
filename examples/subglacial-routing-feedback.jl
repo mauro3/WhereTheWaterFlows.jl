@@ -89,7 +89,7 @@ function melting(uparea, ij, dir)
     phi1 = phi_[ij]
     ∇phi = isnan(phi2) ? 0.0 : (phi2 - phi1) / ds
     melt = -Q*∇phi / rho_w / L
-    return uparea[1]+melt, uparea[2]+melt, melt/dx^2
+    return Q+melt, uparea[2]+melt, melt/dx^2
 end
 
 

@@ -185,7 +185,6 @@ args:
      - Alternatively, `cellarea` can be a tuple of arrays. Then they are treated/routed
        separately, for instance `(water, tracer)`.  All quantities need to be extensive
        (i.e. additive, e.g. use internal energy and not temperature)
-
 - flowdir_fn=d8dir_feature -- the routing function.  Defaults to the built-in `d8dir_feature`
                               function but could be customized
 
