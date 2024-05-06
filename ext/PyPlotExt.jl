@@ -1,5 +1,16 @@
-using .PyPlot
-export plotarea, plotarea_dem
+module PyPlotExt
+# Some extension specific threads for my information:
+# - https://www.youtube.com/live/vG6ZLhe9Hns?si=7bPLZWqC-EB3AFzr&t=24578
+# - https://discourse.julialang.org/t/are-extension-packages-importable/92527/18
+# - https://discourse.julialang.org/t/package-extensions-structs-inside-extensions/101849
+# - https://github.com/JuliaLang/Pkg.jl/pull/3552
+
+
+using WhereTheWaterFlows
+const WWF=WhereTheWaterFlows
+using PyPlot
+
+export plotarea, plotarea_dem, plotit, plotdir, plotbnds, heatmap, plotlakedepth, plot_catchments
 
 """
     plotit(x, y, dem)
@@ -22,7 +33,7 @@ function plotit(x, y, waterflows_output::Tuple, dem)
 end
 
 function plotdir(x, y, dir)
-    vecfield = dir2vec.(dir)
+    vecfield = WWF.dir2vec.(dir)
     vecfieldx = [v[1] for v in vecfield]
     vecfieldy = [v[2] for v in vecfield]
     quiver(repeat(x,1, length(y)), repeat(y,length(x),1), vecfieldx, vecfieldy)
@@ -68,7 +79,7 @@ end
 
 function plotlakedepth(x, y, dem)
     area, slen, dir, nout, nin, pits  = waterflows(dem)
-    demf = fill_dem(dem, pits, dir)
+    demf = WWF.fill_dem(dem, pits, dir)
     heatmap(x, y, demf.-dem)
 end
 
@@ -98,4 +109,6 @@ function plot_catchments(x, y, c, lim=10)
         c[inds] .= i
     end
     heatmap(x,y,c)
+end
+
 end

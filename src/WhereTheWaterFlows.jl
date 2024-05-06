@@ -1,6 +1,6 @@
 module WhereTheWaterFlows
 
-using StaticArrays, Requires
+using StaticArrays
 
 export waterflows
 
@@ -286,7 +286,7 @@ function _flowrouting_catchments!(area, len, c, dir, cellarea, feedback_fn, colo
             slen = max(slen, slen_+1)
         end
     end
-    # feedback of areas with each other an onto themselves
+    # feedback of areas with each other and onto themselves
     if feedback_fn!==nothing
         uparea = feedback_fn(uparea, ij, dir)
     end
@@ -552,12 +552,35 @@ function _flow_from_to!(P1, P2, dir, nin, nout, allow_reversion=false)
 end
 
 
-## Plotting
-function __init__()
-    @require PyPlot="d330b81b-6aea-500a-939a-2ce795aea3ee" include("plotting.jl")
-end
-
 ## Post processing
 include("postproc.jl")
+
+## Plotting via Plt
+struct Plt end
+
+"""
+Plotting functions can be accessed via `plt` after loading PyPlot.
+
+Example
+```
+WhereTheWaterFlows.plt.plotit(dem)
+```
+"""
+plt = Plt()
+function Base.getproperty(::Plt, name::Symbol)
+    ext = Base.get_extension(@__MODULE__, :PyPlotExt)
+    if isnothing(ext)
+        error("Need to `using PyPlot` to make plotting available")
+    end
+    return getproperty(ext, name)
+end
+
+function Base.propertynames(::Plt)
+    ext = Base.get_extension(@__MODULE__, :PyPlotExt)
+    if isnothing(ext)
+        error("Need to `using PyPlot` to make plotting available")
+    end
+    return propertynames(ext)
+end
 
 end # module

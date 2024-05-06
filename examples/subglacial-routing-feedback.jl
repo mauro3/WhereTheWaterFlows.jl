@@ -54,12 +54,12 @@ phi = rho_w*g*bed + flotation_fraction * g * rho_i * (surface - bed)
 
 # To track the amount of melted ice, we'll use three cellareas as inputs,
 # which in turns leads to three outputs in `area`:
-# - water discharge including extra melt
+# - water discharge due to source and extra melt
 # - water discharge due to extra melt only
 # - melt rate in m/s at each cell
 cellarea = (fill!(similar(surface), 0.1/day*dx*dx), # summer conditions: 10cm melt per day over the whole glacier
-            fill!(similar(surface), 0.0),
-            fill!(similar(surface), 0.0))
+            fill!(similar(surface), 0.0), # no source here
+            fill!(similar(surface), 0.0)) # no source here
 
 const phi_ = phi # make const for use in below function
 """
@@ -99,12 +99,12 @@ area, slen, dir, nout, nin, pits, c, bnds  = WWF.waterflows(phi, drain_pits=true
                                                             feedback_fn=melting)
 
 # Plot it
-plotyes && WWF.plotit(x, y, phi)
-plotyes && WWF.plotarea(x, y, area[1], pits)
-plotyes && WWF.plotarea(x, y, area[2], pits)
+plotyes && WWF.plt.plotit(x, y, phi)
+plotyes && WWF.plt.plotarea(x, y, area[1], pits)
+plotyes && WWF.plt.plotarea(x, y, area[2], pits)
 @show extrema(area[3])
 
-plotyes && WWF.heatmap(x, y, c)
+plotyes && WWF.plt.heatmap(x, y, c)
 
 phi_filled = WWF.fill_dem(phi, pits, dir) #, small=1e-6)
-plotyes && WWF.heatmap(x, y, phi_filled .- phi)
+plotyes && WWF.plt.heatmap(x, y, phi_filled .- phi)

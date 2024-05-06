@@ -36,29 +36,29 @@ x,y,dem = peaks2(200)
 area, slen, dir, nout, nin, pits, c, bnds = waterflows(dem)
 
 # log-upslope area as well as pits (sinks)
-WWF.plotarea(x, y, area, pits)
+WWF.plt.plotarea(x, y, area, pits)
 
 # log-upslope area over contours of the dem
-WWF.plotarea_dem(x, y, dem, area, pits)
+WWF.plt.plotarea_dem(x, y, dem, area, pits)
 
 # catchments
 figure()
-WWF.heatmap(x,y,c)
+WWF.plt.heatmap(x,y,c)
 
 # A single catchment of some point.  Choose one with large catchment:
 i, j = 50, findmax(area[50,:])[2]
 cc = catchment(dir, CartesianIndex(i,j))
-WWF.heatmap(x,y,cc)
+WWF.plt.heatmap(x,y,cc)
 plot(x[i], y[j], "<r", ms=10)
 
 # stream length
 figure()
-WWF.heatmap(x,y,slen)
+WWF.plt.heatmap(x,y,slen)
 
 demf = fill_dem(dem, pits, dir)
 # "lake-depth"
 figure()
-WWF.heatmap(x,y,demf.-dem)
+WWF.plt.heatmap(x,y,demf.-dem)
 ```
 
 In the `example/` folder there are two more complicated examples.  One
