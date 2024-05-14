@@ -402,7 +402,8 @@ end
     dir[ind] = WWF.NOFLOWer
     # and drain the pits
     WWF.drainpits!(dir, nin, nout, pits, c, bnds, dem)
-    area, slen, c = WWF.flowrouting_catchments(dir, pits, ones(size(dem)), nothing)
+    stacksize = 2^13 * 2^10
+    area, slen, c = WWF.flowrouting_catchments(dir, pits, ones(size(dem)), nothing, stacksize)
     @test sum(c.==0) == 42 # these are bongous...
 
     area_flow, dir_flow = WWF.waterflows(dem, drain_pits=true, bnd_as_pits=true)[[1,3]];
@@ -469,6 +470,23 @@ end
     @test area[2] == [11.0 11.0 47.0 23.0; 11.0 11.0 11.0 11.0; 62.0 36.0 23.0 11.0]
 end
 
+"Potentially pathological function for call depth"
+function ramp(l,w)
+    y=-w:w
+    x=1:l
+    dem = (1 .+ y.^2) .* x'.*0.00001
+    return x,y,dem
+end
+@testset "stackoverflow" begin
+    x,y,dem = ramp(10^4,3);
+    waterflows(dem, drain_pits=false); # no error
+    @test_throws TaskFailedException waterflows(dem, drain_pits=false, stacksize=10) # inside it's a StackOverflowError
+
+    x,y,dem = ramp(3*10^4,3);
+    @test_throws TaskFailedException waterflows(dem, drain_pits=false) # inside it's a StackOverflowError
+
+    waterflows(dem, drain_pits=false, stacksize=2^14 * 2^10) # no more error
+end
 
 #################################
 include("postproc.jl")
