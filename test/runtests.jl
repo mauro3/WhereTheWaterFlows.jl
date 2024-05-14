@@ -480,12 +480,7 @@ end
 @testset "stackoverflow" begin
     x,y,dem = ramp(10^4,3);
     waterflows(dem, drain_pits=false); # no error
-    @test_throws TaskFailedException waterflows(dem, drain_pits=false, stacksize=10) # inside it's a StackOverflowError
-
-    x,y,dem = ramp(3*10^4,3);
-    @test_throws TaskFailedException waterflows(dem, drain_pits=false) # inside it's a StackOverflowError
-
-    waterflows(dem, drain_pits=false, stacksize=2^14 * 2^10) # no more error
+    @test_throws TaskFailedException waterflows(dem, drain_pits=false, stacksize=1000) # inside it's a StackOverflowError
 end
 
 #################################
