@@ -411,6 +411,18 @@ end
     @test sum(dir.!=dir_flow) == 1
 end
 
+@testset "drainpits" begin
+    xs, dem = peaks2_nan_edge()
+    ys = xs
+
+    area, slen, dir, nout, nin, pits, c, bnds = WWF.waterflows(dem, drain_pits=false, bnd_as_pits=true);
+    WWF.drainpits!(dir, nin, nout, pits, c, bnds, dem)
+    area, slen, c = WWF.flowrouting_catchments(dir, pits, fill!(similar(dem),1), nothing, 2^13 * 2^10)
+    bnds2 = WWF.make_boundaries(c, 1:length(pits))
+
+    @test sort(sort.(bnds))==sort(sort.(bnds2))
+end
+
 @testset "cellarea" begin
     dx = 0.9
     xs = -1.5:dx:1
