@@ -400,19 +400,19 @@ end
     @test all([c[pits[cc]]==cc  for cc=1:length(pits)]) # pit in catchment of same color
 end
 
-@testset "NOFLOWer" begin
+@testset "BARRIER" begin
     xs, dem = peaks2_nan_edge()
     ys = xs
 
     area, slen, dir, nout, nin, pits, c, bnds = WWF.waterflows(dem, drain_pits=false, bnd_as_pits=true);
     @test sum(c.==0) == 8
-    # add a NOFLOWer cell
+    # add a BARRIER cell
     # (Note: this will not be consistent with the routing
-    # (i.e. flow is still into NOFLOWer, i.e. NOFLOWer should be a pit) and thus
+    # (i.e. flow is still into BARRIER, i.e. BARRIER should be a pit) and thus
     # leads to bongous results.  Well, let's just test the bongous results anyway,
     # to make sure they stay the same bongous.)
     ind = CartesianIndex(43,30)
-    dir[ind] = WWF.NOFLOWer
+    dir[ind] = WWF.BARRIER
     # and drain the pits
     WWF.drainpits!(dir, nin, nout, pits, c, bnds, dem)
     stacksize = 2^13 * 2^10

@@ -7,7 +7,10 @@ export waterflows
 const I11 = CartesianIndex(1,1)
 const I22 = CartesianIndex(2,2)
 const NOFLOW = 5     # direction number indicating no flow.  Use a constant to better keep track.
-const NOFLOWer = 10  # direction number indicating no flow as well as no flow into this cell.
+                     # Could be a pit (local minimum) or a cell in a completely flat area.
+const SINK = 10      # A cell where water disappears, typically located at the domain boundary
+                     # or adjacent to NaN-cells of the DEM
+const BARRIER = 11   # Direction number indicating no flow as well as no flow into this cell.
 
 """
 Direction numbers.  E.g. dirnums[1,1] will return the number
@@ -42,7 +45,7 @@ showme(ar) = (display(reverse(ar',dims=1)); println(" "))
 ind2dir(ind::CartesianIndex) = dirnums[ind + I22]
 
 "Translate a D8 direction number into a CartesianIndex (i.e. a flow vector). Maps dir==10 to no-flow also."
-dir2ind(dir) = dir==10 ? CartesianIndex(0,0) : cartesian[dir]
+dir2ind(dir) = dir==BARRIER ? CartesianIndex(0,0) : cartesian[dir]
 
 "Translate a D8 direction number into a 2D vector."
 dir2vec(dir) = [dir2ind(dir).I...]
@@ -423,16 +426,16 @@ function drainpits!(dir, nin, nout, pits, c, bnds, dem)
             isempty(bnds[color]) && continue
 
             # Find point on catchment boundary with minimum elevation
-            # Avoid, if possible, picking a NOFLOWer point.
+            # Avoid, if possible, picking a BARRIER point.
             minn = typemax(eltype(dem))
             Imin = CartesianIndex(-1,-1)
             for I in bnds[color]
-                if dem[I] < minn && dir[I]!=NOFLOWer
+                if dem[I] < minn && dir[I]!=BARRIER
                     minn = dem[I]
                     Imin = I
                 end
             end
-            if Imin == CartesianIndex(-1,-1) # no NOFLOWer cells found
+            if Imin == CartesianIndex(-1,-1) # no BARRIER cells found
                 for I in bnds[color]
                     if dem[I] < minn
                         minn = dem[I]
