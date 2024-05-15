@@ -202,6 +202,7 @@ end
     area, slen, dir, nout, nin, pits, c, bnds = WWF.waterflows(dem, drain_pits=false, bnd_as_pits=false);
     #plotarea_dem(xs, ys, dem, area, pits)
     @test length(pits) == 6
+    @test sum(dir.==5) == length(pits)
     @test maximum(slen)==86
     @test maximum(area)==4759
     @test length(unique(c))==6
@@ -232,6 +233,7 @@ end
     area, slen, dir, nout, nin, pits, c, bnds = WWF.waterflows(dem, drain_pits=false, bnd_as_pits=false);
     # plotarea_dem(xs, ys, dem, area, pits)
     @test length(pits) == 7
+    @test sum(dir.==5) - sum(isnan.(dem)) == length(pits)
     @test maximum(slen)==87
     @test maximum(area[.!isnan.(area)])==4725
     @test length(unique(c))==8
@@ -244,6 +246,7 @@ end
     area, slen, dir, nout, nin, pits, c, bnds = WWF.waterflows(dem, drain_pits=false, bnd_as_pits=true);
     # plotarea_dem(xs, ys, dem, area, pits)
     @test length(pits) == 408
+    @test sum(dir.==5) - sum(isnan.(dem)) + 10 == length(pits) # +10 is because some NaN-cells become pits as bnd_as_pits=true
     @test maximum(slen)==66
     @test maximum(area[.!isnan.(area)])==4457
     @test length(unique(c))==409
@@ -257,6 +260,7 @@ end
     area, slen, dir, nout, nin, pits, c, bnds = WWF.waterflows(dem, drain_pits=true, bnd_as_pits=false);
     # plotarea_dem(xs, ys, dem, area, pits)
     @test length(pits) == 4
+    @test sum(dir.==5) - sum(isnan.(dem)) == length(pits)
     @test maximum(slen)==142
     @test maximum(area[.!isnan.(area)])==7706
     @test length(unique(c))==5
@@ -270,6 +274,7 @@ end
     area, slen, dir, nout, nin, pits, c, bnds = WWF.waterflows(dem, drain_pits=true, bnd_as_pits=true);
     # plotarea_dem(xs, ys, dem, area, pits)
     @test length(pits) == 406
+    @test sum(dir.==5) - sum(isnan.(dem)) + 10 == length(pits) # +10 is because some NaN-cells become pits as bnd_as_pits=true
     @test maximum(slen)==75
     @test maximum(area[.!isnan.(area)])==4458
     @test length(unique(c))==407
@@ -289,6 +294,7 @@ end
     area, slen, dir, nout, nin, pits, c, bnds = WWF.waterflows(dem, drain_pits=false, bnd_as_pits=false);
     # plotarea_dem(xs, ys, dem, area, pits)
     @test length(pits) == 6
+    @test sum(dir.==5) - sum(isnan.(dem)) == length(pits)
     @test maximum(slen)==84
     @test maximum(area[.!isnan.(area)])==4658
     @test length(unique(c))==7
@@ -300,6 +306,7 @@ end
     area, slen, dir, nout, nin, pits, c, bnds = WWF.waterflows(dem, drain_pits=false, bnd_as_pits=true);
     # plotarea_dem(xs, ys, dem, area, pits)
     @test length(pits) == 390
+    @test sum(dir.==5) - 8 == length(pits)
     @test maximum(slen)==64
     @test maximum(area[.!isnan.(area)])==4434
     @test length(unique(c))==391
@@ -311,6 +318,7 @@ end
     area, slen, dir, nout, nin, pits, c, bnds = WWF.waterflows(dem, drain_pits=true, bnd_as_pits=false);
     #plotarea_dem(xs, ys, dem, area, pits)
     @test length(pits) == 1
+    @test sum(dir.==5) - sum(isnan.(dem)) == length(pits)
     @test maximum(slen)==195
     @test maximum(area[.!isnan.(area)])==9605
     @test length(unique(c))==2
@@ -323,6 +331,7 @@ end
     area, slen, dir, nout, nin, pits, c, bnds = WWF.waterflows(dem, drain_pits=true, bnd_as_pits=true);
     # plotarea_dem(xs, ys, dem, area, pits)
     @test length(pits) == 388
+    @test sum(dir.==5) - 8 == length(pits)
     @test maximum(slen)==81
     @test maximum(area[.!isnan.(area)])==4978
     @test length(unique(c))==389
@@ -341,6 +350,7 @@ end
     area, slen, dir, nout, nin, pits, c, bnds = WWF.waterflows(dem, drain_pits=true, bnd_as_pits=false)
     @test mask[pits[1]]
     @test length(pits)==1
+    @test sum(dir.==5) - sum(isnan.(dem)) == length(pits)
     @test all([c[pits[cc]]==cc  for cc=1:length(pits)]) # pit in catchment of same color
     #@test all(getindex.(Ref(mask), pits).==0) # tests that there are no interior pits left
     area, slen, dir, nout, nin, pits, c, bnds = WWF.waterflows(dem, drain_pits=true, bnd_as_pits=true)
@@ -355,6 +365,7 @@ end
     @test mask[pits[1]]
     @test mask[pits[2]]
     @test length(pits)==2
+    @test sum(dir.==5) - sum(isnan.(dem)) == length(pits)
     @test all([c[pits[cc]]==cc  for cc=1:length(pits)]) # pit in catchment of same color
     area, slen, dir, nout, nin, pits, c, bnds = WWF.waterflows(dem, drain_pits=true, bnd_as_pits=true)
     @test all(getindex.(Ref(mask), pits).==0)
@@ -366,6 +377,7 @@ end
     #should not error
     area, slen, dir, nout, nin, pits, c, bnds = WWF.waterflows(dem, drain_pits=true, bnd_as_pits=false)
     @test length(pits)==2
+    @test sum(dir.==5) - sum(isnan.(dem)) == length(pits)
     @test all([c[pits[cc]]==cc  for cc=1:length(pits)]) # pit in catchment of same color
     area, slen, dir, nout, nin, pits, c, bnds = WWF.waterflows(dem, drain_pits=true, bnd_as_pits=true)
     @test all(getindex.(Ref(mask), pits).==0)
@@ -379,6 +391,7 @@ end
     mask[1,:] .= false; mask[end,:] .= false; mask[:,1] .= false; mask[:,end] .= false
     # should not have a pit in the interior
     area, slen, dir, nout, nin, pits, c, bnds = WWF.waterflows(dem, drain_pits=true, bnd_as_pits=false)
+    @test sum(dir.==5) - sum(isnan.(dem)) == length(pits)
     @test all(getindex.(Ref(mask), pits).==0)
     @test all([c[pits[cc]]==cc  for cc=1:length(pits)]) # pit in catchment of same color
     area, slen, dir, nout, nin, pits, c, bnds = WWF.waterflows(dem, drain_pits=true, bnd_as_pits=true)
@@ -405,6 +418,7 @@ end
     stacksize = 2^13 * 2^10
     area, slen, c = WWF.flowrouting_catchments(dir, pits, ones(size(dem)), nothing, stacksize)
     @test sum(c.==0) == 42 # these are bongous...
+    @test sum(dir.==5) - 8 == length(pits)
 
     area_flow, dir_flow = WWF.waterflows(dem, drain_pits=true, bnd_as_pits=true)[[1,3]];
     @test sum(area.!=area_flow) == 79
@@ -421,6 +435,7 @@ end
     bnds2 = WWF.make_boundaries(c, 1:length(pits))
 
     @test sort(sort.(bnds))==sort(sort.(bnds2))
+    @test sum(dir.==5) - 8 == length(pits)
 end
 
 @testset "cellarea" begin
