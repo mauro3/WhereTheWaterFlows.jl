@@ -92,6 +92,7 @@ Return
 - nout - number of outflow cells of a cell (0 or 1)
 - nin  - number of inflow cells of a cell (0-8)
 - pits - location of pits as a `Vector{CartesianIndex{2}}` (sorted)
+- dem - DEM, unchanged
 - flowdir_extra_output -- nothing (not used by this function)
 """
 function d8dir_feature(dem, bnd_as_pits)
@@ -362,10 +363,9 @@ function _prune_boundary!(del, bnds, catchments::AbstractMatrix, color, colormap
 end
 
 """
-     drainpits!(dir, nin, nout, pits, c, bnds, dem;
-               maxiter=100)
+     drainpits!(dir, nin, nout, pits, c, bnds, dem)
 
-Return an updated direction field which drains (interior) pits.
+Update in place the direction field such that it drains (interior) pits.
 This is done by reversing the flow connecting the lowest point on the catchment boundary
 to the pit for each catchment.
 
@@ -373,12 +373,12 @@ There needs to be a decision on how to treat the outer boundary and boundaries
 to NaN-cells.  Possibilities:
 - do not treat boundary cells as pits but do treat pits at the boundary as terminal.
 - treat boundary cells as pits, i.e. flow reaching such a cell will vanish.  Again
-  such cells would be terminal.  This is currently done
+  such cells would be terminal.  This is currently done.
 
 TODO: What to do if there are no terminal pits in the DEM?  Fill to the uppermost pit?  Or take
 the lowermost as terminal? -> currently it picks a random one
 
-Returns new dir, nin, nout, pits (sorted), c, bnds
+Update in place dir, nin, nout, pits (sorted), c, bnds
 
 TODO: this is the performance bottleneck.
 """
