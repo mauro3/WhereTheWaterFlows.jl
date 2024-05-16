@@ -1,16 +1,19 @@
 module WhereTheWaterFlows
 
 using StaticArrays
+using OffsetArrays: Origin, no_offset_view
 
 export waterflows
 
 const I11 = CartesianIndex(1,1)
 const I22 = CartesianIndex(2,2)
-const NOFLOW = 5     # direction number indicating no flow.  Use a constant to better keep track.
-                     # Could be a pit (local minimum) or a cell in a completely flat area.
+const PIT = 5        # Direction number indicating no flow, this is a "pit", i.e. a
+                     # local minimum or a cell in a completely flat area.
 const SINK = 10      # A cell where water disappears, typically located at the domain boundary
-                     # or adjacent to NaN-cells of the DEM
-const BARRIER = 11   # Direction number indicating no flow as well as no flow into this cell.
+                     # (when setting bnd_as_sink=true) adjacent to NaN-cells of the DEM.
+                     # Note: PITs can also be sinks if drain_pits==false.
+const BARRIER = 11   # Direction number indicating no flow into or out of this cell.  All DEM
+                     # cells which are NaNs map to this.
 
 """
 Direction numbers.  E.g. dirnums[1,1] will return the number
@@ -21,7 +24,7 @@ the matrix and the y-axis the columns.  To print them in this "normal"
 coordinate system use `showme`
 """
 const dirnums = SMatrix{3,3}(reverse([ 7      8 9
-                                       4 NOFLOW 6
+                                       4 PIT 6
                                        1      2 3]',
                                      dims=2))
 
@@ -44,8 +47,14 @@ showme(ar) = (display(reverse(ar',dims=1)); println(" "))
 "Translate a CartesianIndex, giving the offset, into a direction number"
 ind2dir(ind::CartesianIndex) = dirnums[ind + I22]
 
-"Translate a D8 direction number into a CartesianIndex (i.e. a flow vector). Maps dir==10 to no-flow also."
-dir2ind(dir) = dir==BARRIER ? CartesianIndex(0,0) : cartesian[dir]
+"""
+Translate a D8 direction number into a CartesianIndex (i.e. a flow vector).
+Maps dir==BARRIER and dir==SINK to CartesianIndex(0,0) also.
+"""
+function dir2ind(dir)
+    dir==BARRIER && error("Cannot make CartisianIndex for BARRIER")
+    return dir==SINK ? CartesianIndex(0,0) : cartesian[dir]
+end
 
 "Translate a D8 direction number into a 2D vector."
 dir2vec(dir) = [dir2ind(dir).I...]
@@ -79,31 +88,30 @@ function on_outer_boundary(ar, I::CartesianIndex)
 end
 
 """
-    d8dir_feature(dem, bnd_as_pits)
+    d8dir_feature(dem, bnd_as_sink, nan_as_sink)
 
-D8 directions of a DEM and drainage features.
+D8 directions of a DEM and drainage features (nin & nout).
 
-Elevations with NaN map to dir==NOFLOW, i.e. just like pits.
-However, they are not treated in the pits-filling function `drainpits`.
+Elevations with NaN map to dir==BARRIER, cells around them will be set to SINK if nan_as_sink==true
+or receive no special treatment otherwise.
 
-The argument `bnd_as_pits` determines whether neighboring cells
-flow out of the domain or into NaN-cells (`bnd_as_pits==true`)
-or not.
+The argument `bnd_as_sink` determines whether cells at the domain boundary act as sinks.
 
 Return
 - dir  - direction, encoded as `dirnums`
 - nout - number of outflow cells of a cell (0 or 1)
 - nin  - number of inflow cells of a cell (0-8)
-- pits - location of pits as a `Vector{CartesianIndex{2}}` (sorted)
+- sinks - location of sinks as a `Vector{CartesianIndex{2}}` (sorted) (here dir==SINK)
+- pits - location of pits as a `Vector{CartesianIndex{2}}` (sorted) (here dir==PIT)
 - dem - DEM, unchanged
-- flowdir_extra_output -- nothing (not used by this function)
+- flowdir_extra_output -- nothing (not used by this function, but could be by custom ones)
 """
-function d8dir_feature(dem, bnd_as_pits)
+function d8dir_feature(dem, bnd_as_sink, nan_as_sink)
     # outputs
     dir = fill!(similar(dem, Int8), 0)
-    #nout = falses(size(dem))
     nout = fill!(similar(dem, Bool), false)
     nin = fill!(similar(dem, Int8), 0)
+    sinks = CartesianIndex{2}[]
     pits = CartesianIndex{2}[]
 
     R = CartesianIndices(size(dem))
@@ -111,72 +119,75 @@ function d8dir_feature(dem, bnd_as_pits)
 
     # get dir for all points
     for I in R
-        # make pits on boundary if bnd_as_pits is set
-        if bnd_as_pits && on_outer_boundary(dem,I)
-            # make it a pit
-            dir[I] = NOFLOW
+        ele = dem[I]
+
+        # always make NaN points BARRIERS
+        if isnan(ele)
+            dir[I] = BARRIER
+            continue
+        end
+        # make sinks on boundary if bnd_as_sink is set
+        if bnd_as_sink && on_outer_boundary(dem,I)
+            # make it a sink
+            dir[I] = SINK
             continue
         end
 
-        ele = dem[I]
         delta_ele = 0.0 # keeps track of biggest elevation change
-        dir_ = NOFLOW
-        if isnan(ele)
-            # just mark as NOFLOW
-        else
-            for J in iterate_D9(I, Iend)
-                I==J && continue
-                ele2 = dem[J]
-                if isnan(ele2)
-                    if bnd_as_pits
-                        # flow into first found NaN-cell
-                        dir_ = ind2dir(J-I)
-                        break
-                    else
-                        # ignore NaN-Cell
-                        continue
-                    end
+        dir_ = PIT
+        for J in iterate_D9(I, Iend)
+            I==J && continue
+            ele2 = dem[J]
+            if isnan(ele2)
+                if nan_as_sink
+                    dir_ = SINK
+                    break
+                else
+                    # ignore NaN-Cell
+                    continue
                 end
-                delta_ele2 = (ele2 - ele) * diagonal_fac(J-I)
-                if delta_ele2 < delta_ele
-                    # lower elevation found, adjust dir
-                    delta_ele = delta_ele2
-                    dir_ = ind2dir(J-I)
-                end
+            end
+            delta_ele2 = (ele2 - ele) * diagonal_fac(J-I)
+            if delta_ele2 < delta_ele
+                # lower elevation found, adjust dir
+                delta_ele = delta_ele2
+                dir_ = ind2dir(J-I)
             end
         end
         dir[I] = dir_
     end
-    # flow features
+    # flow features (i.e. nout, nin)
     # (not thread-safe because of push!)
     for I in R
         for J in iterate_D9(I, Iend)
             J==I && continue
             nin[I] += flowsinto(J, dir[J], I)
         end
-        if dir[I]==NOFLOW
+        if dir[I]==PIT
             nout[I] = false
-            if !isnan(dem[I])
-                push!(pits, I)
-            elseif nin[I]>0
-                # mark NaN points only as pits if something is flowing into them
-                push!(pits, I)
-            end
+            push!(pits, I)
+        elseif dir[I]==SINK
+            nout[I] = false
+            push!(sinks, I)
+        elseif dir[I]==BARRIER
+            nout[I] = false
+            # check that nothing flows into it
+            @assert nin[I]==0 "Inflow into BARRIER cell detected!  Bug in this code."
         else
             nout[I] = true
         end
     end
-
-    return dir, nout, nin, pits, dem, nothing
+    pits_ = Origin(length(sinks)+1)(pits)
+    return dir, nout, nin, sinks, pits_, dem, nothing
 end
 
 
-# TODO: if bnd_as_pits routes water along boundary edges first. This would probably
+# TODO: think about: if bnd_as_sink routes water along boundary edges first. This would probably
 # substantially reduce the number of catchments, as currently every boundary point
-# is a pit and thus a catchment (if bnd_as_pits==true).
+# is a pit and thus a catchment (if bnd_as_sink==true).
 """
     waterflows(dem, cellarea=fill!(similar(dem),1), flowdir_fn=d8dir_feature;
-               feedback_fn=nothing, drain_pits=true, bnd_as_pits=false)
+               feedback_fn=nothing, drain_pits=true, bnd_as_sink=false)
 
 Does the water flow routing according the D8 algorithm.  Locations of the `dem`
 with `NaN`-value are ignored.
@@ -197,9 +208,9 @@ kwargs:
                  of the cell has been accumulated but before the water is routed further downstream.
                  Signature `(uparea, ij, dir) -> new_uparea`
 - drain_pits -- whether to route through pits (true)
-- bnd_as_pits (true) -- whether the domain boundary and NaNs should be pits,
-                 i.e. adjacent cells can drain into them,
-                 or whether to ignore them.
+- bnd_as_sink (true) -- whether the domain boundary should be sinks, i.e. adjacent cells
+                 can drain into them, or whether to ignore them.
+- nan_as_sink (true) -- whether NaN cells in the DEM should make adjacent cells a sink.
 - stacksize (2^13 * 2^10) -- size of the call-stack in _flowrouting_catchments!, which is prone to
                  StackOverflowError.  Note however, that OutOfMemory errors are likely if increased.
 
@@ -210,22 +221,29 @@ Returns
 - dir -- flow direction at each location
 - nout -- whether the point has outlflow.  I.e. nout[I]==0 --> I is a pit
 - nin -- number of inflow cells
+- sinks -- location of sinks as Vector{CartesianIndex{2}}
 - pits -- location of pits as Vector{CartesianIndex{2}}
-- c -- catchment map
+- c -- catchment map (color numbers ∈ 1:length(sinks) are for sinks, others for pits)
 - bnds -- boundaries between catchments.  The boundary to the exterior/NaNs is not in here.
 - flowdir_extra_output -- extra output of the flowdir_fn, which is `nothing` for the default
 """
 function waterflows(dem, cellarea=fill!(similar(dem),1), flowdir_fn=d8dir_feature;
-                    feedback_fn=nothing, drain_pits=true, bnd_as_pits=true, stacksize=2^13 * 2^10)
-    dir, nout, nin, pits, dem4drainpits, flowdir_extra_output = flowdir_fn(dem, bnd_as_pits)
-    area, slen, c = flowrouting_catchments(dir, pits, cellarea, feedback_fn, stacksize)
-    bnds = make_boundaries(c, 1:length(pits))
+                    feedback_fn=nothing, drain_pits=true, bnd_as_sink=true, nan_as_sink=true, stacksize=2^13 * 2^10)
+    if drain_pits && !bnd_as_sink
+        if !nan_as_sink || (nan_as_sink && sum(isnan.(dem))==0)
+            error("No sinks in the domain.  Consider setting bnd_as_sink and/or nan_as_sink and add NaNs to the `dem`.")
+        end
+    end
+
+    dir, nout, nin, sinks, pits, dem4drainpits, flowdir_extra_output = flowdir_fn(dem, bnd_as_sink, nan_as_sink)
+    area, slen, c = flowrouting_catchments(dir, sinks, pits, cellarea, feedback_fn, stacksize)
+    bnds = make_boundaries(c, collect(axes(pits)[1]))
     if drain_pits
-        drainpits!(dir, nin, nout, pits, c, bnds, dem4drainpits)
-        area, slen, c = flowrouting_catchments(dir, pits, cellarea, feedback_fn, stacksize)
+        drainpits!(dir, nin, nout, sinks, pits, c, bnds, dem4drainpits)
+        area, slen, c = flowrouting_catchments(dir, sinks, pits, cellarea, feedback_fn, stacksize)
     end
     #area[isnan.(dem)] .= NaN
-    return area, slen, dir, nout, nin, pits, c, bnds, flowdir_extra_output
+    return area, slen, dir, nout, nin, sinks, pits, c, bnds, flowdir_extra_output
 end
 
 """
@@ -245,8 +263,8 @@ Return:
 
 Note: this function may cause a stackoverflow on very big catchments.
 """
-function flowrouting_catchments(dir, pits, cellarea, feedback_fn, stacksize) # on linux standard is 2^13 * 2^10
-    c = fill!(similar(dir, Int), 0)
+function flowrouting_catchments(dir, sinks, pits, cellarea, feedback_fn, stacksize) # on linux standard is 2^13 * 2^10
+    c = fill!(similar(dir, Int), 0) # catchment color of BARRIER is 0
     slen = fill!(similar(dir, Int), 0)
     np = length(pits)
     # Some setup to allow both array and tuple-of-array inputs for cellarea and feedback_fn:
@@ -259,9 +277,18 @@ function flowrouting_catchments(dir, pits, cellarea, feedback_fn, stacksize) # o
     end
 
     # recursively traverse the drainage tree in up-flow direction,
-    # starting at all pits.
+    # starting at all sinks and pits (the pits will likely be removed with drainpits! eventually)
     #Threads.@threads
-    for color = 1:length(pits)
+    for color = 1:length(sinks)
+        sink = sinks[color]
+
+        # This is a dirty trick to increase the call-stack size
+        # https://stackoverflow.com/questions/71956946/how-to-increase-stack-size-for-julia-in-windows
+        # Note that stacksize is a undocumented argument of Task!
+        wait(schedule( Task(() -> _flowrouting_catchments!(area, slen, c, dir, cellarea_, feedback_fn_, color, sink),
+            stacksize) ))
+    end
+    for color in axes(pits)[1]
         pit = pits[color]
 
         # This is a dirty trick to increase the call-stack size
@@ -298,7 +325,7 @@ function _flowrouting_catchments!(area, len, c, dir, cellarea, feedback_fn, colo
         elseif flowsinto(IJ, dir[IJ], ij)
             uparea_, slen_ = _flowrouting_catchments!(area, len, c, dir, cellarea, feedback_fn, color, IJ)
             uparea = uparea .+ uparea_
-            slen = max(slen, slen_+1)
+            slen = max(slen, slen_+1) # TODO take diagonal into account
         end
     end
     # feedback of areas with each other and onto themselves
@@ -311,30 +338,44 @@ function _flowrouting_catchments!(area, len, c, dir, cellarea, feedback_fn, colo
 end
 
 """
-    make_boundaries(catchments, colors)
+    make_boundaries(catchments, pit_colors)
 
-Make vectors of boundary points.  Note that points along the
-edge of the domain as well as points bordering NaN-cells with no
-inflow do not count as boundaries.
+Make vectors of boundary cells for catchments of `pit_colors` (as the name suggests,
+typically just the pit-catchment colors.)  Assumes that pit_colors is sorted.
+
+Note that cells along the edge of the domain[1] as well as cells only bordering
+BARRIER-cells are not included (because the algorithms do not need to traverse them).
+
+Return:
+- bnds -- Vector of Vector{CartesianIndex{2}} containing the cells which are
+          on the boundary of said catchment.
+
+[1] Note that when bnd_as_sink==true then no cells along the boundary will belong
+    to a pit-catchment.
 """
-function make_boundaries(catchments, colors)
-    bnds = [CartesianIndex{2}[] for c in colors]
-    for R in CartesianIndices(size(catchments))
+function make_boundaries(catchments, pit_colors)
+    length(pit_colors)==0 && return Vector{CartesianIndex{2}}[]
+    pc1 = pit_colors[1]
+    bnds = Origin(pc1)([CartesianIndex{2}[] for i in 1:length(pit_colors)])
+    for R in CartesianIndices(axes(catchments))
         c = catchments[R]
-        c==0 && continue # don't find boundaries for c==0 (NaNs with no inflow)
+        c < pc1 && continue # don't find boundaries for sink catchments
         bnd = bnds[c]
         for I in iterate_D9(R, catchments)
+            I==R && continue
             co = catchments[I]
-            if co!=c && co!=0
+            if co!=c && co!=0 # co!=0 means its a BARRIER cell
                 push!(bnd, R)
                 break
             end
         end
     end
-    bnds
+    return bnds
 end
 
 """
+    _prune_boundary!(del, bnds, catchments::AbstractMatrix, color, colormap)
+
 Checks that all points in `bnds[color]` are indeed on the
 boundary; removes them otherwise.
 
@@ -366,111 +407,93 @@ function _prune_boundary!(del, bnds, catchments::AbstractMatrix, color, colormap
 end
 
 """
-     drainpits!(dir, nin, nout, pits, c, bnds, dem)
+    drainpits!(dir, nin, nout, sinks, pits, c, bnds, dem)
 
-Update in place the direction field such that it drains (interior) pits.
-This is done by reversing the flow connecting the lowest point on the catchment boundary
-to the pit for each catchment.
-
-There needs to be a decision on how to treat the outer boundary and boundaries
-to NaN-cells.  Possibilities:
-- do not treat boundary cells as pits but do treat pits at the boundary as terminal.
-- treat boundary cells as pits, i.e. flow reaching such a cell will vanish.  Again
-  such cells would be terminal.  This is currently done.
-
-TODO: What to do if there are no terminal pits in the DEM?  Fill to the uppermost pit?  Or take
-the lowermost as terminal? -> currently it picks a random one
+Update in place the direction field such that it drains pits. This is done by
+reversing the flow connecting the lowest point (which can drain) on the catchment
+boundary to the pit for each such catchment.
 
 Update in place dir, nin, nout, pits (sorted), c, bnds
 
 TODO: this is the performance bottleneck.
 """
-function drainpits!(dir, nin, nout, pits, c, bnds, dem)
+function drainpits!(dir, nin, nout, sinks, pits, c, bnds, dem)
+    length(pits)==0 && return nothing
+    nsinks = length(sinks)
+    ncolors = length(sinks) + length(pits)
+
     maxiter = 100
     Iend = CartesianIndex(size(dem))
 
-    pits_to_keep = trues(length(pits))
+    pits_to_delete = Origin(nsinks+1)(falses(length(pits)))
 
-    # Table which translates the old color to the new color.
+    # Table which translates the old pit-color to the new pit-color.
     # Note that only the currently processed color might change.
     # Initialize to the id-map (0 is used for off-points)
-    colormap = collect(1:length(pits))
+    colormap = collect(1:ncolors)
 
-    colormap_inv = [[i] for i=1:length(pits)] # note that the total length
-
-    no_drainage_across_boundary = false
+    colormap_inv = [[i] for i=1:ncolors]
 
     # work array as otherwise much time is spent allocating
     # (if below loop is ever multi-threaded, this will need one per thread)
-    del_workarray  = Int[]
+    del_workarray = Int[]
     sizehint!(del_workarray, maximum(length.(bnds)))
 
     # iterate until all interior pits are removed (not really needed, I think)
     @inbounds for i=1:maxiter
         n_removed = 0
-        for (color, P) in enumerate(pits)
+        for pit_color in axes(pits)[1]
+            P = pits[pit_color]
             # Already removed pit, skip
             P==CartesianIndex(-1,-1) && continue
-            # Don't process pits on the DEM boundary, because there water disappears.
-            (P.I[1]==1 || P.I[2]==1 || P.I[1]==size(dir,1) || P.I[2]==size(dir,2)) && continue
-            # Don't process pits which are NaNs, because there water disappears.
-            # See also bnd_as_pits.
-            isnan(dem[P]) && continue
-            # If there are no more boundaries left, stop.  This should only occur when
-            # bnd_as_pits==false and when there are only interior pits.
-            if all((isempty(b) for b in bnds))
-                no_drainage_across_boundary = true # set flag to warn later
-                break
-            end
-            # If there are no boundaries for this point, go to next point
-            isempty(bnds[color]) && continue
+
+            # # If there are no more boundaries left, stop.  This should only occur when
+            # # bnd_as_sink==false and when there are only interior pits.
+            # if all((isempty(b) for b in bnds))
+            #     no_drainage_across_boundary = true # set flag to warn later
+            #     break
+            # end
+
+            # If there are no boundaries for this point error
+            isempty(bnds[pit_color]) && error("Found a pit-catchment which has no outflow.  If this is intended consider setting the DEM-cell to a NaN at $P and setting nan_as_sink.")
 
             # Find point on catchment boundary with minimum elevation
-            # Avoid, if possible, picking a BARRIER point.
             minn = typemax(eltype(dem))
             Imin = CartesianIndex(-1,-1)
-            for I in bnds[color]
-                if dem[I] < minn && dir[I]!=BARRIER
+            for I in bnds[pit_color]
+                if dem[I] < minn
                     minn = dem[I]
                     Imin = I
-                end
-            end
-            if Imin == CartesianIndex(-1,-1) # no BARRIER cells found
-                for I in bnds[color]
-                    if dem[I] < minn
-                        minn = dem[I]
-                        Imin = I
-                    end
+                    dir[I]==BARRIER && error("Bug in code")
                 end
             end
 
-            @assert colormap[c[Imin]]==c[P]==color # Something is amiss if the found minimum is the pit!
-            # make the outflow and find the next catchment
+            @assert colormap[c[Imin]]==c[P]==pit_color
+
+            # Make the outflow and find the next catchment
             min_ = Inf
-            target = Imin
+            target = Imin # target is the cell in the next catchment
             for J in iterate_D9(Imin, dem)
                 Imin==J && continue # do not look at the point itself
                 cc = c[J]
-                cc = cc==0 ? 0 : colormap[cc]
-                cc == color && continue # J is in Imin's catchment
+                cc = cc==0 ? 0 : colormap[cc] # to catch BARRIER cells
+                cc == pit_color && continue # J is in Imin's catchment
                 if dem[J] < min_
                     min_ = dem[J]
                     target = J
                 end
             end
             if target==Imin
-                # this means that point is on a NaN boundary -> don't process
-                continue
+                error("Bug in Program")
             end
 
             # Reverse directions on path going from Imin to P
             P1 = Imin
-            P2 = dir2ind(dir[P1]) + P1
-            # first, do the flow across the boundary
-            _flow_from_to!(Imin, target, dir, nin, nout)
+            P2 = Imin + dir2ind(dir[Imin]) # do lookup ahead of:
+            _flow_from_to!(Imin, target, dir, nin, nout) # first, do the flow across the boundary
             while P1!=P
                 # get down-downstream point (do ahead lookup as a undisturbed dir is needed)
-                P3 = dir2ind(dir[P2]) + P2
+                P3 = P2 + dir2ind(dir[P2])
                 # reverse
                 _flow_from_to!(P2, P1, dir, nin, nout)
 
@@ -479,27 +502,33 @@ function drainpits!(dir, nin, nout, pits, c, bnds, dem)
             end
 
             # remove from list of pits
-            pits_to_keep[color] = false
-            pits[color] = CartesianIndex(-1,-1)
+            pits_to_delete[pit_color] = true
+            pits[pit_color] = CartesianIndex(-1,-1)
 
             # update colormap and boundaries
             othercolor = colormap[c[target]]
             ## this is slow
-            # Threads.@threads for i in eachindex(colormap)
-            #     if color==colormap[i]
-            #         colormap[i] = othercolor
+            for i in eachindex(colormap)
+                if pit_color==colormap[i]
+                    colormap[i] = othercolor
+                end
+            end
+            # ## thus do this instead:
+            # if c[target]>lsink
+            #     append!(colormap_inv[othercolor], colormap_inv[pit_color])
+            #     empty!(colormap_inv[pit_color])
+            #     for col in colormap_inv[othercolor]
+            #         colormap[col] = othercolor
             #     end
             # end
-            ## thus do this instead:
-            append!(colormap_inv[othercolor], colormap_inv[color])
-            empty!(colormap_inv[color])
-            for color in colormap_inv[othercolor]
-                colormap[color] = othercolor
-            end
 
-            append!(bnds[othercolor], bnds[color])
-            empty!(bnds[color])
-            _prune_boundary!(del_workarray, bnds, c, othercolor, colormap)
+            if othercolor>nsinks
+                append!(bnds[othercolor], bnds[pit_color])
+            end
+            empty!(bnds[pit_color])
+            if othercolor>nsinks
+                _prune_boundary!(del_workarray, bnds, c, othercolor, colormap)
+            end
             n_removed +=1
         end
         n_removed==0 && break
@@ -508,39 +537,38 @@ function drainpits!(dir, nin, nout, pits, c, bnds, dem)
         end
     end
 
-    if no_drainage_across_boundary
-        @warn """Water cannot leave this DEM!  Instead it drains into a random interior pit.
-                 Consider setting `bnd_as_pits=true`."""
-    end
-
     # make new colors consecutive
     newcolors = unique(colormap)
     d = Dict((c=>i for (i,c) in enumerate(newcolors)))
     colormap2 = [d[c] for c in colormap]
 
     # remove removed pits and bnds
-    deleteat!(pits, .!pits_to_keep)
-    deleteat!(bnds, .!pits_to_keep)
+    deleteat!(no_offset_view(pits), no_offset_view(pits_to_delete))
+    deleteat!(no_offset_view(bnds), no_offset_view(pits_to_delete))
 
     # # update catchments -> done with `flowrouting_catchments`
     return nothing
 end
 
 """
-Update dir, nin, and nout such that flow at P1 is now
-from P1 to P2.
+Update dir, nin, and nout such that flow at P1 is now from P1 to P2.
 
 It can potentially modify `dir, nin, nout` at three locations
 - P1: dir, nout, nin
 - P2: nin
-  - if allow_reversion==true, then P2's dir, nout can also be modified.
+  - if allow_P2_pit==true, then P2's dir, nout can also be modified.
 - P3 (previous receiver cell of P1): nin
 
-Note that if P1 and P2 lie in the same catchment, then P3 is also in that catchment.
+Note that
+- if P1 and P2 lie in the same catchment, then P3 is also in that catchment.
+- if flow was from P2 to P1, then P2 has to become a pit (PIT) to keep dir consistent
 """
-function _flow_from_to!(P1, P2, dir, nin, nout, allow_reversion=false)
+function _flow_from_to!(P1, P2, dir, nin, nout, allow_P2_pit=false)
     # already right
     ind2dir(P2-P1)==dir[P1] && return nothing
+    # if one is a BARRIER the error
+    (dir[P1]==BARRIER || dir[P2]==BARRIER) && error("Bug: trying to re-route into/out-of BARRIER point.")
+    dir[P1]==SINK && error("Bug: trying to re-route flow out-of SINK point.")
 
     # otherwise update
     P3 = P1 + dir2ind(dir[P1]) # previous receiver cell
@@ -554,12 +582,12 @@ function _flow_from_to!(P1, P2, dir, nin, nout, allow_reversion=false)
     # if flow from P2 was into P1, then make P2 a pit
     # (otherwise dir will be inconsistent)
     if (dir2ind(dir[P2]) + P2 == P1)
-        if allow_reversion
-            dir[P2] = ind2dir(CartesianIndex(0,0))
+        if allow_P2_pit
+            dir[P2] = PIT
             nout[P2] = false
             nin[P1] -= 1
         else
-            error("Flow direction in P2 would need to be reversed but not allowed (set option `allow_reversion`).")
+            error("P2 would need to become a pit (set option `allow_P2_pit`).")
         end
     end
     return nothing

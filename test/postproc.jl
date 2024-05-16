@@ -4,11 +4,12 @@
     xs = -1.5:dx:1
     ys = -0.5:dx:3.0
     dem = dem1.(xs, ys', withpit=true)
-    area, slen, dir, nout, nin, pits, c, bnds = WWF.waterflows(dem, bnd_as_pits=false)
+    area, slen, dir, nout, nin, sinks, pits, c, bnds = WWF.waterflows(dem, bnd_as_sink=true)
     demf = WWF.fill_dem(dem, pits, dir)
     @test sum(demf.-dem) ≈ 2.1499674517313414
     @test sum(demf.-dem .> 0) == 5
-    @test all([c[pits[cc]]==cc  for cc=1:length(pits)]) # pit in catchment of same color
+    @test all([c[pits[cc]]==cc  for cc=axes(pits)[1]]) # pit in catchment of same color
+    @test all([c[sinks[cc]]==cc  for cc=axes(sinks)[1]]) # sink in catchment of same color
 end
 
 @testset "catchment" begin
@@ -17,7 +18,7 @@ end
         ys = xs
 
         @test size(dem)==(length(xs), length(ys))
-        area, slen, dir, nout, nin, pits, c, bnds = WWF.waterflows(dem);
+        area, slen, dir, nout, nin, sinks, pits, c, bnds = WWF.waterflows(dem);
 
         for cc=1:length(pits)
             ij = pits[cc]
