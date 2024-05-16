@@ -5,8 +5,11 @@ using Test
 # test examples
 module Test_Examples # use a module to avoid name-space pollution
 plotyes = false
-for fl in readdir("../examples/")
-    isfile(fl) && include(joinpath("../examples/", fl))
+println("Running examples:")
+for fl in readdir("../examples/", join=true)
+    isfile(fl) || continue
+    println(fl)
+    include(fl)
 end
 end
 
@@ -501,4 +504,4 @@ end
 end
 
 #################################
-#include("postproc.jl")
+include("postproc.jl")
