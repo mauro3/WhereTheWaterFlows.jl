@@ -24,7 +24,7 @@ ys = -0.5:dx:3.0
 dem = ele.(xs, ys', randfac=0.1, withpit=true);
 plotyes && WWF.plt.heatmap(xs, ys, dem)
 
-area, slen, dir, nout, nin, pits, c, bnds  = WWF.waterflows(dem, drain_pits=true);
+area, slen, dir, nout, nin, sinks, pits, c, bnds  = WWF.waterflows(dem, drain_pits=true);
 
 @assert size(dem)==(length(xs), length(ys))
 plotyes && WWF.plt.plotit(xs, ys, dem)
