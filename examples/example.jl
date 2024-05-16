@@ -32,5 +32,5 @@ plotyes && WWF.plt.plotarea(xs, ys, area, pits)
 
 plotyes && WWF.plt.heatmap(xs, ys, c)
 
-demf = WWF.fill_dem(dem, pits, dir) #, small=1e-6)
+demf = WWF.fill_dem(dem, sinks, dir) #, small=1e-6)
 plotyes && WWF.plt.heatmap(xs, ys, demf.-dem)

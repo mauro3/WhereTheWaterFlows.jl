@@ -51,13 +51,13 @@ ind2dir(ind::CartesianIndex) = dirnums[ind + I22]
 Translate a D8 direction number into a CartesianIndex (i.e. a flow vector).
 Maps dir==BARRIER and dir==SINK to CartesianIndex(0,0) also.
 """
-function dir2ind(dir)
-    dir==BARRIER && error("Cannot make CartisianIndex for BARRIER")
-    return dir==SINK ? CartesianIndex(0,0) : cartesian[dir]
+function dir2ind(dir, allow_BARRIER=false)
+    allow_BARRIER==false && dir==BARRIER && error("Cannot make CartisianIndex for BARRIER")
+    return (dir==SINK || dir==BARRIER) ? CartesianIndex(0,0) : cartesian[dir]
 end
 
 "Translate a D8 direction number into a 2D vector."
-dir2vec(dir) = [dir2ind(dir).I...]
+dir2vec(dir, allow_BARRIER=false) = [dir2ind(dir, allow_BARRIER).I...]
 
 """
 Tests whether a cell `J` with flowdir `dirJ` flows into cell `I`.

@@ -46,13 +46,13 @@ g = 9.81 # accel. due to gravity
 phi = bed + flotation_fraction * rho_i/rho_w * (surface - bed)
 
 # Route the water
-area, slen, dir, nout, nin, pits, c, bnds  = WWF.waterflows(phi, drain_pits=true)
+area, slen, dir, nout, nin, sinks, pits, c, bnds  = WWF.waterflows(phi, drain_pits=true)
 
 # Plot it
 plotyes && WWF.plt.plotit(x, y, phi)
-plotyes && WWF.plt.plotarea(x, y, area, pits)
+plotyes && WWF.plt.plotarea(x, y, area, sinks)
 
 plotyes && WWF.plt.heatmap(x, y, c)
 
-phi_filled = WWF.fill_dem(phi, pits, dir) #, small=1e-6)
+phi_filled = WWF.fill_dem(phi, sinks, dir) #, small=1e-6)
 plotyes && WWF.plt.heatmap(x, y, phi_filled .- phi)

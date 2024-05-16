@@ -39,7 +39,7 @@ end
 open(joinpath(@__DIR__, "data/y.bin"), "r") do f
      read!(f, y)
 end
-const dx = x[2]-x[1]
+const ddxx = x[2]-x[1]
 
 # Make hydraulic potential (the "effective DEM")
 flotation_fraction = 0.95 # subglacial water pressure as fraction of ice overburden pressure
@@ -57,7 +57,7 @@ phi = rho_w*g*bed + flotation_fraction * g * rho_i * (surface - bed)
 # - water discharge due to source and extra melt
 # - water discharge due to extra melt only
 # - melt rate in m/s at each cell
-cellarea = (fill!(similar(surface), 0.1/day*dx*dx), # summer conditions: 10cm melt per day over the whole glacier
+cellarea = (fill!(similar(surface), 0.1/day*ddxx*ddxx), # summer conditions: 10cm melt per day over the whole glacier
             fill!(similar(surface), 0.0), # no source here
             fill!(similar(surface), 0.0)) # no source here
 
@@ -84,17 +84,17 @@ function melting(uparea, ij, dir)
 
     dirij = dir[ij]
     Q_total, Q_extra_melt = uparea[1], uparea[2]
-    ds = iseven(dirij) ? dx : sqrt(2)*dx
+    ds = iseven(dirij) ? ddxx : sqrt(2)*ddxx
     phi2 = phi_[ij + WWF.dir2ind(dirij)]
     phi1 = phi_[ij]
     ∇phi = isnan(phi2) ? 0.0 : (phi2 - phi1) / ds
     melt = -Q_total*∇phi / rho_w / L
-    return Q_total+melt, Q_extra_melt+melt, melt/dx^2
+    return Q_total+melt, Q_extra_melt+melt, melt/ddxx^2
 end
 
 
 # # Route the water
-area, slen, dir, nout, nin, pits, c, bnds  = WWF.waterflows(phi, drain_pits=true,
+area, slen, dir, nout, nin, sinks, pits, c, bnds  = WWF.waterflows(phi, drain_pits=true,
                                                             cellarea,
                                                             feedback_fn=melting)
 
@@ -102,9 +102,8 @@ area, slen, dir, nout, nin, pits, c, bnds  = WWF.waterflows(phi, drain_pits=true
 plotyes && WWF.plt.plotit(x, y, phi)
 plotyes && WWF.plt.plotarea(x, y, area[1], pits)
 plotyes && WWF.plt.plotarea(x, y, area[2], pits)
-@show extrema(area[3])
 
 plotyes && WWF.plt.heatmap(x, y, c)
 
-phi_filled = WWF.fill_dem(phi, pits, dir) #, small=1e-6)
+phi_filled = WWF.fill_dem(phi, sinks, dir) #, small=1e-6)
 plotyes && WWF.plt.heatmap(x, y, phi_filled .- phi)
