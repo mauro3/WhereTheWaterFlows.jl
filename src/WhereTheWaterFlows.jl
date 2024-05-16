@@ -507,20 +507,20 @@ function drainpits!(dir, nin, nout, sinks, pits, c, bnds, dem)
 
             # update colormap and boundaries
             othercolor = colormap[c[target]]
-            ## this is slow
-            for i in eachindex(colormap)
-                if pit_color==colormap[i]
-                    colormap[i] = othercolor
-                end
-            end
-            # ## thus do this instead:
-            # if c[target]>lsink
-            #     append!(colormap_inv[othercolor], colormap_inv[pit_color])
-            #     empty!(colormap_inv[pit_color])
-            #     for col in colormap_inv[othercolor]
-            #         colormap[col] = othercolor
+            # ## this is slow
+            # for i in eachindex(colormap)
+            #     if pit_color==colormap[i]
+            #         colormap[i] = othercolor
             #     end
             # end
+            ## thus do this instead:
+            if c[target]>nsinks
+                append!(colormap_inv[othercolor], colormap_inv[pit_color])
+                empty!(colormap_inv[pit_color])
+                for col in colormap_inv[othercolor]
+                    colormap[col] = othercolor
+                end
+            end
 
             if othercolor>nsinks
                 append!(bnds[othercolor], bnds[pit_color])
@@ -547,6 +547,79 @@ function drainpits!(dir, nin, nout, sinks, pits, c, bnds, dem)
     deleteat!(no_offset_view(bnds), no_offset_view(pits_to_delete))
 
     # # update catchments -> done with `flowrouting_catchments`
+    return nothing
+end
+
+function drainpits2!(dir, nin, nout, sinks, pits, c, bnds, dem)
+    length(pits)==0 && return nothing
+    @assert length(pits)==length(bnds)
+
+    nsinks = length(sinks)
+    npits = length(pits)
+    ncolors = nsinks + npits
+
+    maxiter = 100
+    Iend = CartesianIndex(size(dem))
+
+    dirty_pit = Origin(nsinks+1)(falses(npits))
+    pits_to_delete = Origin(nsinks+1)(falses(length(pits)))
+
+    for pit_color in axes(pits)[1]
+        P = pits[pit_color]
+        dirty_pit[pit_color] && continue
+
+        # If there are no boundaries for this point error
+        isempty(bnds[pit_color]) && error("Found a pit-catchment which has no outflow.  If this is intended consider setting the DEM-cell to a NaN at $P and setting nan_as_sink.")
+
+        # Find point on catchment boundary with minimum elevation
+        minn = typemax(eltype(dem))
+        Imin = CartesianIndex(-1,-1)
+        for I in bnds[pit_color]
+            if dem[I] < minn
+                minn = dem[I]
+                Imin = I
+                dir[I]==BARRIER && error("Bug in code")
+            end
+        end
+
+        # Make the outflow and find the next catchment
+        min_ = typemax(eltype(dem))
+        target = Imin # target is the cell in the next catchment
+        for J in iterate_D9(Imin, dem)
+            Imin==J && continue # do not look at the point itself
+            cc = c[J]
+            cc==0 && continue # do not look at BARRIER cells
+            cc == pit_color && continue # J is in Imin's catchment
+            if dem[J] < min_
+                min_ = dem[J]
+                target = J
+            end
+        end
+        target==Imin && error("Bug in Program")
+        if c[target]>nsinks
+            # if the target is in a pit-catchment, mark that pit-catchment as dirty
+            dirty_pit[c[target]] = true
+        end
+
+        # Reverse directions on path going from Imin to P
+        P1 = Imin
+        P2 = Imin + dir2ind(dir[Imin]) # do lookup ahead of:
+        _flow_from_to!(Imin, target, dir, nin, nout) # first, do the flow across the boundary
+        while P1!=P
+            # get down-downstream point (do ahead lookup as a undisturbed dir is needed)
+            P_next = P2 + dir2ind(dir[P2])
+            # reverse
+            _flow_from_to!(P2, P1, dir, nin, nout)
+
+            P1,P2 = P2,P_next
+        end
+        pits_to_delete[pit_color] = true
+    end
+    # update pits
+    deleteat!(no_offset_view(pits), no_offset_view(pits_to_delete))
+
+    # bnds is now invalid
+    empty!(bnds)
     return nothing
 end
 

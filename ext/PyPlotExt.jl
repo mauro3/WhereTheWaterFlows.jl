@@ -33,10 +33,11 @@ function plotit(x, y, waterflows_output::Tuple, dem)
 end
 
 function plotdir(x, y, dir)
-    vecfield = WWF.dir2vec.(dir, true)
+    vecfield = WWF.dir2vec.(dir)
     vecfieldx = [v[1] for v in vecfield]
     vecfieldy = [v[2] for v in vecfield]
-    quiver(repeat(x,1, length(y)), repeat(y,length(x),1), vecfieldx, vecfieldy)
+    f = 200
+    quiver(repeat(x,1, length(y)), repeat(y,length(x),1), vecfieldx, vecfieldy, scale_units="width", scale=f)
 end
 
 pits2inds(pits) = ([p.I[1] for p in pits],
