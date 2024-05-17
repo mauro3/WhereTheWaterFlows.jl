@@ -32,11 +32,10 @@ function plotit(x, y, waterflows_output::Tuple, dem)
     plotdir(x, y, dir)
 end
 
-function plotdir(x, y, dir)
+function plotdir(x, y, dir; f = 200)
     vecfield = WWF.dir2vec.(dir)
     vecfieldx = [v[1] for v in vecfield]
     vecfieldy = [v[2] for v in vecfield]
-    f = 200
     quiver(repeat(x,1, length(y)), repeat(y,length(x),1), vecfieldx, vecfieldy, scale_units="width", scale=f)
 end
 

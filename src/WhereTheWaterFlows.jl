@@ -1,6 +1,11 @@
+# TODO:
+# - check with GRF that it works most of the time
+# - better barrier breach algo: select point which has minimal elevation of Imin and target
+# - deinstall packages: Infiltrator, Primes, FFTW
+
 module WhereTheWaterFlows
 
-using StaticArrays
+using StaticArrays, Infiltrator
 using OffsetArrays: Origin, no_offset_view
 
 export waterflows
@@ -406,18 +411,7 @@ function _prune_boundary!(del, bnds, catchments::AbstractMatrix, color, colormap
     return nothing
 end
 
-"""
-    drainpits!(dir, nin, nout, sinks, pits, c, bnds, dem)
-
-Update in place the direction field such that it drains pits. This is done by
-reversing the flow connecting the lowest point (which can drain) on the catchment
-boundary to the pit for each such catchment.
-
-Update in place dir, nin, nout, pits (sorted), c, bnds
-
-TODO: this is the performance bottleneck.
-"""
-function drainpits!(dir, nin, nout, sinks, pits, c, bnds, dem)
+function drainpits_old!(dir, nin, nout, sinks, pits, c, bnds, dem)
     length(pits)==0 && return nothing
     nsinks = length(sinks)
     ncolors = length(sinks) + length(pits)
@@ -432,7 +426,7 @@ function drainpits!(dir, nin, nout, sinks, pits, c, bnds, dem)
     # Initialize to the id-map (0 is used for off-points)
     colormap = collect(1:ncolors)
 
-    colormap_inv = [[i] for i=1:ncolors]
+    #colormap_inv = [[i] for i=1:ncolors]
 
     # work array as otherwise much time is spent allocating
     # (if below loop is ever multi-threaded, this will need one per thread)
@@ -440,12 +434,14 @@ function drainpits!(dir, nin, nout, sinks, pits, c, bnds, dem)
     sizehint!(del_workarray, maximum(length.(bnds)))
 
     # iterate until all interior pits are removed (not really needed, I think)
-    @inbounds for i=1:maxiter
+    @inbounds for iter=1:maxiter
         n_removed = 0
         for pit_color in axes(pits)[1]
             P = pits[pit_color]
             # Already removed pit, skip
             P==CartesianIndex(-1,-1) && continue
+
+            @assert colormap[pit_color] == pit_color "$(colormap[pit_color]) $(pit_color)"
 
             # # If there are no more boundaries left, stop.  This should only occur when
             # # bnd_as_sink==false and when there are only interior pits.
@@ -507,6 +503,155 @@ function drainpits!(dir, nin, nout, sinks, pits, c, bnds, dem)
 
             # update colormap and boundaries
             othercolor = colormap[c[target]]
+            ## this is slow
+            for i in eachindex(colormap)
+                if pit_color==colormap[i]
+                    colormap[i] = othercolor
+                end
+            end
+            # ## thus do this instead:
+            # if c[target]>nsinks
+            #     append!(colormap_inv[othercolor], colormap_inv[pit_color])
+            #     empty!(colormap_inv[pit_color])
+            #     for col in colormap_inv[othercolor]
+            #         colormap[col] = othercolor
+            #     end
+            # end
+
+            if othercolor>nsinks
+                append!(bnds[othercolor], bnds[pit_color])
+            end
+            empty!(bnds[pit_color])
+            if othercolor>nsinks
+                _prune_boundary!(del_workarray, bnds, c, othercolor, colormap)
+            end
+            n_removed +=1
+        end
+        n_removed==0 && break
+        if iter==maxiter
+            error("Maximum number of iterations reached in `drainpits`: $i")
+        else
+            iter>1 && @show iter
+        end
+    end
+
+    # # make new colors consecutive
+    # newcolors = unique(colormap)
+    # d = Dict((c=>i for (i,c) in enumerate(newcolors)))
+    # colormap2 = [d[c] for c in colormap]
+
+    # remove removed pits and bnds
+    deleteat!(no_offset_view(pits), no_offset_view(pits_to_delete))
+    deleteat!(no_offset_view(bnds), no_offset_view(pits_to_delete))
+
+    # # update catchments -> done with `flowrouting_catchments`
+    return nothing
+end
+
+"""
+    drainpits!(dir, nin, nout, sinks, pits, c, bnds, dem)
+
+Update in place the direction field such that it drains pits. This is done by
+reversing the flow connecting the lowest point (which can drain) on the catchment
+boundary to the pit for each such catchment.
+
+Update in place dir, nin, nout, pits (sorted), c, bnds
+
+TODO: this is the performance bottleneck.
+"""
+function drainpits!(dir, nin, nout, sinks, pits, c, bnds, dem)
+    length(pits)==0 && return nothing
+    nsinks = length(sinks)
+    ncolors = length(sinks) + length(pits)
+
+    maxiter = 100
+    Iend = CartesianIndex(size(dem))
+
+    pits_to_delete = Origin(nsinks+1)(falses(length(pits)))
+
+    # Table which translates the old pit-color to the new pit-color.
+    # Note that only the currently processed color might change.
+    # Initialize to the id-map (0 is used for off-points)
+    colormap = collect(1:ncolors)
+
+    colormap_inv = [[i] for i=1:ncolors]
+
+    # work array as otherwise much time is spent allocating
+    # (if below loop is ever multi-threaded, this will need one per thread)
+    del_workarray = Int[]
+    sizehint!(del_workarray, maximum(length.(bnds)))
+
+    # iterate until all interior pits are removed (not really needed, I think)
+    @inbounds for iter=1:maxiter
+        n_removed = 0
+        for pit_color in axes(pits)[1]
+            P = pits[pit_color]
+            # Already removed pit, skip
+            P==CartesianIndex(-1,-1) && continue
+
+            @assert colormap[pit_color] == pit_color "$(colormap[pit_color]) $(pit_color)"
+
+            # # If there are no more boundaries left, stop.  This should only occur when
+            # # bnd_as_sink==false and when there are only interior pits.
+            # if all((isempty(b) for b in bnds))
+            #     no_drainage_across_boundary = true # set flag to warn later
+            #     break
+            # end
+
+            # error if there are no boundaries for this cell
+            isempty(bnds[pit_color]) && error("Found a pit-catchment which has no outflow.  If this is intended consider setting the DEM-cell to a NaN at $P and setting nan_as_sink.")
+
+            # Find cell on catchment boundary with minimum spillway elevation
+            spillway = typemax(eltype(dem))  # elevation of spillway
+            P_i = CartesianIndex(-1,-1) # cell on spillway within the pit_color-catchment
+            P_o = CartesianIndex(-1,-1) # outside cell of spillway
+            for I in bnds[pit_color]
+                spillway_I = dem[I] # spillway at cell I is at this elevation or higher
+                spillway_I > spillway && continue
+                # check cells on other catchment(s) to see if spillway_I has to be increased:
+                J_min = CartesianIndex(-1,-1) # lowest cell in other catchment
+                ele_min = typemax(eltype(dem))# elevation of that cell
+                for J in iterate_D9(I, dem)
+                    I==J && continue # do not look at the cell itself
+                    c[J] == 0 && continue # J is a BARRIER cell
+                    colormap[c[J]] == pit_color && continue # J is in I's catchment
+                    if dem[J] < ele_min
+                        ele_min = dem[J]
+                        J_min = J
+                    end
+                end
+                J_min == CartesianIndex(-1,-1) && error("Bug in program")
+                spillway_I = max(spillway_I, ele_min)
+                # check if spillway_I is a new lowest spillway
+                if spillway_I < spillway
+                    P_i = I
+                    P_o = J_min
+                    spillway = spillway_I
+                end
+            end
+            @assert pit_color != colormap[c[P_o]] "Error: both spillway cells in the same catchment"
+
+            # Reverse directions on path going from P_o via P_i to P
+            P1 = P_i
+            P2 = P_i + dir2ind(dir[P_i]) # do lookup ahead of:
+            _flow_from_to!(P_i, P_o, dir, nin, nout) # first, do the flow across the boundary
+            while P1!=P
+                # get down-downstream cell (do ahead lookup as a undisturbed dir is needed)
+                P3 = P2 + dir2ind(dir[P2])
+                # reverse
+                _flow_from_to!(P2, P1, dir, nin, nout)
+
+                P1 = P2
+                P2 = P3
+            end
+
+            # remove from list of pits
+            pits_to_delete[pit_color] = true
+            pits[pit_color] = CartesianIndex(-1,-1)
+
+            # update colormap and boundaries
+            # (now this catchment becomes the color of the catchment it now overspills into)
+            othercolor = colormap[c[P_o]]
             # ## this is slow
             # for i in eachindex(colormap)
             #     if pit_color==colormap[i]
@@ -514,7 +659,7 @@ function drainpits!(dir, nin, nout, sinks, pits, c, bnds, dem)
             #     end
             # end
             ## thus do this instead:
-            if c[target]>nsinks
+            if c[P_o]>nsinks
                 append!(colormap_inv[othercolor], colormap_inv[pit_color])
                 empty!(colormap_inv[pit_color])
                 for col in colormap_inv[othercolor]
@@ -532,15 +677,17 @@ function drainpits!(dir, nin, nout, sinks, pits, c, bnds, dem)
             n_removed +=1
         end
         n_removed==0 && break
-        if i==maxiter
+        if iter==maxiter
             error("Maximum number of iterations reached in `drainpits`: $i")
+        else
+            iter>1 && @show iter
         end
     end
 
-    # make new colors consecutive
-    newcolors = unique(colormap)
-    d = Dict((c=>i for (i,c) in enumerate(newcolors)))
-    colormap2 = [d[c] for c in colormap]
+    # # make new colors consecutive
+    # newcolors = unique(colormap)
+    # d = Dict((c=>i for (i,c) in enumerate(newcolors)))
+    # #colormap2 = [d[c] for c in colormap]
 
     # remove removed pits and bnds
     deleteat!(no_offset_view(pits), no_offset_view(pits_to_delete))
@@ -561,12 +708,13 @@ function drainpits2!(dir, nin, nout, sinks, pits, c, bnds, dem)
     maxiter = 100
     Iend = CartesianIndex(size(dem))
 
-    dirty_pit = Origin(nsinks+1)(falses(npits))
+    dirty_catchment = falses(nsinks+npits)
     pits_to_delete = Origin(nsinks+1)(falses(length(pits)))
 
     for pit_color in axes(pits)[1]
         P = pits[pit_color]
-        dirty_pit[pit_color] && continue
+        # dirty catchments cannot be processed in this round, but need to wait for the next iteration
+        dirty_catchment[pit_color] && continue
 
         # If there are no boundaries for this point error
         isempty(bnds[pit_color]) && error("Found a pit-catchment which has no outflow.  If this is intended consider setting the DEM-cell to a NaN at $P and setting nan_as_sink.")
@@ -598,7 +746,7 @@ function drainpits2!(dir, nin, nout, sinks, pits, c, bnds, dem)
         target==Imin && error("Bug in Program")
         if c[target]>nsinks
             # if the target is in a pit-catchment, mark that pit-catchment as dirty
-            dirty_pit[c[target]] = true
+            dirty_catchment[c[target]] = true
         end
 
         # Reverse directions on path going from Imin to P
@@ -660,7 +808,7 @@ function _flow_from_to!(P1, P2, dir, nin, nout, allow_P2_pit=false)
             nout[P2] = false
             nin[P1] -= 1
         else
-            error("P2 would need to become a pit (set option `allow_P2_pit`).")
+            error("P2 $P2 would need to become a pit for P1 $P1 to flow into it (if desired, set option `allow_P2_pit`).")
         end
     end
     return nothing
