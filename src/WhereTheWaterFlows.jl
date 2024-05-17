@@ -1,7 +1,6 @@
 # TODO:
 # - check with GRF that it works most of the time
 # - better barrier breach algo: select point which has minimal elevation of Imin and target
-#   --> what if DEM has a spillway which is a flat area?  Then this method will fail!
 # - deinstall packages: Infiltrator, Primes, FFTW
 
 module WhereTheWaterFlows
@@ -29,9 +28,9 @@ Note, I use the conversion that the x-axis corresponds to the row of
 the matrix and the y-axis the columns.  To print them in this "normal"
 coordinate system use `showme`
 """
-const dirnums = SMatrix{3,3}(reverse([ 7   8  9
-                                       4  PIT 6
-                                       1   2  3]',
+const dirnums = SMatrix{3,3}(reverse([ 7      8 9
+                                       4 PIT 6
+                                       1      2 3]',
                                      dims=2))
 
 "Translation from dirnums to CartesianIndex"
@@ -272,7 +271,7 @@ Note: this function may cause a stackoverflow on very big catchments.
 function flowrouting_catchments(dir, sinks, pits, cellarea, feedback_fn, stacksize) # on linux standard is 2^13 * 2^10
     c = fill!(similar(dir, Int), 0) # catchment color of BARRIER is 0
     slen = fill!(similar(dir, Int), 0)
- @show   np = length(pits)
+    np = length(pits)
     # Some setup to allow both array and tuple-of-array inputs for cellarea and feedback_fn:
     area = init_area(dir, cellarea) # (matrix,) or tuple of matrices
     cellarea_ = cellarea isa Tuple ? cellarea : (cellarea, )
@@ -295,13 +294,13 @@ function flowrouting_catchments(dir, sinks, pits, cellarea, feedback_fn, stacksi
             stacksize) ))
     end
     for color in axes(pits)[1]
-       pit = pits[color]
+        pit = pits[color]
 
         # This is a dirty trick to increase the call-stack size
         # https://stackoverflow.com/questions/71956946/how-to-increase-stack-size-for-julia-in-windows
         # Note that stacksize is a undocumented argument of Task!
         wait(schedule( Task(() -> _flowrouting_catchments!(area, slen, c, dir, cellarea_, feedback_fn_, color, pit),
-                            stacksize) ))
+            stacksize) ))
     end
     # unwrap tuple if cellarea was not a tuple:
     if !(cellarea isa Tuple)
@@ -706,20 +705,16 @@ function drainpits2!(dir, nin, nout, sinks, pits, c, bnds, dem)
     npits = length(pits)
     ncolors = nsinks + npits
 
-    tmp = eltype(pits)[]
-    sizehint!(tmp, npits÷4)
-    new_pits = Origin(nsinks+1)(tmp) # when two re-directed branches meet at a spillway,
-                             # they create a new pit at the spillway
-
-
     maxiter = 100
     Iend = CartesianIndex(size(dem))
 
     dirty_catchment = falses(nsinks+npits)
-    # pits_to_delete = Origin(nsinks+1)(falses(length(pits)))
+    pits_to_delete = Origin(nsinks+1)(falses(length(pits)))
 
     for pit_color in axes(pits)[1]
         P = pits[pit_color]
+        # dirty catchments cannot be processed in this round, but need to wait for the next iteration
+        dirty_catchment[pit_color] && continue
 
         # If there are no boundaries for this point error
         isempty(bnds[pit_color]) && error("Found a pit-catchment which has no outflow.  If this is intended consider setting the DEM-cell to a NaN at $P and setting nan_as_sink.")
@@ -752,41 +747,19 @@ function drainpits2!(dir, nin, nout, sinks, pits, c, bnds, dem)
                 spillway = spillway_I
             end
         end
-        # potentially adjust P_i such that it is lowestmost cell bordering on P_o
-        ele_min = typemax(eltype(dem))
-        for J in iterate_D9(P_o, dem)
-            P_o==J && continue # do not look at the cell itself
-            c[J] == 0 && continue # J is a BARRIER cell
-            c[J]!=c[P_i] && continue # J is not in P_i's catchment
-            if dem[J] < ele_min
-                ele_min = dem[J]
-                P_i = J
-            end
-        end
 
         if c[P_o]>nsinks
-            # if the other catchment is in a pit-catchment, mark it dirty
+            # if the target is in a pit-catchment, mark that pit-catchment as dirty
             dirty_catchment[c[P_o]] = true
         end
 
-        # if P∈[CartesianIndex(9,37), CartesianIndex(14,37), CartesianIndex(8,33)]
-        #     @infiltrate
-        # end
-
-        # Reverse directions on path going from P_i to P and
-        # create flow from P_i to P_o (i.e. across the spillway)
+        # Reverse directions on path going from P_i to P
         P1 = P_i
-        P2 = P_i + dir2ind(dir[P_i]) # do lookup ahead of re-direction
+        P2 = P_i + dir2ind(dir[P_i]) # do lookup ahead of:
         if flowsinto(P_o, dir[P_o], P_i)
-            # This means this spillway was already used from the other side.
-            # This means a new pit is created at the spillway.
-            @assert dirty_catchment[c[P_o]]
-            push!(new_pits, P_o)
-            allow_P_o_pit = true
-        else
-            allow_P_o_pit = false
+            @infiltrate
         end
-        _flow_from_to!(P_i, P_o, dir, nin, nout, allow_P_o_pit) # first, do the flow across the boundary
+        _flow_from_to!(P_i, P_o, dir, nin, nout) # first, do the flow across the boundary
         while P1!=P
             # get down-downstream point (do ahead lookup as a undisturbed dir is needed)
             P_next = P2 + dir2ind(dir[P2])
@@ -795,14 +768,14 @@ function drainpits2!(dir, nin, nout, sinks, pits, c, bnds, dem)
 
             P1,P2 = P2,P_next
         end
-        #pits_to_delete[pit_color] = true
+        pits_to_delete[pit_color] = true
     end
     # update pits
-    #deleteat!(no_offset_view(pits), no_offset_view(pits_to_delete))
+    deleteat!(no_offset_view(pits), no_offset_view(pits_to_delete))
 
     # bnds is now invalid
     empty!(bnds)
-    return new_pits
+    return nothing
 end
 
 function drainpits2_old!(dir, nin, nout, sinks, pits, c, bnds, dem)
