@@ -719,6 +719,87 @@ function drainpits2!(dir, nin, nout, sinks, pits, c, bnds, dem)
         # If there are no boundaries for this point error
         isempty(bnds[pit_color]) && error("Found a pit-catchment which has no outflow.  If this is intended consider setting the DEM-cell to a NaN at $P and setting nan_as_sink.")
 
+        # Find cell on catchment boundary with minimum spillway elevation
+        spillway = typemax(eltype(dem))  # elevation of spillway
+        P_i = CartesianIndex(-1,-1) # cell on spillway within the pit_color-catchment
+        P_o = CartesianIndex(-1,-1) # outside cell of spillway
+        for I in bnds[pit_color]
+            spillway_I = dem[I] # spillway at cell I is at this elevation or higher
+            spillway_I > spillway && continue
+            # check cells on other catchment(s) to see if spillway_I has to be increased:
+            J_min = CartesianIndex(-1,-1) # lowest cell in other catchment
+            ele_min = typemax(eltype(dem))# elevation of that cell
+            for J in iterate_D9(I, dem)
+                I==J && continue # do not look at the cell itself
+                c[J] == 0 && continue # J is a BARRIER cell
+                c[J] == pit_color && continue # J is in I's catchment
+                if dem[J] < ele_min
+                    ele_min = dem[J]
+                    J_min = J
+                end
+            end
+            J_min == CartesianIndex(-1,-1) && error("Bug in program")
+            spillway_I = max(spillway_I, ele_min)
+            # check if spillway_I is a new lowest spillway
+            if spillway_I < spillway
+                P_i = I
+                P_o = J_min
+                spillway = spillway_I
+            end
+        end
+
+        if c[P_o]>nsinks
+            # if the target is in a pit-catchment, mark that pit-catchment as dirty
+            dirty_catchment[c[P_o]] = true
+        end
+
+        # Reverse directions on path going from P_i to P
+        P1 = P_i
+        P2 = P_i + dir2ind(dir[P_i]) # do lookup ahead of:
+        if flowsinto(P_o, dir[P_o], P_i)
+            @infiltrate
+        end
+        _flow_from_to!(P_i, P_o, dir, nin, nout) # first, do the flow across the boundary
+        while P1!=P
+            # get down-downstream point (do ahead lookup as a undisturbed dir is needed)
+            P_next = P2 + dir2ind(dir[P2])
+            # reverse
+            _flow_from_to!(P2, P1, dir, nin, nout)
+
+            P1,P2 = P2,P_next
+        end
+        pits_to_delete[pit_color] = true
+    end
+    # update pits
+    deleteat!(no_offset_view(pits), no_offset_view(pits_to_delete))
+
+    # bnds is now invalid
+    empty!(bnds)
+    return nothing
+end
+
+function drainpits2_old!(dir, nin, nout, sinks, pits, c, bnds, dem)
+    length(pits)==0 && return nothing
+    @assert length(pits)==length(bnds)
+
+    nsinks = length(sinks)
+    npits = length(pits)
+    ncolors = nsinks + npits
+
+    maxiter = 100
+    Iend = CartesianIndex(size(dem))
+
+    dirty_catchment = falses(nsinks+npits)
+    pits_to_delete = Origin(nsinks+1)(falses(length(pits)))
+
+    for pit_color in axes(pits)[1]
+        P = pits[pit_color]
+        # dirty catchments cannot be processed in this round, but need to wait for the next iteration
+        dirty_catchment[pit_color] && continue
+
+        # If there are no boundaries for this point error
+        isempty(bnds[pit_color]) && error("Found a pit-catchment which has no outflow.  If this is intended consider setting the DEM-cell to a NaN at $P and setting nan_as_sink.")
+
         # Find point on catchment boundary with minimum elevation
         minn = typemax(eltype(dem))
         Imin = CartesianIndex(-1,-1)
