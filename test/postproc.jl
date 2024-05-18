@@ -10,6 +10,10 @@
     @test sum(demf.-dem .> 0) == 40
     @test all([c[pits[cc]]==cc  for cc=axes(pits)[1]]) # pit in catchment of same color
     @test all([c[sinks[cc]]==cc  for cc=axes(sinks)[1]]) # sink in catchment of same color
+
+    area2 = WWF.waterflows(dem, bnd_as_sink=true)[1]
+    lakes = demf.>dem
+    @test area[.!lakes]==area2[.!lakes]
 end
 
 @testset "catchment" begin
