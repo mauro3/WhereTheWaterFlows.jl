@@ -7,7 +7,7 @@
     area, slen, dir, nout, nin, sinks, pits, c, bnds = WWF.waterflows(dem, bnd_as_sink=true)
     demf = WWF.fill_dem(dem, sinks, dir)
     @test sum(demf.-dem) ≈ 2.1499674517313414
-    @test sum(demf.-dem .> 0) == 5
+    @test sum(demf.-dem .> 0) == 40
     @test all([c[pits[cc]]==cc  for cc=axes(pits)[1]]) # pit in catchment of same color
     @test all([c[sinks[cc]]==cc  for cc=axes(sinks)[1]]) # sink in catchment of same color
 end
