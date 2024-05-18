@@ -487,18 +487,18 @@ end
     @test area[2] == [11.0 11.0 47.0 23.0; 11.0 11.0 11.0 11.0; 62.0 36.0 23.0 11.0]
 end
 
-"Potentially pathological function for call depth"
-function ramp(l,w)
-    y=-w:w
-    x=1:l
-    dem = (1 .+ y.^2) .* x'.*0.00001
-    return x,y,dem
-end
-@testset "stackoverflow" begin
-    x,y,dem = ramp(10^4,3);
-    waterflows(dem, drain_pits=false); # no error
-    @test_throws TaskFailedException waterflows(dem, drain_pits=false, stacksize=1000) # inside it's a StackOverflowError
-end
+# "Potentially pathological function for call depth"
+# function ramp(l,w)
+#     y=-w:w
+#     x=1:l
+#     dem = (1 .+ y.^2) .* x'.*0.00001
+#     return x,y,dem
+# end
+# @testset "stackoverflow" begin
+#     x,y,dem = ramp(10^4,3);
+#     waterflows(dem, drain_pits=false); # no error
+#     @test_throws TaskFailedException waterflows(dem, drain_pits=false, stacksize=1000) # inside it's a StackOverflowError
+# end
 
 #################################
 include("postproc.jl")

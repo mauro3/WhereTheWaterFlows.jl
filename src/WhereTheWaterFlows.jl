@@ -247,7 +247,6 @@ function waterflows(dem, cellarea=fill!(similar(dem),1), flowdir_fn=d8dir_featur
         bnds = drainpits!(dir, nin, nout, sinks, pits, c, bnds, dem4drainpits)
         area, slen, c = flowrouting_catchments(dir, sinks, pits, cellarea, feedback_fn, stacksize)
     end
-    #area[isnan.(dem)] .= NaN
     return area, slen, dir, nout, nin, sinks, pits, c, bnds, flowdir_extra_output
 end
 
@@ -286,12 +285,15 @@ function flowrouting_catchments(dir, sinks, pits, cellarea, feedback_fn, stacksi
     #Threads.@threads
     for color = 1:length(sinks)
         sink = sinks[color]
-
         # This is a dirty trick to increase the call-stack size
         # https://stackoverflow.com/questions/71956946/how-to-increase-stack-size-for-julia-in-windows
         # Note that stacksize is a undocumented argument of Task!
-        wait(schedule( Task(() -> _flowrouting_catchments!(area, slen, c, dir, cellarea_, feedback_fn_, color, sink),
-                            stacksize) ))
+        #
+        # Unfortunately, it decreases performance a lot!
+        # wait(schedule( Task(() -> _flowrouting_catchments!(area, slen, c, dir, cellarea_, feedback_fn_, color, sink),
+        #                     stacksize) ))
+
+        _flowrouting_catchments!(area, slen, c, dir, cellarea_, feedback_fn_, color, sink)
     end
     for color in axes(pits)[1]
         pit = pits[color]
@@ -299,8 +301,10 @@ function flowrouting_catchments(dir, sinks, pits, cellarea, feedback_fn, stacksi
         # This is a dirty trick to increase the call-stack size
         # https://stackoverflow.com/questions/71956946/how-to-increase-stack-size-for-julia-in-windows
         # Note that stacksize is a undocumented argument of Task!
-        wait(schedule( Task(() -> _flowrouting_catchments!(area, slen, c, dir, cellarea_, feedback_fn_, color, pit),
-                            stacksize) ))
+        # wait(schedule( Task(() -> _flowrouting_catchments!(area, slen, c, dir, cellarea_, feedback_fn_, color, pit),
+        #                     stacksize) ))
+
+        _flowrouting_catchments!(area, slen, c, dir, cellarea_, feedback_fn_, color, pit)
     end
     # unwrap tuple if cellarea was not a tuple:
     if !(cellarea isa Tuple)
@@ -324,7 +328,7 @@ function _flowrouting_catchments!(area, len, c, dir, cellarea, feedback_fn, colo
     slen = 0 # note: solely dependent on `dir`
     uparea = getindex.(cellarea, Ref(ij))
     slen = max(slen, 1)
-    for IJ in iterate_D9(ij, c)
+    @inbounds for IJ in iterate_D9(ij, c)
         if ij==IJ
             continue
         elseif flowsinto(IJ, dir[IJ], ij)
@@ -343,7 +347,7 @@ function _flowrouting_catchments!(area, len, c, dir, cellarea, feedback_fn, colo
 end
 
 """
-    make_boundaries(catchments, pit_colors)
+    make_boundaries(catchments, pit_colors, bnds=Origin(firstindex(pit_colors))([CartesianIndex{2}[] for i in 1:length(pit_colors)]) )
 
 Make vectors of boundary cells for catchments of `pit_colors` (as the name suggests,
 typically just the pit-catchment colors.)  Assumes that pit_colors is sorted.
@@ -358,11 +362,10 @@ Return:
 [1] Note that when bnd_as_sink==true then no cells along the boundary will belong
     to a pit-catchment.
 """
-function make_boundaries(catchments, pit_colors)
-    length(pit_colors)==0 && return Vector{CartesianIndex{2}}[]
+function make_boundaries(catchments, pit_colors, bnds=Origin(firstindex(pit_colors))([CartesianIndex{2}[] for i in 1:length(pit_colors)]) )
     pc1 = firstindex(pit_colors)
-    bnds = Origin(pc1)([CartesianIndex{2}[] for i in 1:length(pit_colors)])
-    for R in CartesianIndices(axes(catchments))
+    length(pit_colors)==0 && return Origin(pc1)(Vector{CartesianIndex{2}}[])
+    @inbounds for R in CartesianIndices(axes(catchments))
         c = catchments[R]
         c < pc1 && continue # don't find boundaries for sink catchments
         bnd = bnds[c]
@@ -379,39 +382,6 @@ function make_boundaries(catchments, pit_colors)
 end
 
 """
-    _prune_boundary!(del, bnds, catchments::AbstractMatrix, color, colormap)
-
-Checks that all points in `bnds[color]` are indeed on the
-boundary; removes them otherwise.
-
-TODO: this is one of the performance bottlenecks.
-"""
-function _prune_boundary!(del, bnds, catchments::AbstractMatrix, color, colormap)
-    empty!(del)
-    # loop over all boundary cells
-    @inbounds for (i,P) in enumerate(bnds[color])
-        keep = false
-        # check cells around it
-        for PP in iterate_D9(P, catchments)
-            # if one is of different color, keep it.
-            co = catchments[PP]
-            if co!=0
-                co = colormap[co]
-                if co!=color
-                    keep = true
-                    break
-                end
-            end
-        end
-        if !keep
-            push!(del, i)
-        end
-    end
-    deleteat!(bnds[color], del)
-    return nothing
-end
-
-"""
     drainpits!(dir, nin, nout, sinks, pits, ctch, bnds, dem)
 
 Update in place the direction field such that it drains pits. This is done by
@@ -421,8 +391,7 @@ boundary to the pit for each such catchment.
 Update in place dir, nin, nout, pits (sorted), c; returns an empty bnds
 """
 function drainpits!(dir, nin, nout, sinks, pits, ctch, bnds, dem)
-    length(pits)==0 && return nothing
-    @assert length(pits)==length(bnds)
+    length(pits)==0 && return bnds
 
     nsinks = length(sinks)
     npits = length(pits)
@@ -432,25 +401,24 @@ function drainpits!(dir, nin, nout, sinks, pits, ctch, bnds, dem)
     maxiter = 100
     Iend = CartesianIndex(size(dem))
 
-    # As catchments get connected their color changes.
-    # Note that only the currently processed color might change.
-    colormap = Origin(nsinks+1)(collect(eachindex(pits)))
-
     maxiter = 50
-    for iter=1:maxiter
+    @inbounds for iter=1:maxiter
         # Once an overspill into a pit-catchment occurs, this catchment increases in
-        # size by absorbing the other.  Then its boundary is not correct anymore
+        # size by absorbing the other.  Then its boundary is not correct anymore and
+        # cannot be processed in the current iteration, thus mark "dirty".
         dirty_catchments = Origin(nsinks+1)(falses(length(pits)))
         pits_to_delete = Origin(nsinks+1)(falses(length(pits)))
+        # As catchments get connected their color changes.
+        # Note that only the currently processed catchments color can change in its iteration.
+        # In each iter the colormap is reset
+        colormap = Origin(nsinks+1)(collect(eachindex(pits)))
 
         for pit_color in axes(pits)[1]
             P = pits[pit_color]
             # dirty catchments cannot be processed in this round, but need to wait for the next iteration
             dirty_catchments[pit_color] && continue
 
-            #@assert colormap[pit_color] == pit_color "$(colormap[pit_color]) $(pit_color)"
-
-            # If there are no boundaries for this point error
+            # if there are no boundaries for this point error
             isempty(bnds[pit_color]) && error("Found a pit-catchment which has no outflow.  If this is intended consider setting the DEM-cell to a NaN at $P and setting nan_as_sink.")
 
             # Find cell on catchment boundary with minimum spillway elevation
@@ -467,9 +435,10 @@ function drainpits!(dir, nin, nout, sinks, pits, ctch, bnds, dem)
                     I==J && continue # do not look at the cell itself
                     ctch[J] == 0 && continue # J is a BARRIER cell
                     ctch[J] == pit_color && continue # J is in I's catchment
-                    # note, no colormapping needed as ctch[J] cannot be mapped to pit_color
-                    # as then dirty_catchments[pit_color]==true
-                    if dem[J] < ele_min
+                                                     # note, no colormapping needed as ctch[J] cannot be mapped to pit_color
+                                                     # as then dirty_catchments[pit_color]==true
+                                                     # (but it could be mapped to something but that is of no concern here)
+                    if dem[J] < ele_min # TODO take diagonal into account
                         ele_min = dem[J]
                         J_min = J
                     end
@@ -483,12 +452,12 @@ function drainpits!(dir, nin, nout, sinks, pits, ctch, bnds, dem)
                     spillway = spillway_I
                 end
             end
-
-            if ctch[P_o]>nsinks
+            outsidecolor = ctch[P_o]
+            if outsidecolor>nsinks
                 # If the target is in a pit-catchment, mark that pit-catchment as dirty
-                dirty_catchments[ctch[P_o]] = true
+                dirty_catchments[outsidecolor] = true
             end
-            colormap[pit_color] = ctch[P_o]>nsinks ? colormap[ctch[P_o]] : ctch[P_o]
+            colormap[pit_color] = outsidecolor>nsinks ? colormap[outsidecolor] : outsidecolor
 
             # Reverse directions on path going from P_i to P
             P1 = P_i
@@ -502,9 +471,11 @@ function drainpits!(dir, nin, nout, sinks, pits, ctch, bnds, dem)
 
                 P1,P2 = P2,P_next
             end
+
+            # mark pit to be deleted
             pits_to_delete[pit_color] = true
         end
-        # figure out color maps
+        # update colormaps
         _normalize_colormap!(colormap)
         new_colormap = Origin(nsinks+1)(colormap[.!pits_to_delete])
         new_consecutive_colormap = Origin(nsinks+1)(zeros(Int,npits))
@@ -518,23 +489,23 @@ function drainpits!(dir, nin, nout, sinks, pits, ctch, bnds, dem)
         npits = length(pits)
         ncolors = nsinks + npits
 
-        # update bnds
-        bnds = make_boundaries(ctch, eachindex(pits))
+        # update bnds: re-use the bnds-vector to reduce allocations:
+        deleteat!(no_offset_view(bnds), no_offset_view(pits_to_delete))
+        for bnd in bnds; empty!(bnd) end
+        bnds = make_boundaries(ctch, eachindex(pits), bnds)
 
-        colormap = Origin(nsinks+1)(collect(eachindex(pits)))
         if iter==maxiter-1 || npits==0
-            # @show iter, iter/(npits_orig/10^6)
+            #@show iter, iter/(npits_orig/10^6)
             break
         end
     end
-    @assert length(bnds)==0
     return bnds
 end
 
 # When a cascade of pits drains, then the colormap will have
 # a cascade of mappings.  This cuts out the middle-men.
 function _normalize_colormap!(colormap)
-    for i in eachindex(colormap)
+    @inbounds for i in eachindex(colormap)
         c = colormap[i]
         c<firstindex(colormap) && continue # don't do anything when it points to a sink-catchment
         cc = colormap[c]
@@ -550,7 +521,7 @@ end
 # Recolors the leftover pit-catchments with consecutive colors
 function _recolor_catchments!(ctch, colormap, new_consecutive_colormap)
     nsinks = firstindex(colormap)-1
-    for (i,c) in enumerate(ctch)
+    @inbounds for (i,c) in enumerate(ctch)
         c<=nsinks && continue
         new_c = colormap[c]
         if new_c<=nsinks
