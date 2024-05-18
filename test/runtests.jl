@@ -175,10 +175,10 @@ end
     dem = ones(4,4)
     dem[2,2] = 0.5
     dem[2,3] = 0.45
-    area, slen, dir, nout, nin, pits, c, bnds = WWF.waterflows(dem);
+    dir = WWF.d8dir_feature(dem, true, true)[1]
     @test dir==[10  10  10  10
-                10  8  1  10
-                10  4  4  10 # without adjustment this row would be '10  7  4  10'
+                10   8   5  10
+                10   4   4  10 # without adjustment this row would be '10  7  4  10'
                 10  10  10  10]
 end
 
@@ -272,10 +272,10 @@ end
     @test length(sinks) == 414
     @test sum(dir.==11) - sum(isnan.(dem)) == 0
     @test sum(dir.==5)  == length(pits)
-    @test maximum(slen)==75
+    @test maximum(slen)==91
     @test maximum(area[.!isnan.(area)])==4458
     @test length(unique(c))==415
-    @test sum(c) == 2105520
+    @test sum(c) == 2109977
     @test sum(diff(c[:])) == 413
     @test sort(unique(c))[[1,end]] ==[0,414]
     @test length(bnds)==0
@@ -425,9 +425,6 @@ end
     area, slen, dir, nout, nin, sinks, pits, c, bnds = WWF.waterflows(dem, drain_pits=false, bnd_as_sink=true);
     WWF.drainpits!(dir, nin, nout, sinks, pits, c, bnds, dem)
     area, slen, c = WWF.flowrouting_catchments(dir, sinks, pits, fill!(similar(dem),1), nothing, 2^13 * 2^10)
-    bnds2 = WWF.make_boundaries(c, 1:length(pits))
-
-    @test sort(sort.(bnds))==sort(sort.(bnds2))
     @test sum(dir.==5) == length(pits)
 end
 

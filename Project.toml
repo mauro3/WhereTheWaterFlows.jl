@@ -4,10 +4,7 @@ authors = ["Mauro Werder <mauro3@runbox.com>"]
 version = "0.9.0"
 
 [deps]
-FFTW = "7a1cc6ca-52ef-59f5-83cd-3a7055c09341"
-Infiltrator = "5903a43b-9cc3-4c30-8d17-598619ec4e9b"
 OffsetArrays = "6fe1bfb0-de20-5000-8ca7-80f57d26f881"
-Primes = "27ebfcd6-29c5-5fa9-bf4b-fb8fc14df3ae"
 StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 
 [weakdeps]
