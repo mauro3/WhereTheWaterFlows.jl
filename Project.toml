@@ -1,7 +1,7 @@
 name = "WhereTheWaterFlows"
 uuid = "ea906314-1493-4d22-a0af-f886a20c9fba"
 authors = ["Mauro Werder <mauro3@runbox.com>"]
-version = "0.9.0"
+version = "0.10.0"
 
 [deps]
 OffsetArrays = "6fe1bfb0-de20-5000-8ca7-80f57d26f881"

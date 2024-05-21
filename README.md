@@ -21,6 +21,9 @@ Example of upslope area calculated in below example.
 
 ## Manual
 
+The main function of this package is `waterflows`, please refer to its
+doc-string.  Here a simple example using it:
+
 ```julia
 using WhereTheWaterFlows, PyPlot
 const WWF = WhereTheWaterFlows
