@@ -144,7 +144,6 @@ function d8dir_feature(dem, bnd_as_sink, nan_as_sink, extra_sinks=CartesianIndex
         dir_ = PIT
         for J in iterate_D9(I, Iend)
             I==J && continue
-            dir[J]==BARRIER && continue
             ele2 = dem[J]
             if isnan(ele2)
                 if nan_as_sink
@@ -155,6 +154,7 @@ function d8dir_feature(dem, bnd_as_sink, nan_as_sink, extra_sinks=CartesianIndex
                     continue
                 end
             end
+            dir[J]==BARRIER && continue
             delta_ele2 = (ele2 - ele) * diagonal_fac(J-I)
             if delta_ele2 < delta_ele
                 # lower elevation found, adjust dir
