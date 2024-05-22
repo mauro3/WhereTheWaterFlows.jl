@@ -122,10 +122,6 @@ Return
 function d8dir_feature(dem, bnd_as_sink, nan_as_sink, extra_sinks=CartesianIndex{2}[], extra_barriers=CartesianIndex{2}[])
     # outputs
     dir = fill!(similar(dem, Int8), 0)
-    nout = fill!(similar(dem, Bool), false)
-    nin = fill!(similar(dem, Int8), 0)
-    sinks = CartesianIndex{2}[]
-    pits = CartesianIndex{2}[]
 
     R = CartesianIndices(size(dem))
     Iend = last(R)
@@ -177,6 +173,24 @@ function d8dir_feature(dem, bnd_as_sink, nan_as_sink, extra_sinks=CartesianIndex
         dir[I] = dir_
     end
 
+    return dir, make_flowfeatures(dir)..., dem, nothing
+end
+
+"""
+    make_flowfeatures(dir)
+
+Makes nout, nin, sinks, pits by iterating once over the
+dir array
+"""
+function make_flowfeatures(dir)
+    R = CartesianIndices(size(dir))
+    Iend = last(R)
+
+    nout = fill!(similar(dir, Bool), false)
+    nin = fill!(similar(dir, Int8), 0)
+    sinks = CartesianIndex{2}[]
+    pits = CartesianIndex{2}[]
+
     ## flow features (i.e. nout, nin)
     # (not thread-safe because of push!)
     for I in R
@@ -198,7 +212,7 @@ function d8dir_feature(dem, bnd_as_sink, nan_as_sink, extra_sinks=CartesianIndex
             nout[I] = true
         end
     end
-    return dir, nout, nin, sinks, Origin(length(sinks)+1)(pits), dem, nothing
+    return nout, nin, sinks, Origin(length(sinks)+1)(pits)
 end
 
 
