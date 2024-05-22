@@ -1,8 +1,3 @@
-# TODO:
-# - check with GRF that it works most of the time
-# - better barrier breach algo: select point which has minimal elevation of Imin and target
-# - deinstall packages: Infiltrator, Primes, FFTW
-
 module WhereTheWaterFlows
 
 using StaticArrays
@@ -226,8 +221,10 @@ with `NaN`-value are ignored.
 args:
 - dem -- the DEM (or hydro-potential); array
 - cellarea=cellarea=fill!(similar(dem),1) -- the source per cell, defaults to 1.
-     - do not use negative values
-     - If using physical units then use a volumetric flux per cell, e.g. m3/s.
+     - if cellarea is negative in places, flux may go to zero but not below.
+     - in areas where no routing takes place, typically NaNs in the dem, cellarea
+       is ignored.  This maybe affects mass-conservation.
+     - if using physical units then use a volumetric flux per cell, e.g. m3/s.
      - Alternatively, `cellarea` can be a tuple of arrays. Then they are treated/routed
        separately, for instance `(water, tracer)`.  All quantities need to be extensive
        (i.e. additive, e.g. use internal energy and not temperature)
@@ -238,6 +235,8 @@ kwargs:
 - feedback_fn -- function which is applied to area-value(s) at each cell once all water
                  of the cell has been accumulated but before the water is routed further downstream.
                  Signature `(uparea, ij, dir) -> new_uparea`
+              --> for example, `(uparea, ij, dir) -> max(uparea, 0)` would ensure that all
+                  upareas are non-negative.
 - drain_pits -- whether to route through pits (true)
 - bnd_as_sink (true) -- whether the domain boundary should be sinks, i.e. adjacent cells
                  can drain into them, or whether to ignore them.

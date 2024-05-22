@@ -440,6 +440,15 @@ end
     # non default cellarea
     area, _ = WWF.waterflows(dem, fill(10.0, size(dem)), bnd_as_sink=false, drain_pits=false)
     @test area == [10.0 10.0 40.0 20.0; 10.0 10.0 10.0 10.0; 50.0 30.0 20.0 10.0]
+
+    cella = fill(-1.0, size(dem))
+    cella[end,3:4] .= 1
+    area, _, dir = WWF.waterflows(dem, cella, bnd_as_sink=false, drain_pits=false)
+    @test area == [-1.0 -1.0 -4.0 -2.0; -1.0 -1.0 -1.0 -1.0; -1.0 1.0 2.0 1.0]
+
+    feedback_fn_non_negative = (uparea, ij, dir) -> max(uparea, 0)
+    area, _, dir = WWF.waterflows(dem, cella, bnd_as_sink=false, drain_pits=false, feedback_fn=feedback_fn_non_negative)
+    @test area == [0.0 0.0 0.0 0.0; 0.0 0.0 0.0 0.0; 0.0 1.0 2.0 1.0]
 end
 
 
@@ -489,6 +498,8 @@ end
     @test area[1] == [1.0 1.0 4.0 2.0; 1.0 1.0 1.0 1.0; 5.0 3.0 2.0 1.0]
     @test area[2] == [11.0 11.0 47.0 23.0; 11.0 11.0 11.0 11.0; 62.0 36.0 23.0 11.0]
 end
+
+
 
 # "Potentially pathological function for call depth"
 # function ramp(l,w)
