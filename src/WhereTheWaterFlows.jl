@@ -12,7 +12,7 @@ export waterflows
 
 const I11 = CartesianIndex(1,1)
 const I22 = CartesianIndex(2,2)
-# Direction constants (do not define any <1!)
+# Special direction constants (do not define any <1!)
 const PIT = 5        # Direction number indicating no flow, this is a "pit", i.e. a
                      # local minimum or a cell in a completely flat area.
 const SINK = 10      # A cell where water disappears, typically located at the domain boundary
@@ -43,7 +43,7 @@ const cartesian = SMatrix{3,3}(reverse(permutedims([CartesianIndex(-1,1)  Cartes
 
 "Adjustment factor for gradient in diagonal vs non-diagonal"
 diagonal_fac(J::CartesianIndex) = (J.I[1]==0 || J.I[2]==0) ?  1.0 : 1/sqrt(2)
-
+diagonal_fac(dir) = iseven(dir) ?  1.0 : 1/sqrt(2)
 
 """
 Show an array with its axes oriented such that they correspond
@@ -99,7 +99,7 @@ function on_outer_boundary(ar, I::CartesianIndex)
 end
 
 """
-    d8dir_feature(dem, bnd_as_sink, nan_as_sink)
+    d8dir_feature(dem, bnd_as_sink, nan_as_sink, extra_sinks=CartesianIndex{2}[], extra_barriers=CartesianIndex{2}[])
 
 D8 directions of a DEM and drainage features (nin & nout).
 
@@ -107,6 +107,8 @@ Elevations with NaN map to dir==BARRIER, cells around them will be set to SINK i
 or receive no special treatment otherwise.
 
 The argument `bnd_as_sink` determines whether cells at the domain boundary act as sinks.
+
+The extra_sinks and extra_barriers will be added to dir.
 
 Return
 - dir  - direction, encoded as `dirnums`
@@ -117,7 +119,7 @@ Return
 - dem - DEM, unchanged
 - flowdir_extra_output -- nothing (not used by this function, but could be by custom ones)
 """
-function d8dir_feature(dem, bnd_as_sink, nan_as_sink)
+function d8dir_feature(dem, bnd_as_sink, nan_as_sink, extra_sinks=CartesianIndex{2}[], extra_barriers=CartesianIndex{2}[])
     # outputs
     dir = fill!(similar(dem, Int8), 0)
     nout = fill!(similar(dem, Bool), false)
@@ -128,8 +130,15 @@ function d8dir_feature(dem, bnd_as_sink, nan_as_sink)
     R = CartesianIndices(size(dem))
     Iend = last(R)
 
-    # get dir for all points
+    ## make dir
+    for es in extra_sinks
+        dir[es] = SINK
+    end
+    for eb in extra_barriers
+        dir[eb] = BARRIER
+    end
     for I in R
+        dir[I]!=0 && continue # already set above
         ele = dem[I]
 
         # always make NaN points BARRIERS
@@ -167,7 +176,8 @@ function d8dir_feature(dem, bnd_as_sink, nan_as_sink)
         end
         dir[I] = dir_
     end
-    # flow features (i.e. nout, nin)
+
+    ## flow features (i.e. nout, nin)
     # (not thread-safe because of push!)
     for I in R
         for J in iterate_D9(I, Iend)
@@ -238,9 +248,13 @@ Returns
 - flowdir_extra_output -- extra output of the flowdir_fn, which is `nothing` for the default
 """
 function waterflows(dem, cellarea=fill!(similar(dem),1), flowdir_fn=d8dir_feature;
-                    feedback_fn=nothing, drain_pits=true, bnd_as_sink=true, nan_as_sink=true, stacksize=2^13 * 2^10)
+                    feedback_fn=nothing, drain_pits=true, bnd_as_sink=true, nan_as_sink=true,
+                    extra_sinks=CartesianIndex{2}[],
+                    extra_barriers=CartesianIndex{2}[],
+                    stacksize=2^13 * 2^10)
 
-    dir, nout, nin, sinks, pits, dem4drainpits, flowdir_extra_output = flowdir_fn(dem, bnd_as_sink, nan_as_sink)
+    dir, nout, nin, sinks, pits, dem4drainpits, flowdir_extra_output =
+        flowdir_fn(dem, bnd_as_sink, nan_as_sink, extra_sinks, extra_barriers)
 
     if drain_pits && !bnd_as_sink
         if !nan_as_sink || (nan_as_sink && sum(isnan.(dem4drainpits))==0)
