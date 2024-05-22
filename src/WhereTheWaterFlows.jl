@@ -12,13 +12,15 @@ export waterflows
 
 const I11 = CartesianIndex(1,1)
 const I22 = CartesianIndex(2,2)
+# Direction constants (do not define any <1!)
 const PIT = 5        # Direction number indicating no flow, this is a "pit", i.e. a
                      # local minimum or a cell in a completely flat area.
 const SINK = 10      # A cell where water disappears, typically located at the domain boundary
                      # (when setting bnd_as_sink=true) adjacent to NaN-cells of the DEM.
                      # Note: PITs can also be sinks if drain_pits==false.
 const BARRIER = 11   # Direction number indicating no flow into or out of this cell.  All DEM
-                     # cells which are NaNs map to this.
+                     # cells which are NaNs map to this.  If NaNs are not sinks, then water routes
+                     # around these cells.
 
 """
 Direction numbers.  E.g. dirnums[1,1] will return the number
@@ -53,16 +55,20 @@ showme(ar) = (display(reverse(ar',dims=1)); println(" "))
 ind2dir(ind::CartesianIndex) = dirnums[ind + I22]
 
 """
-Translate a D8 direction number into a CartesianIndex (i.e. a flow vector).
-Maps dir==BARRIER and dir==SINK to CartesianIndex(0,0) also.
+    dir2ind(dir, map_special_to_PIT=false)
+
+Translate a D8 direction number into a CartesianIndex (i.e. a flow vector), also
+maps SINK to CartesianIndex(0,0).
+
+If map_special_to_PIT==true, then any dir>9 is mapped to CartesianIndex(0,0).
 """
-function dir2ind(dir, allow_BARRIER=false)
-    allow_BARRIER==false && dir==BARRIER && error("Cannot make CartisianIndex for BARRIER")
-    return (dir==SINK || dir==BARRIER) ? CartesianIndex(0,0) : cartesian[dir]
+function dir2ind(dir, map_special_to_PIT=false)
+    !map_special_to_PIT && dir>SINK && error("Cannot make CartisianIndex for a dir-number>9 (consider setting kw-arg map_special_to_5=true)")
+    return (dir>9) ? CartesianIndex(0,0) : cartesian[dir]
 end
 
 "Translate a D8 direction number into a 2D vector."
-dir2vec(dir, allow_BARRIER=false) = [dir2ind(dir, allow_BARRIER).I...]
+dir2vec(dir, map_special_to_PIT=false) = [dir2ind(dir, map_special_to_PIT).I...]
 
 """
 Tests whether a cell `J` with flowdir `dirJ` flows into cell `I`.
@@ -182,8 +188,7 @@ function d8dir_feature(dem, bnd_as_sink, nan_as_sink)
             nout[I] = true
         end
     end
-    pits_ = Origin(length(sinks)+1)(pits)
-    return dir, nout, nin, sinks, pits_, dem, nothing
+    return dir, nout, nin, sinks, Origin(length(sinks)+1)(pits), dem, nothing
 end
 
 
@@ -234,13 +239,15 @@ Returns
 """
 function waterflows(dem, cellarea=fill!(similar(dem),1), flowdir_fn=d8dir_feature;
                     feedback_fn=nothing, drain_pits=true, bnd_as_sink=true, nan_as_sink=true, stacksize=2^13 * 2^10)
+
+    dir, nout, nin, sinks, pits, dem4drainpits, flowdir_extra_output = flowdir_fn(dem, bnd_as_sink, nan_as_sink)
+
     if drain_pits && !bnd_as_sink
-        if !nan_as_sink || (nan_as_sink && sum(isnan.(dem))==0)
+        if !nan_as_sink || (nan_as_sink && sum(isnan.(dem4drainpits))==0)
             error("No sinks in the domain.  Consider setting bnd_as_sink and/or nan_as_sink and add NaNs to the `dem`.")
         end
     end
 
-    dir, nout, nin, sinks, pits, dem4drainpits, flowdir_extra_output = flowdir_fn(dem, bnd_as_sink, nan_as_sink)
     area, slen, c = flowrouting_catchments(dir, sinks, pits, cellarea, feedback_fn, stacksize)
     bnds = make_boundaries(c, eachindex(pits))
     if drain_pits

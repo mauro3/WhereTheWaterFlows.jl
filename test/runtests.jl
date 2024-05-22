@@ -166,6 +166,9 @@ end
     @test WWF.dir2ind(7) == CartesianIndex(-1,1)
     @test WWF.dir2ind(8) == CartesianIndex(0,1)
     @test WWF.dir2ind(9) == CartesianIndex(1,1)
+    @test WWF.dir2ind(WWF.SINK) == CartesianIndex(0,0)
+    @test_throws ErrorException WWF.dir2ind(WWF.BARRIER)
+    @test WWF.dir2ind.([11, 15, 100], true)==[CartesianIndex(0,0),CartesianIndex(0,0),CartesianIndex(0,0)]
     for i=1:9
         @test i==WWF.ind2dir(WWF.dir2ind(i))
     end
