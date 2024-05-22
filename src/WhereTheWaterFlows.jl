@@ -127,12 +127,8 @@ function d8dir_feature(dem, bnd_as_sink, nan_as_sink, extra_sinks=CartesianIndex
     Iend = last(R)
 
     ## make dir
-    for es in extra_sinks
-        dir[es] = SINK
-    end
-    for eb in extra_barriers
-        dir[eb] = BARRIER
-    end
+    dir[extra_sinks] .= SINK
+    dir[extra_barriers] .= BARRIER
     for I in R
         dir[I]!=0 && continue # already set above
         ele = dem[I]
@@ -153,6 +149,7 @@ function d8dir_feature(dem, bnd_as_sink, nan_as_sink, extra_sinks=CartesianIndex
         dir_ = PIT
         for J in iterate_D9(I, Iend)
             I==J && continue
+            dir[J]==BARRIER && continue
             ele2 = dem[J]
             if isnan(ele2)
                 if nan_as_sink
