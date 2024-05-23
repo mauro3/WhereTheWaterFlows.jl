@@ -346,8 +346,8 @@ end
 # initialize output cellarea:
 # - as tuple or one array
 # - as tuple, if cellarea is a tuple
-init_area(dir, cellarea) = (fill!(similar(dir,Float64), 0), )
-init_area(dir, cellarea::Tuple) = map(x -> fill!(similar(dir,Float64), 0), cellarea)
+init_area(dir, cellarea) = (fill!(similar(dir, eltype(cellarea)), NaN), )
+init_area(dir, cellarea::Tuple) = map(x -> init_area(dir,x)[1], cellarea)
 
 # modifies c and area
 function _flowrouting_catchments!(area, len, c, dir, cellarea, feedback_fn, color, ij)
