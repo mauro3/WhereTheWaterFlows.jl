@@ -20,7 +20,7 @@ Plot DEM, uparea, flow-dir
 """
 plotit(x, y, dem) = plotit(x, y, waterflows(dem), dem)
 function plotit(x, y, waterflows_output::Tuple, dem)
-    area, slen, dir, nout, nin, pits  = waterflows_output
+    area, slen, dir, nout, nin, sinks, pits  = waterflows_output
 
     fig, axs = subplots(3,1)
     sca(axs[1])
@@ -33,7 +33,7 @@ function plotit(x, y, waterflows_output::Tuple, dem)
 end
 
 function plotdir(x, y, dir; f = 200)
-    vecfield = WWF.dir2vec.(dir)
+    vecfield = WWF.dir2vec.(dir, true)
     vecfieldx = [v[1] for v in vecfield]
     vecfieldy = [v[2] for v in vecfield]
     quiver(repeat(x,1, length(y)), repeat(y,length(x),1), vecfieldx, vecfieldy, scale_units="width", scale=f)
@@ -78,7 +78,7 @@ function plotbnds(x,y,bnds)
 end
 
 function plotlakedepth(x, y, dem)
-    area, slen, dir, nout, nin, sinks, pits  = waterflows(dem)
+    area, slen, dir, nout, nin, sinks, sinks, pits  = waterflows(dem)
     demf = WWF.fill_dem(dem, sinks, dir)
     heatmap(x, y, demf.-dem)
 end

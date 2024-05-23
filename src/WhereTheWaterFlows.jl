@@ -58,7 +58,7 @@ maps SINK to CartesianIndex(0,0).
 If map_special_to_PIT==true, then any dir>9 is mapped to CartesianIndex(0,0).
 """
 function dir2ind(dir, map_special_to_PIT=false)
-    !map_special_to_PIT && dir>SINK && error("Cannot make CartisianIndex for a dir-number>9 (consider setting kw-arg map_special_to_5=true)")
+    !map_special_to_PIT && dir>SINK && error("Cannot make CartisianIndex for a dir-number>9 (consider setting kw-arg map_special_to_PIT=true)")
     return (dir>9) ? CartesianIndex(0,0) : cartesian[dir]
 end
 
