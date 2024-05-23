@@ -50,7 +50,7 @@ pits2vecs(x, y, pits) = (x[[p.I[1] for p in pits if p!=CartesianIndex(-1,-1)]],
 Plot uparea, or another variable.  If no pits should be plotted, use `[]`.
 """
 function plotarea(x, y, area, pits; prefn=log10, cbar=true)
-    px, py = pits2vecs(x, y, pits)
+    px, py = collect.(pits2vecs(x, y, pits))
     fig, axs = subplots()
     heatmap(x, y, prefn.(area), cbar=cbar)
     scatter(px, py, 1, "r")
