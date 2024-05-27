@@ -417,7 +417,7 @@ end
     @test sum(dir.==5) == length(pits)
 
     area_flow, dir_flow = WWF.waterflows(dem, drain_pits=true, bnd_as_sink=true)[[1,3]];
-    @test sum(area.!=area_flow) == 78
+    @test sum(area.!==area_flow) == 78
     @test sum(dir.!=dir_flow) == 1
 end
 
