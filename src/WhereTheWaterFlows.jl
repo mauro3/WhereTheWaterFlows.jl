@@ -610,32 +610,38 @@ end
 ## Post processing
 include("postproc.jl")
 
-## Plotting via Plt
-struct Plt end
-
-"""
-Plotting functions can be accessed via `plt` after loading PyPlot.
-
-Example
-```
-WhereTheWaterFlows.plt.plotit(dem)
-```
-"""
-plt = Plt()
-function Base.getproperty(::Plt, name::Symbol)
-    ext = Base.get_extension(@__MODULE__, :PyPlotExt)
-    if isnothing(ext)
-        error("Need to `using PyPlot` to make plotting available")
-    end
-    return getproperty(ext, name)
+## define and export generic functions for plotting
+for fn in [:plt_dir, :plt_catchments, :plt_lakedepth, :plt_bnds, :plt_it, :plt_area, :plt_sinks] 
+    @eval function $fn end
+    @eval export $fn
 end
 
-function Base.propertynames(::Plt)
-    ext = Base.get_extension(@__MODULE__, :PyPlotExt)
-    if isnothing(ext)
-        error("Need to `using PyPlot` to make plotting available")
-    end
-    return propertynames(ext)
-end
+# ## Plotting via Plt
+# struct Plt end
+
+# """
+# Plotting functions can be accessed via `plt` after loading PyPlot.
+
+# Example
+# ```
+# WhereTheWaterFlows.plt.plotit(dem)
+# ```
+# """
+# plt = Plt()
+# function Base.getproperty(::Plt, name::Symbol)
+#     ext = Base.get_extension(@__MODULE__, :PyPlotExt)
+#     if isnothing(ext)
+#         error("Need to `using PyPlot` to make plotting available")
+#     end
+#     return getproperty(ext, name)
+# end
+
+# function Base.propertynames(::Plt)
+#     ext = Base.get_extension(@__MODULE__, :PyPlotExt)
+#     if isnothing(ext)
+#         error("Need to `using PyPlot` to make plotting available")
+#     end
+#     return propertynames(ext)
+# end
 
 end # module
