@@ -36,7 +36,7 @@ function peaks2(n=100, randfac=0.05)
         randfac*randn(n,n)
 end
 x,y,dem = peaks2(200)
-area, slen, dir, nout, nin, pits, c, bnds = waterflows(dem)
+area, slen, dir, nout, nin, sinks, pits, c, bnds = waterflows(dem)
 
 # log-upslope area as well as pits (sinks)
 WWF.plt.plotarea(x, y, area, pits)
