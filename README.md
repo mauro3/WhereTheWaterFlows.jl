@@ -25,7 +25,8 @@ The main function of this package is `waterflows`, please refer to its
 doc-string.  Here a simple example using it:
 
 ```julia
-using WhereTheWaterFlows, PyPlot
+```
+using WhereTheWaterFlows, GLMakie
 const WWF = WhereTheWaterFlows
 
 "Synthtic DEM with a few maxs and mins"
@@ -39,29 +40,23 @@ x,y,dem = peaks2(200)
 area, slen, dir, nout, nin, sinks, pits, c, bnds = waterflows(dem)
 
 # log-upslope area as well as pits (sinks)
-WWF.plt.plotarea(x, y, area, pits)
-
-# log-upslope area over contours of the dem
-WWF.plt.plotarea_dem(x, y, dem, area, pits)
+plt_area(x, y, area, pits)
 
 # catchments
-figure()
-WWF.plt.heatmap(x,y,c)
+plt_catchments(x,y,c)
 
 # A single catchment of some point.  Choose one with large catchment:
 i, j = 50, findmax(area[50,:])[2]
 cc = catchment(dir, CartesianIndex(i,j))
-WWF.plt.heatmap(x,y,cc)
-plot(x[i], y[j], "<r", ms=10)
+heatmap(x,y,cc)
+scatter!(x[i], y[j], markersize=50)
 
 # stream length
-figure()
-WWF.plt.heatmap(x,y,slen)
+heatmap(x,y,slen)
 
-demf = fill_dem(dem, pits, dir)
+demf = fill_dem(dem, sinks, dir)
 # "lake-depth"
-figure()
-WWF.plt.heatmap(x,y,demf.-dem)
+heatmap(x, y, demf.-dem)
 ```
 
 In the `example/` folder there are two more complicated examples.  One

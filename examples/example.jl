@@ -2,7 +2,7 @@ if !@isdefined plotyes
     plotyes = true
 end
 if plotyes
-    @eval using PyPlot
+    @eval using GLMakie
 end
 using WhereTheWaterFlows
 if !(@isdefined WWF)
@@ -22,15 +22,15 @@ dx = 0.01
 xs = -1.5:dx:1
 ys = -0.5:dx:3.0
 dem = ele.(xs, ys', randfac=0.1, withpit=true);
-plotyes && WWF.plt.heatmap(xs, ys, dem)
+plotyes && heatmap(xs, ys, dem)
 
 area, slen, dir, nout, nin, sinks, pits, c, bnds  = WWF.waterflows(dem, drain_pits=true);
 
 @assert size(dem)==(length(xs), length(ys))
-plotyes && WWF.plt.plotit(xs, ys, dem)
-plotyes && WWF.plt.plotarea(xs, ys, area, pits)
+plotyes && plt_it(xs, ys, dem)
+plotyes && plt_area(xs, ys, area, sinks)
 
-plotyes && WWF.plt.heatmap(xs, ys, c)
+plotyes && plt_catchments(xs, ys, c)
 
 demf = WWF.fill_dem(dem, sinks, dir) #, small=1e-6)
-plotyes && WWF.plt.heatmap(xs, ys, demf.-dem)
+plotyes && heatmap(xs, ys, demf.-dem)
