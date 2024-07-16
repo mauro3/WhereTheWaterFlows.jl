@@ -35,7 +35,7 @@ Plot `dir` as flow field
 end
 function Makie.plot!(plot::Plt_Dir)
     (;dir, x, y, sinks) = plot
-    vecfield  = lift(dir-> dir2vec.(dir, true), dir)
+    vecfield  = lift(dir-> WWF.dir2vec.(dir, true), dir)
     vecfieldx = lift(vecfield -> [v[1] for v in vecfield], vecfield)
     vecfieldy = lift(vecfield -> [v[2] for v in vecfield], vecfield)
     arrows!(plot, x, y, vecfieldx, vecfieldy, lengthscale=0.005, align=:center)
@@ -66,7 +66,7 @@ function Makie.plot!(plot::Plt_Area)
     if threshold[]<Inf
         pl[][area[].<threshold[]] .= NaN
     end
-    plt_sinks!(x,y,sinks)
+    plt_sinks!(plot, x, y, sinks)
     heatmap!(plot, x, y, pl)
 end
 
@@ -81,7 +81,7 @@ end
 function Makie.plot!(plot::Plt_Sinks)
     pp = lift((x,y,sinks) -> sinks2vecs(x, y, sinks), plot.x, plot.y, plot.sinks)
     px, py = lift(x->x, pp[])
-    scatter!(plot, px, py, color=:red)
+    scatter!(plot, px, py, color=:red, markersize=25)
 end
 
 """
@@ -165,7 +165,7 @@ plt_it(x, y, dem) = plt_it(x, y, waterflows(dem), dem)
 function plt_it(x, y, waterflows_output::Tuple, dem)
     area, slen, dir, nout, nin, sinks, sink_pits  = waterflows_output
 
-    f = GLMakie.Figure()
+    f = Makie.Figure()
     ax1 = Axis(f[1, 1]; aspect=1, title="")
     contour!(x, y, dem)
     ax2 = Axis(f[2, 1]; aspect=1, title="")

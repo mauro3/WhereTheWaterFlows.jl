@@ -49,10 +49,10 @@ phi = bed + flotation_fraction * rho_i/rho_w * (surface - bed)
 area, slen, dir, nout, nin, sinks, pits, c, bnds  = WWF.waterflows(phi, drain_pits=true)
 
 # Plot it
-plotyes && WWF.plt.plotit(x, y, phi)
-plotyes && WWF.plt.plotarea(x, y, area, sinks)
+plotyes && plt_it(x, y, phi)
+plotyes && plt_area(x, y, area, sinks)
 
-plotyes && WWF.plt.heatmap(x, y, c)
+plotyes && plt_catchments(x, y, c)
 
 phi_filled = WWF.fill_dem(phi, sinks, dir) #, small=1e-6)
-plotyes && WWF.plt.heatmap(x, y, phi_filled .- phi)
+plotyes && heatmap(x, y, phi_filled .- phi)

@@ -111,13 +111,11 @@ phi_filled = WWF.fill_dem(phi, sinks, dir) #, small=1e-6)
 lake_depth = phi_filled .- phi
 # Plot it
 if plotyes
-    WWF.plt.plotit(x, y, phi)
-    WWF.plt.plotarea(x, y, area[1], pits)
-    WWF.plt.plotarea(x, y, area[2], pits)
+    plt_it(x, y, phi)
+    plt_area(x, y, area[1], pits)
+    plt_area(x, y, area[2], pits)
 
-    PyPlot.figure()
-    WWF.plt.heatmap(x, y, c)
+    plt_catchments(x, y, c)
 
-    PyPlot.figure()
-    WWF.plt.heatmap(x, y, lake_depth)
+    heatmap(x, y, lake_depth)
 end
