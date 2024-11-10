@@ -25,7 +25,6 @@ The main function of this package is `waterflows`, please refer to its
 doc-string.  Here a simple example using it:
 
 ```julia
-```
 using WhereTheWaterFlows, GLMakie
 const WWF = WhereTheWaterFlows
 
