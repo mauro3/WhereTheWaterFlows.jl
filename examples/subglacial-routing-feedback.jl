@@ -12,7 +12,7 @@ if !@isdefined plotyes
     plotyes = true
 end
 if plotyes
-    @eval using PyPlot
+    @eval using GLMakie
 end
 using WhereTheWaterFlows
 if !(@isdefined WWF)
@@ -111,11 +111,10 @@ phi_filled = WWF.fill_dem(phi, sinks, dir) #, small=1e-6)
 lake_depth = phi_filled .- phi
 # Plot it
 if plotyes
-    plt_it(x, y, phi)
-    plt_area(x, y, area[1], pits)
-    plt_area(x, y, area[2], pits)
-
-    plt_catchments(x, y, c)
-
-    heatmap(x, y, lake_depth)
+    fig = Figure()
+    plt_it!(Axis(fig[1,1]), x, y, phi)
+    plt_area!(Axis(fig[1,2]), x, y, area[1], pits)
+    plt_area!(Axis(fig[1,1]), x, y, area[2], pits)
+    plt_catchments!(Axis(fig[1,1]), x, y, c)
+    heatmap!(Axis(fig[1,1]), x, y, lake_depth)
 end

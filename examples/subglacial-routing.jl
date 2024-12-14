@@ -9,7 +9,7 @@ if !@isdefined plotyes
     plotyes = true
 end
 if plotyes
-    @eval using PyPlot
+    @eval using GLMakie
 end
 using WhereTheWaterFlows
 if !(@isdefined WWF)
