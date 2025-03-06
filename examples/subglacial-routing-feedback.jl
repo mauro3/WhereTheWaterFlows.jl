@@ -6,8 +6,6 @@
 # waterflow will generate extra melt due to dissipation of potential energy.
 
 # Load packages
-#
-# to allow plotting PyPlot must be installed in your global environment
 if !@isdefined plotyes
     plotyes = true
 end
