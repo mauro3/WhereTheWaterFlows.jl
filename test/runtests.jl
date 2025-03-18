@@ -8,6 +8,7 @@ plotyes = false
 println("Running examples:")
 for fl in readdir("../examples/", join=true)
     isfile(fl) || continue
+    splitext(fl)[2]==".jl" || continue
     println(fl)
     include(fl)
 end
