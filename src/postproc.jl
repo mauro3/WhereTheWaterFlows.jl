@@ -72,6 +72,12 @@ function catchment(dir, ijs::Union{<:Array{CartesianIndex{2}}, CartesianIndices{
     end
     return c
 end
+"""
+    _catchment!(c, dir, ij)
+
+Recursively mark cells in a catchment with `true` in the BitArray `c`,
+starting from index `ij` and traversing upstream based on flow directions.
+"""
 function _catchment!(c, dir, ij)
     c[ij] = true
     # proc upstream points
@@ -149,9 +155,15 @@ function fill_dem(dem, sinks, dir; small=0)
     return dem
 end
 
-# The recursion goes up the catchment using `dir`.  If it ever encounters a point
-# which has lower elevation than the previous one, it will set that point's elevation
-# and all upstream points' elevation the elevation of the first point.
+"""
+    _fill_ij!(ele, dem, ij, dir, small)
+
+Fill depressions in a DEM by recursively traversing the catchment upstream.
+
+The recursion goes up the catchment using `dir`. If it ever encounters a point
+which has lower elevation than the previous one, it will set that point's elevation
+and all upstream points' elevation to the elevation of the first point.
+"""
 function _fill_ij!(ele, dem, ij, dir, small)
     if ele >= dem[ij]
         ele += 2*eps(ele)
