@@ -5,7 +5,10 @@ using OffsetArrays: Origin, no_offset_view
 
 export waterflows
 
+"""CartesianIndex(1,1) - Commonly used offset for neighbor access"""
 const I11 = CartesianIndex(1,1)
+
+"""CartesianIndex(2,2) - Used for center-relative indexing in the direction matrix"""
 const I22 = CartesianIndex(2,2)
 # Special direction constants (do not define any <1!)
 const PIT = 5        # Direction number indicating no flow, this is a "pit", i.e. a
@@ -72,6 +75,8 @@ flowsinto(J::CartesianIndex, dirJ::Integer, I::CartesianIndex) = ind2dir(I-J) ==
 
 "Return CartesianIndices corresponding to the 8 neighbors and the point itself"
 iterate_D9(I, Iend, I1=I11) = max(I1, I-I1):min(Iend, I+I1)
+"""Return CartesianIndices corresponding to the 8 neighbors and the point itself (D9 neighborhood),
+using the bounds of the provided array."""
 function iterate_D9(I, ar::AbstractMatrix)
     R = CartesianIndices(ar)
     I1, Iend = first(R), last(R)
@@ -346,9 +351,14 @@ end
 # initialize output cellarea:
 # - as tuple or one array
 # - as tuple, if cellarea is a tuple
+
+"""Initialize output area array(s) based on the input cell area, returning properly structured
+single-element tuple for consistency with the multi-array case."""
 init_area(dir, cellarea) = (fill!(similar(dir, eltype(cellarea)), NaN), )
 init_area(dir, cellarea::Tuple) = map(x -> init_area(dir,x)[1], cellarea)
 
+"""Recursively compute flow routing for a catchment, modifying area, len, and c in-place.
+Traverses the drainage tree upstream from the starting point (sink or pit)."""
 # modifies c and area
 function _flowrouting_catchments!(area, len, c, dir, cellarea, feedback_fn, color, ij)
     # assign catchment (solely dependent on `dir`)
@@ -533,6 +543,8 @@ function drainpits!(dir, nin, nout, sinks, pits, ctch, bnds, dem)
     return bnds
 end
 
+"""Normalize catchment colormap by shortening chains of mappings to direct mappings,
+eliminating intermediate steps in a cascade of pit drainages."""
 # When a cascade of pits drains, then the colormap will have
 # a cascade of mappings.  This cuts out the middle-men.
 function _normalize_colormap!(colormap)
@@ -549,6 +561,8 @@ function _normalize_colormap!(colormap)
     end
     return nothing
 end
+"""Recolor the leftover pit-catchments with consecutive color indices to ensure
+no gaps in the numbering after pit drainage."""
 # Recolors the leftover pit-catchments with consecutive colors
 function _recolor_catchments!(ctch, colormap, new_consecutive_colormap)
     nsinks = firstindex(colormap)-1
