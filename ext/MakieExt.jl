@@ -38,7 +38,7 @@ function Makie.plot!(plot::Plt_Dir)
     vecfield  = lift(dir-> WWF.dir2vec.(dir, true), dir)
     vecfieldx = lift(vecfield -> [v[1] for v in vecfield], vecfield)
     vecfieldy = lift(vecfield -> [v[2] for v in vecfield], vecfield)
-    arrows!(plot, x, y, vecfieldx, vecfieldy, lengthscale=0.005, align=:center)
+    arrows2d!(plot, x, y, vecfieldx, vecfieldy, lengthscale=0.005, align=:center)
     plt_sinks!(x, y, sinks)
 end
 
