@@ -10,8 +10,9 @@ module MakieExt
 
 
 using WhereTheWaterFlows
-for fn in [:plt_dir, :plt_catchments, :plt_lakedepth, :plt_bnds, :plt_it, :plt_area, :plt_sinks] 
+for fn in [:plt_dir, :plt_catchments, :plt_lakedepth, :plt_bnds, :plt_it, :plt_area, :plt_sinks]
     @eval import WhereTheWaterFlows:$fn
+    @eval import WhereTheWaterFlows:$(Symbol(fn,:!))
 end
 const WWF=WhereTheWaterFlows
 using Makie
@@ -48,9 +49,9 @@ end
 Plot uparea, or another variable.
 
 Kwargs:
-- pre-proc with `prefun`, typically this is `log10`
+- pre-proc with `prefun`, typically and by default this is `log10`
 - if sinks (or pits) are passed, plot as points
-- threshold the area
+- threshold the area: do not plot pixels with area below threshold
 """
 @recipe(Plt_Area, x, y, area) do scene
     Attributes(
@@ -60,14 +61,14 @@ Kwargs:
     )
 end
 function Makie.plot!(plot::Plt_Area)
-    (;x, y, area, sinks, threshold) = plot
-    prefn = plot.prefn[]
-    pl = lift(a -> prefn.(a), area)
+    (;x, y, area, sinks, threshold, prefn) = plot
+    pl = lift(a -> prefn[].(a), area)
     if threshold[]<Inf
         pl[][area[].<threshold[]] .= NaN
     end
     plt_sinks!(plot, x, y, sinks)
     heatmap!(plot, x, y, pl)
+    return plot
 end
 
 """
@@ -94,7 +95,7 @@ Plot boundary points.
 end
 function Makie.plot!(plot::Plt_Bnds)
     (;x, y, bnds) = plot
-    px, py = lift((x,y,b) -> sink_pits2vecs(x, y, b), x, y, bnds)
+    px, py = lift((x,y,b) -> sinks2vecs(x, y, b), x, y, bnds)
     scatter!(px, py, color=:green)
 end
 
@@ -142,7 +143,6 @@ function Makie.plot!(plot::Plt_Lakedepth)
     (;x, y, dem, dir, sinks, lowerlimit) = plot
     lakedepth = WWF.fill_dem(dem[], sinks[], dir[]) .- dem[]
     heatmap!(plot, x, y, lakedepth; colorrange=(lowerlimit[], maximum(lakedepth)), lowclip=(:red, 0))
-    # TODO: colorbar
 end
 # specialize for 3-arg call:
 const _Plt_Lakedepth_type = Plt_Lakedepth{<:NTuple{3,Any}}

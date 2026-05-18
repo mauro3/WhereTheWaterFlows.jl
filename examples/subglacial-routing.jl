@@ -48,7 +48,7 @@ area, slen, dir, nout, nin, sinks, pits, c, bnds  = WWF.waterflows(phi, drain_pi
 
 # Plot it
 plotyes && plt_it(x, y, phi)
-plotyes && plt_area(x, y, area, sinks)
+plotyes && plt_area(x, y, area; sinks)
 
 plotyes && plt_catchments(x, y, c)
 

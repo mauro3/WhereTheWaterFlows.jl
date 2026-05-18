@@ -110,9 +110,13 @@ lake_depth = phi_filled .- phi
 # Plot it
 if plotyes
     fig = Figure()
-    plt_it!(Axis(fig[1,1]), x, y, phi)
-    plt_area!(Axis(fig[1,2]), x, y, area[1], pits)
-    plt_area!(Axis(fig[1,1]), x, y, area[2], pits)
-    plt_catchments!(Axis(fig[1,1]), x, y, c)
-    heatmap!(Axis(fig[1,1]), x, y, lake_depth)
+    _, pl = plt_area(fig[1,1], x, y, area[1])
+    Colorbar(fig[1,2], pl, label="Total discharge (log10 m^3/s)")
+    _, pl = plt_area(fig[2,1], x, y, area[2])
+    Colorbar(fig[2,2], pl, label="Melt discharge (log10 m^3/s)")
+    _, pl = plt_catchments(fig[3,1], x, y, c)
+    Colorbar(fig[3,2], pl, label="Catchments")
+    _,pl = heatmap(fig[4,1], x, y, lake_depth)
+    Colorbar(fig[4,2], pl, label="Lake depth (m)")
+    fig
 end
