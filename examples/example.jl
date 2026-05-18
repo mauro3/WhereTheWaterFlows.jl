@@ -2,7 +2,7 @@ if !@isdefined plotyes
     plotyes = true
 end
 if plotyes
-    @eval using GLMakie
+    @eval using CairoMakie
 end
 using WhereTheWaterFlows
 if !(@isdefined WWF)
@@ -28,7 +28,17 @@ area, slen, dir, nout, nin, sinks, pits, c, bnds  = WWF.waterflows(dem, drain_pi
 
 @assert size(dem)==(length(xs), length(ys))
 plotyes && plt_it(xs, ys, dem)
-plotyes && plt_area(xs, ys, area, sinks)
+#plotyes && plt_area(xs, ys, area, sinks) #former
+if plotyes
+    fig, ax, hm = heatmap(xs, ys, area)
+
+    sink_x = [xs[I[1]] for I in sinks]
+    sink_y = [ys[I[2]] for I in sinks]
+
+    scatter!(ax, sink_x, sink_y)
+
+    fig
+end
 
 plotyes && plt_catchments(xs, ys, c)
 
