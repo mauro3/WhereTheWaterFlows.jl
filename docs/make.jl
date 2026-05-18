@@ -15,4 +15,5 @@ makedocs(;
 
 deploydocs(;
     repo="github.com/mauro3/WhereTheWaterFlows.jl.git",
+    push_preview = true,
 )
