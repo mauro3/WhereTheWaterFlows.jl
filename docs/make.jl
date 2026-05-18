@@ -12,5 +12,5 @@ makedocs(;
 )
 
 deploydocs(;
-    repo="github.com/mauro3/WhereTheWaterFlows.jl",
+    repo="github.com/mauro3/WhereTheWaterFlows.jl.git",
 )
