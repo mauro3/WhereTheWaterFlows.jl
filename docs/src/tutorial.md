@@ -71,6 +71,43 @@ j = findmax(area[i, :])[2]
 cc = catchment(dir, CartesianIndex(i, j))   # BitArray, true inside the catchment
 heatmap(x, y, cc)
 scatter!(x[i], y[j], markersize=20)
+
+## Delineate several catchments
+
+Several outlet points can also be passed to `catchments`.
+
+```julia
+targets = [
+    [CartesianIndex(50, 80)],
+    [CartesianIndex(100, 120)],
+    [CartesianIndex(150, 160)],
+]
+
+ct = catchments(dir, targets)
+
+heatmap(x, y, ct)
+
+for target in targets
+    I = first(target)
+    scatter!([x[I[1]]], [y[I[2]]], markersize=20)
+end
+```
+```
+
+## Delineate the catchment of several cells 
+
+It is also possible to calculate the catchment upstream of several cells at once. For instance, we can select a rectangular box and pick the cells only inside the area draining into that box.
+
+```julia
+i1, i2 = 50, 100
+j1, j2 = 100, 150
+
+box = CartesianIndices((i1:i2, j1:j2))
+
+cc = catchment(dir, box)
+cbox = ifelse.(cc, c, 0)
+
+heatmap(x, y, cbox)
 ```
 
 ## Fill depressions
