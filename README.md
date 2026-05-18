@@ -1,5 +1,8 @@
 # WhereTheWaterFlows
 
+[![](https://img.shields.io/badge/docs-stable-blue.svg)](https://USER_NAME.github.io/PACKAGE_NAME.jl/stable)
+[![](https://img.shields.io/badge/docs-dev-blue.svg)](https://USER_NAME.github.io/PACKAGE_NAME.jl/dev)
+
 [![Build Status](https://github.com/mauro3/WhereTheWaterFlows.jl/workflows/CI/badge.svg)](https://github.com/mauro3/WhereTheWaterFlows.jl/actions)
 [![Build Status](https://ci.appveyor.com/api/projects/status/github/mauro3/WhereTheWaterFlows.jl?svg=true)](https://ci.appveyor.com/project/mauro3/WhereTheWaterFlows-jl)
 [![Coverage](https://codecov.io/gh/mauro3/WhereTheWaterFlows.jl/branch/master/graph/badge.svg)](https://codecov.io/gh/mauro3/WhereTheWaterFlows.jl)
@@ -16,62 +19,22 @@ This code is reasonably fast: flow routing on a DEM of Antarctica of
 about 2e8 points (14000x14000) with 150000 depressions takes about 30s
 on my laptop (Ryzen 4750U).
 
-![Upslope area](https://user-images.githubusercontent.com/4098145/67853636-e319b880-fb06-11e9-933d-9f55ace99ce1.png)
-
-Example of upslope area calculated in below example.
-
-## Manual
-
-The main function of this package is `waterflows`, please refer to its
-doc-string.  Here a simple example using it:
+# Example
 
 ```julia
-using WhereTheWaterFlows, GLMakie
-const WWF = WhereTheWaterFlows
+using WhereTheWaterFlows, CairoMakie
 
-"Synthtic DEM with a few maxs and mins"
-function peaks2(n=100, randfac=0.05)
-    coords = range(-pi, pi, length=n)
-    return coords, coords, sin.(coords) .* cos.(coords') .-
-        0.7*(sin.(coords.+1) .* cos.(coords')).^8 .+
-        randfac*randn(n,n)
-end
-x,y,dem = peaks2(200)
+# build a small synthetic DEM
+n = 200
+xs = range(-π, π, length=n)
+dem = sin.(xs) .* cos.(xs') .+ 0.05 * rand(n,n)
+
 area, slen, dir, nout, nin, sinks, pits, c, bnds = waterflows(dem)
-
-# log-upslope area as well as pits (sinks)
-plt_area(x, y, area, pits)
-
-# catchments
-plt_catchments(x,y,c)
-
-# A single catchment of some point.  Choose one with large catchment:
-i, j = 50, findmax(area[50,:])[2]
-cc = catchment(dir, CartesianIndex(i,j))
-heatmap(x,y,cc)
-scatter!(x[i], y[j], markersize=50)
-
-# stream length
-heatmap(x,y,slen)
-
-demf = fill_dem(dem, sinks, dir)
-# "lake-depth"
-heatmap(x, y, demf.-dem)
+plt_area(xs, xs, area)
 ```
+![Upslope area](https://user-images.githubusercontent.com/4098145/67853636-e319b880-fb06-11e9-933d-9f55ace99ce1.png)
 
-In the `example/` folder there are two more complicated examples.  One
-showcases the ability to route several quantities at once with
-self-feedback via the `feedback_fn`.
-
-### Post-processing
-
-There are the following function (see their docs for details):
-- `catchment` -- determine the catchment of a point or a set of points
-- `catchments` -- determine the catchment of several sink areas (each
-  defined by a set of points)
-- `catchment_flux` -- the total flux or source area in a particular catchment
-- `prune_catchments` -- remove catchments smaller than a certain size
-- `fill_dem` -- fill the depressions of a DEM
+Example of upslope area on a synthetic digital elevation model.
 
 # References
 [1] O’Callaghan, J. and Mark, D.: The extraction of drainage networks
