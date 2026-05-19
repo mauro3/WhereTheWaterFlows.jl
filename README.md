@@ -1,6 +1,6 @@
 # WhereTheWaterFlows
 
-[![](https://img.shields.io/badge/docs-stable-blue.svg)](https://mauro3.github.io/WhereTheWaterFlows.jl/stable)
+[![](https://img.shields.io/badge/docs-stable-blue.svg)]( yhttps://mauro3.github.io/WhereTheWaterFlows.jl/stable)
 [![](https://img.shields.io/badge/docs-dev-blue.svg)](https://mauro3.github.io/WhereTheWaterFlows.jl/dev)
 
 [![Build Status](https://github.com/mauro3/WhereTheWaterFlows.jl/workflows/CI/badge.svg)](https://github.com/mauro3/WhereTheWaterFlows.jl/actions)
@@ -21,6 +21,8 @@ on my laptop (Ryzen 4750U).
 
 # Example
 
+Example of an upslope area calculation on a synthetic digital elevation model:
+
 ```julia
 using WhereTheWaterFlows, CairoMakie
 
@@ -34,7 +36,7 @@ plt_area(xs, xs, area)
 ```
 ![Upslope area](https://user-images.githubusercontent.com/4098145/67853636-e319b880-fb06-11e9-933d-9f55ace99ce1.png)
 
-Example of upslope area on a synthetic digital elevation model.
+For details, see the [documentation](https://mauro3.github.io/WhereTheWaterFlows.jl).
 
 # References
 [1] O’Callaghan, J. and Mark, D.: The extraction of drainage networks
