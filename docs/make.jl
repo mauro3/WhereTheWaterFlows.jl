@@ -6,6 +6,7 @@ makedocs(;
     pages   = [
         "Home"     => "index.md",
         "Tutorial" => "tutorial.md",
+        "Examples" => "examples.md",
         "API"      => "api.md",
     ],
     repo     = "https://github.com/mauro3/WhereTheWaterFlows.jl/blob/{commit}{path}#L{line}",
