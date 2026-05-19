@@ -99,15 +99,11 @@ end
 It is also possible to calculate the catchment upstream of several cells at once. For instance, we can select a rectangular box and pick the cells only inside the area draining into that box.
 
 ```julia
-i1, i2 = 50, 100
-j1, j2 = 100, 150
+box = CartesianIndices((50:100, 100:150))
 
-box = CartesianIndices((i1:i2, j1:j2))
-
-cc = catchment(dir, box)
-cbox = ifelse.(cc, c, 0)
-
-heatmap(x, y, cbox)
+cc = Float64.(catchment(dir, box))
+cc[box] .= NaN
+heatmap(x, y, cc)
 ```
 
 ## Fill depressions
