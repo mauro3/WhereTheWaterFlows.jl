@@ -3,17 +3,8 @@
 # DEM.
 
 # Load packages
-if !@isdefined plotyes
-    plotyes = true
-end
-if plotyes
-    @eval using CairoMakie
-end
-using WhereTheWaterFlows
-if !(@isdefined WWF)
-    const WWF = WhereTheWaterFlows
-end
-
+using WhereTheWaterFlows, CairoMakie
+const WWF = WhereTheWaterFlows
 
 # Read data for ??? glacier
 nx, ny = 539, 459
@@ -47,10 +38,9 @@ phi = bed + flotation_fraction * rho_i/rho_w * (surface - bed)
 (;area, slen, dir, nout, nin, sinks, pits, c, bnds)  = WWF.waterflows(phi, drain_pits=true)
 
 # Plot it
-plotyes && plt_it(x, y, phi)
-plotyes && plt_area(x, y, area; sinks)
+display(plt_area(x, y, area; sinks))
 
-plotyes && plt_catchments(x, y, c)
+display(plt_catchments(x, y, c))
 
 phi_filled = WWF.fill_dem(phi, sinks, dir) #, small=1e-6)
-plotyes && heatmap(x, y, phi_filled .- phi)
+display(heatmap(x, y, phi_filled .- phi))
