@@ -52,10 +52,10 @@ nothing # hide
 
 ## Upslope area
 
-`plt_area` plots the log₁₀ upslope area. Pit locations are marked in red.
+`plt_area` plots the log₁₀ upslope area. Sink locations are marked in red.
 
 ```@example tutorial
-plt_area(x, y, area; sinks=pits)
+plt_area(x, y, area; sinks)
 ```
 
 ## Catchments

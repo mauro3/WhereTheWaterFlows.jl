@@ -14,7 +14,7 @@ const SINK = 10      # A cell where water disappears, typically located at the d
                      # (when setting bnd_as_sink=true) adjacent to NaN-cells of the DEM.
                      # Note: PITs can also be sinks if drain_pits==false.
 const BARRIER = 11   # Direction number indicating no flow into or out of this cell.  All DEM
-                     # cells which are NaNs map to this.  If NaNs are not sinks, then water routes
+                     # cells which are NaNs map to this.  If NaNs are not acting as sinks, then water routes
                      # around these cells.
 
 """
@@ -103,7 +103,7 @@ or receive no special treatment otherwise.
 
 The argument `bnd_as_sink` determines whether cells at the domain boundary act as sinks.
 
-The extra_sinks and extra_barriers will be added to dir.
+The extra_sinks and extra_barriers will be added to dir to act as sinks or barriers, respectively.
 
 Return
 - dir  - direction, encoded as `dirnums`
@@ -213,14 +213,17 @@ end
 # is a pit and thus a catchment (if bnd_as_sink==true).
 """
     waterflows(dem, cellarea=fill!(similar(dem),1), flowdir_fn=d8dir_feature;
-               feedback_fn=nothing, drain_pits=true, bnd_as_sink=false)
+               feedback_fn=nothing, drain_pits=true, bnd_as_sink=true, nan_as_sink=true,
+               extra_sinks=CartesianIndex{2}[],
+               extra_barriers=CartesianIndex{2}[],
+               stacksize=2^13 * 2^10)
 
-Does the water flow routing according the D8 algorithm.  Locations of the `dem`
-with `NaN`-value are ignored.
+Water flow routing according to the D8 algorithm. Local minima are filled, by default, using
+a breach-type algorithm, this means that the input DEM does not need to be pre-filled.
 
 args:
-- dem -- the DEM (or hydro-potential); array
-- cellarea=cellarea=fill!(similar(dem),1) -- the source per cell, defaults to 1.
+- `dem` -- the DEM (or hydro-potential); array
+- `cellarea=fill!(similar(dem),1)` -- the source per cell, defaults to 1.
      - if cellarea is negative in places, flux may go to zero but not below.
      - in areas where no routing takes place, typically NaNs in the dem, cellarea
        is ignored.  This maybe affects mass-conservation.
@@ -240,22 +243,25 @@ kwargs:
 - drain_pits -- whether to route through pits (true)
 - bnd_as_sink (true) -- whether the domain boundary should be sinks, i.e. adjacent cells
                  can drain into them, or whether to ignore them.
-- nan_as_sink (true) -- whether NaN cells in the DEM should make adjacent cells a sink.
+- nan_as_sink (true) -- whether NaN cells in the DEM should make adjacent cells a sink. Note that
+                        on the NaN-cell itself no routing occurs (i.e. a `BARRIER`-cell).
+- `extra_sinks=CartesianIndex{2}[]` 
+- `extra_barriers=CartesianIndex{2}[]` 
 - stacksize (2^13 * 2^10) -- size of the call-stack in _flowrouting_catchments!, which is prone to
                  StackOverflowError.  Note however, that OutOfMemory errors are likely if increased.
 
 
-Returns
-- area -- upslope area (or a tuple of upslope areas if cellarea is a tuple too)
-- stream-length -- length of stream to the farthest source (number of cells traversed)
-- dir -- flow direction at each location
-- nout -- whether the point has outlflow.  I.e. nout[I]==0 --> I is a pit
-- nin -- number of inflow cells
-- sinks -- location of sinks as Vector{CartesianIndex{2}}
-- pits -- location of pits as Vector{CartesianIndex{2}}
-- c -- catchment map (color numbers ∈ 1:length(sinks) are for sinks, others for pits)
-- bnds -- boundaries between catchments.  The boundary to the exterior/NaNs is not in here.
-- flowdir_extra_output -- extra output of the flowdir_fn, which is `nothing` for the default
+Returns a `NamedTuple` with fields:
+- `area` -- upslope area (or a tuple of upslope areas if cellarea is a tuple too)
+- `slen` -- length of stream to the farthest source (number of cells traversed)
+- `dir` -- flow direction at each location
+- `nout` -- whether the point has outlflow.  I.e. nout[I]==0 --> I is a pit
+- `nin` -- number of inflow cells
+- `sinks` -- location of sinks as Vector{CartesianIndex{2}}
+- `pits` -- location of pits as Vector{CartesianIndex{2}}
+- `c` -- catchment map (color numbers ∈ 1:length(sinks) are for sinks, others for pits)
+- `bnds` -- boundaries between catchments.  The boundary to the exterior/NaNs is not in here.
+- `flowdir_extra_output` -- extra output of the flowdir_fn, which is `nothing` for the default
 """
 function waterflows(dem, cellarea=fill!(similar(dem),1), flowdir_fn=d8dir_feature;
                     feedback_fn=nothing, drain_pits=true, bnd_as_sink=true, nan_as_sink=true,
