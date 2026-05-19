@@ -1,13 +1,5 @@
-if !@isdefined plotyes
-    plotyes = true
-end
-if plotyes
-    @eval using CairoMakie
-end
-using WhereTheWaterFlows
-if !(@isdefined WWF)
-    const WWF = WhereTheWaterFlows
-end
+using WhereTheWaterFlows, CairoMakie
+const WWF = WhereTheWaterFlows
 
 "An artificial DEM"
 function ele(x, y; withpit=false, randfac=0.0)
@@ -22,15 +14,14 @@ dx = 0.01
 xs = -1.5:dx:1
 ys = -0.5:dx:3.0
 dem = ele.(xs, ys', randfac=0.1, withpit=true);
-plotyes && heatmap(xs, ys, dem)
+display(heatmap(xs, ys, dem))
 
 (;area, slen, dir, nout, nin, sinks, pits, c, bnds)  = WWF.waterflows(dem, drain_pits=true);
 
 @assert size(dem)==(length(xs), length(ys))
-plotyes && plt_it(xs, ys, dem)
-plotyes && plt_area(xs, ys, area; sinks)
+display(plt_area(xs, ys, area; sinks))
 
-plotyes && plt_catchments(xs, ys, c)
+display(plt_catchments(xs, ys, c))
 
 demf = WWF.fill_dem(dem, sinks, dir) #, small=1e-6)
-plotyes && heatmap(xs, ys, demf.-dem)
+display(heatmap(xs, ys, demf.-dem))
