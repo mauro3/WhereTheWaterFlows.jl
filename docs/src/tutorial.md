@@ -147,6 +147,7 @@ water  = ones(size(dem))
 tracer = zeros(size(dem)...)
 tracer[[40, 678, 4560, 13476]] .= 1
 (water_area, tracer_area), slen, dir, = waterflows(dem, (water, tracer))
+heatmap(x, y, ifelse.(tracer_area .> 0, slen, NaN))
 ```
 
 ## Subglacial routing example
