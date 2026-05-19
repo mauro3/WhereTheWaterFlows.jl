@@ -4,17 +4,16 @@ This tutorial walks through a complete flow-routing analysis on a synthetic DEM.
 
 ## Setup
 
-```julia
-using WhereTheWaterFlows, GLMakie   # GLMakie (or CairoMakie) enables the plt_* functions
-const WWF = WhereTheWaterFlows
+```@example tutorial
+using WhereTheWaterFlows, CairoMakie, Random
 ```
 
 ## Build a synthetic DEM
 
-We use a small function that produces a landscape with a few hills, valleys, and
-a deliberate closed depression (pit):
+We use a function that produces a landscape with a few hills, valleys, and a
+deliberate closed depression (pit):
 
-```julia
+```@example tutorial
 function peaks2(n=100, randfac=0.05)
     coords = range(-π, π, length=n)
     return coords, coords,
@@ -23,137 +22,129 @@ function peaks2(n=100, randfac=0.05)
            randfac .* randn(n, n)
 end
 
+Random.seed!(42)
 x, y, dem = peaks2(200)
+
+heatmap(x, y, dem; axis=(title="DEM",))
 ```
 
 ## Run the flow router
 
-```julia
-area, slen, dir, nout, nin, sinks, pits, c, bnds = waterflows(dem)
+```@example tutorial
+(; area, slen, dir, nout, nin, sinks, pits, c, bnds) = waterflows(dem)
+nothing # hide
 ```
 
-`waterflows` returns ten values as a `NamedTuple`:
+`waterflows` returns a `NamedTuple` with the following fields:
 
 | Name | Description |
 |---|---|
-| `area` | Upslope area at each cell (number of cells draining into it, or a physical flux if `cellarea` is supplied) |
+| `area` | Upslope area at each cell (cell count, or physical flux if `cellarea` is supplied) |
 | `slen` | Stream length: number of cells from the farthest upstream source |
 | `dir` | D8 flow direction at each cell, encoded as an integer 1–9 |
-| `nout` | 1 if the cell has a downstream neighbour, 0 if it is a pit |
+| `nout` | `true` if the cell has a downstream neighbour, `false` if it is a pit |
 | `nin` | Number of upstream neighbours flowing into each cell |
-| `sinks` | `Vector{CartesianIndex{2}}` of boundary/NaN-adjacent sink cells |
-| `pits` | `Vector{CartesianIndex{2}}` of interior pit cells (local minima) |
-| `c` | Integer catchment map; each pit or sink has its own colour |
-| `bnds` | `Vector` of boundary-cell lists, one per catchment |
-| `flowdir_extra_output` | Extra output from a custom `flowdir_fn` (nothing for the default) |
+| `sinks` | Boundary/NaN-adjacent sink cells |
+| `pits` | Interior pit cells (local minima) |
+| `c` | Integer catchment map |
+| `bnds` | Boundary-cell lists, one per catchment |
+| `flowdir_extra_output` | Extra output from a custom `flowdir_fn` (`nothing` for the default) |
 
-## Visualise with Makie
+## Upslope area
 
-```julia
-# log10 upslope area with pit locations marked
-plt_area(x, y, area, pits)
+`plt_area` plots the log₁₀ upslope area. Pit locations are marked in red.
 
-# colour-coded catchment map
-plt_catchments(x, y, c)
+```@example tutorial
+plt_area(x, y, area; sinks=pits)
+```
 
-# stream length
-heatmap(x, y, slen)
+## Catchments
+
+`plt_catchments` colours each catchment uniquely. Catchments smaller than
+`minsize` cells are hidden.
+
+```@example tutorial
+plt_catchments(x, y, c; minsize=50)
 ```
 
 ## Delineate a single catchment
 
-Pick the cell with the largest upslope area along row 50:
+Pick the cell with the largest upslope area along row 50 and trace everything
+draining into it:
 
-```julia
+```@example tutorial
 i = 50
 j = findmax(area[i, :])[2]
 
-cc = catchment(dir, CartesianIndex(i, j))   # BitArray, true inside the catchment
-heatmap(x, y, cc)
-scatter!(x[i], y[j], markersize=20)
+cc = catchment(dir, CartesianIndex(i, j))
+
+fig, ax, _ = heatmap(x, y, Float64.(cc))
+scatter!(ax, [x[i]], [y[j]]; color=:red, markersize=15)
+fig
 ```
 
-## Delineate several catchments
+## Delineate the catchment upstream of a box
 
-Several outlet points can also be passed to `catchments`.
+Pass a `CartesianIndices` rectangle to `catchment` to collect every cell
+draining into that region:
 
-```julia
-targets = [
-    [CartesianIndex(50, 80)],
-    [CartesianIndex(100, 120)],
-    [CartesianIndex(150, 160)],
-]
+```@example tutorial
+box = CartesianIndices((90:110, 90:110))
+cc2 = Float64.(catchment(dir, box))
+cc2[box] .= NaN
 
-ct = catchments(dir, targets)
-
-heatmap(x, y, ct)
-
-for target in targets
-    I = first(target)
-    scatter!([x[I[1]]], [y[I[2]]], markersize=20)
-end
-```
-
-## Delineate the catchment of several cells 
-
-It is also possible to calculate the catchment upstream of several cells at once. For instance, we can select a rectangular box and pick the cells only inside the area draining into that box.
-
-```julia
-box = CartesianIndices((50:100, 100:150))
-
-cc = Float64.(catchment(dir, box))
-cc[box] .= NaN
-heatmap(x, y, cc)
+heatmap(x, y, cc2)
 ```
 
 ## Fill depressions
 
-After calling `waterflows`, pits have already been *routed through* (by default
-`drain_pits=true`), so the flow directions are consistent across depressions.
-`fill_dem` raises every pit cell to the elevation of its spillway, useful for
-visualising lake depth or for further analysis:
+After `waterflows` (with `drain_pits=true`, the default), flow directions are
+consistent across depressions. `fill_dem` raises each pit cell to its spillway
+elevation, useful for visualising lake depth:
 
-```julia
+```@example tutorial
 demf = fill_dem(dem, sinks, dir)
 
-# lake depth
-heatmap(x, y, demf .- dem)
+heatmap(x, y, demf .- dem; colormap=:blues, axis=(title="Lake depth",))
 ```
 
-## Key options of `waterflows`
+## Key keyword arguments of `waterflows`
 
 | Keyword | Default | Meaning |
 |---|---|---|
-| `drain_pits` | `true` | Route water through pits by reversing flow to the lowest spillway |
-| `bnd_as_sink` | `false` | Treat domain boundary cells as sinks |
-| `nan_as_sink` | `true` | Cells adjacent to NaN cells become sinks |
-| `cellarea` | ones array | Source flux per cell; can be a tuple for multiple tracers |
-| `feedback_fn` | `nothing` | Applied to accumulated area at each cell before routing further downstream |
+| `drain_pits` | `true` | Route water through pits via the lowest spillway |
+| `bnd_as_sink` | `true` | Domain-boundary cells act as sinks |
+| `nan_as_sink` | `true` | Cells adjacent to NaN DEM values become sinks |
+| `cellarea` | `ones` array | Source flux per cell; can be a tuple for multiple tracers |
+| `feedback_fn` | `nothing` | Applied to accumulated area before routing downstream |
 
 ## Routing physical fluxes
 
 Set `cellarea` to a physical value (e.g. precipitation in m³/s per cell) to
 accumulate real fluxes rather than cell counts:
 
-```julia
-precip = 1e-3 .* ones(size(dem))          # uniform 1 mm/s
-discharge, = waterflows(dem, precip)            # area now in m³/s
+```@example tutorial
+precip = 1e-3 .* ones(size(dem))   # uniform 1 mm/s
+discharge = waterflows(dem, precip).area
+
+heatmap(x, y, log10.(discharge); colormap=:viridis, axis=(title="Discharge (log₁₀ m³/s)",))
 ```
 
-Pass a tuple to route several quantities simultaneously:
+## Routing multiple quantities simultaneously
 
-```julia
+Pass a tuple of arrays as `cellarea` to accumulate several quantities at once.
+All quantities must be *extensive* (additive), e.g. energy not temperature.
+Here we route uniform water alongside a point tracer:
+
+```@example tutorial
 water  = ones(size(dem))
-tracer = zeros(size(dem)...)
-tracer[[40, 678, 4560, 13476]] .= 1
-(water_area, tracer_area), slen, dir, = waterflows(dem, (water, tracer))
+tracer = zeros(size(dem))
+tracer[40, 40] = 1.0   # single point source
+
+(water_area, tracer_area), = waterflows(dem, (water, tracer))
+
+fig = Figure()
+heatmap(fig[1, 1], x, y, log10.(water_area);  colormap=:blues, axis=(title="Water (log₁₀)",))
+heatmap(fig[1, 2], x, y, tracer_area;          colormap=:reds,  axis=(title="Tracer",))
+fig
 ```
-
-## Subglacial routing example
-
-The `examples/` directory contains two more advanced scripts:
-
-- `examples/subglacial-routing.jl` — route subglacial water under an ice sheet
-  using a hydraulic potential instead of a surface DEM.
-- `examples/subglacial-routing-feedback.jl` — the same but with a `feedback_fn`
-  that limits flux to non-negative values, demonstrating self-feedback.
