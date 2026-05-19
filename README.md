@@ -19,7 +19,7 @@ This code is reasonably fast: flow routing on a DEM of Antarctica of
 about 2e8 points (14000x14000) with 150000 depressions takes about 30s
 on a Ryzen 4750U laptop.
 
-It has been used in glaciological contexts [3,4,5] but could be useful in other settings as well.
+WhereTheWaterFlows has been used in glaciological contexts [3,4,5] but could be useful in other settings as well.
 
 # Example
 
