@@ -93,6 +93,9 @@ function dem_patho2()
     return coords, dem
 end
 
+# Sum elements on all edges to check mass conservation
+# Use in cases where drain_pits==true and bnd_as_sinks==true
+edge_sum(area) = sum(area[1, :]) + sum(area[end, :]) + sum(area[2:end-1, 1]) + sum(area[2:end-1, end])
 
 # Test low-level fns
 
@@ -231,6 +234,7 @@ end
     @test sort(unique(c))[[1,end]] ==[1,396]
     @test length(bnds)==0
     @test all([c[pits[cc]]==cc  for cc=1:length(pits)]) # pit in catchment of same color
+    @test length(dem)==edge_sum(area)
 end
 
 @testset "DEM: peaks2_nan" begin
@@ -357,7 +361,6 @@ end
     #area[isnan.(dem)] .= NaN; WWF.plotarea(xs, ys, area, pits)
     @test all([c[pits[cc]]==cc  for cc=axes(pits)[1]]) # pit in catchment of same color
     @test all([c[sinks[cc]]==cc  for cc=axes(sinks)[1]]) # sink in catchment of same color
-
 
     (xs, ys), dem = dem_two_points()
     mask = .!isnan.(dem)
