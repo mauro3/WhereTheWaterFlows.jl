@@ -73,6 +73,39 @@ heatmap(x, y, cc)
 scatter!(x[i], y[j], markersize=20)
 ```
 
+## Delineate several catchments
+
+Several outlet points can also be passed to `catchments`.
+
+```julia
+targets = [
+    [CartesianIndex(50, 80)],
+    [CartesianIndex(100, 120)],
+    [CartesianIndex(150, 160)],
+]
+
+ct = catchments(dir, targets)
+
+heatmap(x, y, ct)
+
+for target in targets
+    I = first(target)
+    scatter!([x[I[1]]], [y[I[2]]], markersize=20)
+end
+```
+
+## Delineate the catchment of several cells 
+
+It is also possible to calculate the catchment upstream of several cells at once. For instance, we can select a rectangular box and pick the cells only inside the area draining into that box.
+
+```julia
+box = CartesianIndices((50:100, 100:150))
+
+cc = Float64.(catchment(dir, box))
+cc[box] .= NaN
+heatmap(x, y, cc)
+```
+
 ## Fill depressions
 
 After calling `waterflows`, pits have already been *routed through* (by default
