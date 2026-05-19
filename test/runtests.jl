@@ -4,7 +4,7 @@ using Test
 
 # test examples
 module Test_Examples # use a module to avoid name-space pollution
-plotyes = false
+plotyes = true
 println("Running examples:")
 for fl in readdir("../examples/", join=true)
     isfile(fl) || continue
