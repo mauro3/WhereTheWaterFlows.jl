@@ -28,21 +28,11 @@ using WhereTheWaterFlows, GLMakie   # or CairoMakie, WGLMakie, …
 using WhereTheWaterFlows
 
 # build a small synthetic DEM
-n = 100
+n = 200
 xs = range(-π, π, length=n)
 dem = sin.(xs) .* cos.(xs')
 
-area, slen, dir, nout, nin, sinks, pits, c, bnds = waterflows(dem)
+(;area, slen, dir, nout, nin, sinks, pits, c, bnds) = waterflows(dem)
 ```
 
 See the [Tutorial](@ref) for a full walkthrough.
-
-## References
-
-[1] O'Callaghan, J. and Mark, D.: The extraction of drainage networks from
-digital elevation data, Comput. Vision Graph., 28, 323–344, 1984.
-
-[2] Braun, J. and Willett, S. D.: A very efficient O(n), implicit and parallel
-method to solve the stream power equation governing fluvial incision and
-landscape evolution, Geomorphology, 180–181, 2013.
-[doi:10.1016/j.geomorph.2012.10.008](https://doi.org/10.1016/j.geomorph.2012.10.008)

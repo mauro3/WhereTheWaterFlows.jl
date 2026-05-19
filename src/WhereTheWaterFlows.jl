@@ -278,7 +278,7 @@ function waterflows(dem, cellarea=fill!(similar(dem),1), flowdir_fn=d8dir_featur
         bnds = drainpits!(dir, nin, nout, sinks, pits, c, bnds, dem4drainpits)
         area, slen, c = flowrouting_catchments(dir, sinks, pits, cellarea, feedback_fn, stacksize)
     end
-    return area, slen, dir, nout, nin, sinks, pits, c, bnds, flowdir_extra_output
+    return (;area, slen, dir, nout, nin, sinks, pits, c, bnds, flowdir_extra_output)
 end
 
 """

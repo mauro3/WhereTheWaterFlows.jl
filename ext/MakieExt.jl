@@ -150,8 +150,8 @@ argument_names(::Type{_Plt_Lakedepth_type}) = (:x, :y, :dem)
 function Makie.plot!(plot::_Plt_Lakedepth_type)
     (;x, y, dem, lowerlimit) = plot
     (;lowerlimit) = plot
-    dir, sinks   = waterflows(dem[])[[3,6]]
-    plt_lakedepth!(plot, x, y, dem, dir, sinks; lowerlimit)
+    o = waterflows(dem[])
+    plt_lakedepth!(plot, x, y, dem, o.dir, o.sinks; lowerlimit)
 end
 
 # Note, this cannot be a recipe as it has several subplots
@@ -162,16 +162,14 @@ end
 Plot DEM, uparea, flow-dir
 """
 plt_it(x, y, dem) = plt_it(x, y, waterflows(dem), dem)
-function plt_it(x, y, waterflows_output::Tuple, dem)
-    area, slen, dir, nout, nin, sinks, sink_pits  = waterflows_output
-
+function plt_it(x, y, out::NamedTuple, dem)
     f = Makie.Figure()
     ax1 = Axis(f[1, 1]; aspect=1, title="")
     contour!(x, y, dem)
     ax2 = Axis(f[2, 1]; aspect=1, title="")
-    heatmap!(x, y, log10.(area))
+    heatmap!(x, y, log10.(out.area))
     ax1 = Axis(f[3, 1]; aspect=1, title="")
-    plt_dir!(x, y, dir)
+    plt_dir!(x, y, out.dir)
     return f
 end
 

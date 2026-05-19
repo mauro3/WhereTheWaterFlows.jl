@@ -33,8 +33,8 @@ n = 200
 xs = range(-π, π, length=n)
 dem = sin.(xs) .* cos.(xs') .+ 0.05 * rand(n,n)
 
-area, slen, dir, nout, nin, sinks, pits, c, bnds = waterflows(dem)
-plt_area(xs, xs, area)
+out = waterflows(dem)
+plt_area(xs, xs, out.area)
 ```
 ![Upslope area](https://user-images.githubusercontent.com/4098145/67853636-e319b880-fb06-11e9-933d-9f55ace99ce1.png)
 

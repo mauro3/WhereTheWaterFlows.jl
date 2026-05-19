@@ -166,4 +166,5 @@ function _fill_ij!(ele, dem, ij, dir, small)
             _fill_ij!(ele, dem, IJ, dir, small)
         end
     end
+    return nothing
 end

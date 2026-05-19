@@ -32,7 +32,7 @@ x, y, dem = peaks2(200)
 area, slen, dir, nout, nin, sinks, pits, c, bnds = waterflows(dem)
 ```
 
-`waterflows` returns ten values:
+`waterflows` returns ten values as a `NamedTuple`:
 
 | Name | Description |
 |---|---|
@@ -104,14 +104,15 @@ accumulate real fluxes rather than cell counts:
 
 ```julia
 precip = 1e-3 .* ones(size(dem))          # uniform 1 mm/s
-flux, = waterflows(dem, precip)            # area now in m³/s
+discharge, = waterflows(dem, precip)            # area now in m³/s
 ```
 
 Pass a tuple to route several quantities simultaneously:
 
 ```julia
 water  = ones(size(dem))
-tracer = rand(size(dem)...)
+tracer = zeros(size(dem)...)
+tracer[[40, 678, 4560, 13476]] .= 1
 (water_area, tracer_area), slen, dir, = waterflows(dem, (water, tracer))
 ```
 

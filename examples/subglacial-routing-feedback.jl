@@ -100,9 +100,9 @@ end
 
 
 # # Route the water
-area, slen, dir, nout, nin, sinks, pits, c, bnds  = WWF.waterflows(phi, drain_pits=true,
-                                                            cellarea,
-                                                            feedback_fn=melting)
+(;area, slen, dir, nout, nin, sinks, pits, c, bnds)  = WWF.waterflows(phi, drain_pits=true,
+                                                                      cellarea,
+                                                                      feedback_fn=melting)
 
 # find lakes
 phi_filled = WWF.fill_dem(phi, sinks, dir) #, small=1e-6)
