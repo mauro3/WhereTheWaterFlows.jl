@@ -17,7 +17,9 @@ into a stackoverflow error on very large DEMs.
 
 This code is reasonably fast: flow routing on a DEM of Antarctica of
 about 2e8 points (14000x14000) with 150000 depressions takes about 30s
-on my laptop (Ryzen 4750U).
+on a Ryzen 4750U laptop.
+
+It has been used in glaciological contexts [3,4,5] but could be useful in other settings as well.
 
 # Example
 
@@ -41,9 +43,15 @@ For details, see the [documentation](https://mauro3.github.io/WhereTheWaterFlows
 # References
 [1] O’Callaghan, J. and Mark, D.: The extraction of drainage networks
     from digital elevation data, Comput. Vision Graph., 28, 323–344,
-    1984. [download via google scholar](https://scholar.google.ch/scholar?hl=en&q=The extraction of drainage networks from digital elevation data)
+    1984. [download via google scholar](https://scholar.google.ch/scholar?hl=en&as_sdt=0%2C5&q=The+extraction+of+drainage+networks+from+digital+elevation+data&btnG=)
 
 [2] Braun, J. and Willett, S.D.: A very efficient O(n), implicit and
     parallel method to solve the stream power equation governing
-    fluvial incision and landscape evolution
-    panel [doi](https://doi.org/10.1016/j.geomorph.2012.10.008)
+    fluvial incision and landscape evolution, Geomorphology, 2013.
+    [link](https://doi.org/10.1016/j.geomorph.2012.10.008)
+
+[3] Malczyk et al., Constraints on Subglacial Melt Fluxes from Observations of Active Subglacial Lake Recharge, Journal of Glaciology, 2023. [link](https://doi.org/10.1017/jog.2023.70)
+
+[4] Ogier et al., Definition, formation and rupture mechanisms of water pockets in alpine glaciers: Insights from an updated inventory for the Swiss Alps, Journal of Glaciology, 2025. [link](https://doi.org/10.1017/jog.2025.43)
+
+[5] Ogier et al., Potential Glacier Contributions to the 2024 La Bérarde Flood, EGUsphere pre-print, 2026. [link](https://doi.org/10.5194/egusphere-2026-466)
