@@ -41,3 +41,15 @@ WhereTheWaterFlows.dirnums
 WhereTheWaterFlows.cartesian
 WhereTheWaterFlows._flow_from_to!
 ```
+
+## Subglacially
+
+```@autodocs
+Modules = [WhereTheWaterFlows.Subglacially]
+```
+
+## Randomly
+
+```@autodocs
+Modules = [WhereTheWaterFlows.Randomly]
+```
