@@ -50,6 +50,48 @@ nothing # hide
 | `bnds` | Boundary-cell lists, one per catchment |
 | `flowdir_extra_output` | Extra output from a custom `flowdir_fn` (`nothing` for the default) |
 
+
+## Terminology and special cells
+
+`waterflows` distinguishes between several special cell types:
+
+- `NaN` cells are cells where the DEM value is `NaN`. They are treated as barriers: no routing is performed on these cells, and their `cellarea` contribution is ignored.
+- `sinks` are cells where flow leaves the active domain.
+- `pits` are interior local minima: cells that have no lower neighbouring cell to drain to under the D8 rule.
+
+
+## Positional arguments of `waterflows`
+
+The simplest usage is:
+
+```julia
+waterflows(dem)
+```
+Additional positional arguments can be used to route physical fluxes or customise
+the flow-direction algorithm:
+
+```julia
+waterflows(dem, cellarea)
+waterflows(dem, cellarea, flowdir_fn)
+```
+
+| Argument     | Meaning                                                                         |
+| ------------ | ------------------------------------------------------------------------------- |
+| `dem`        | Elevation or hydraulic-potential array used to determine flow directions        |
+| `cellarea`   | Source term accumulated downstream. By default, each valid cell contributes `1` |
+| `flowdir_fn` | Function used to compute flow directions. The default is `d8dir_feature`        |
+
+## Keyword arguments of `waterflows`
+
+| Keyword | Default | Meaning |
+|---|---|---|
+| `drain_pits` | `true` | Route water through pits via the lowest spillway |
+| `bnd_as_sink` | `true` | Domain-boundary cells act as sinks |
+| `nan_as_sink` | `true` | Cells adjacent to NaN DEM values become sinks |
+| `cellarea` | `ones` array | Source flux per cell; can be a tuple for multiple tracers |
+| `feedback_fn` | `nothing` | Applied to accumulated area before routing downstream |
+
+
 ## Upslope area
 
 `plt_area` plots the log₁₀ upslope area. Sink locations are marked in red.
@@ -107,16 +149,6 @@ demf = fill_dem(dem, sinks, dir)
 
 heatmap(x, y, demf .- dem; colormap=:blues, axis=(title="Lake depth",))
 ```
-
-## Key keyword arguments of `waterflows`
-
-| Keyword | Default | Meaning |
-|---|---|---|
-| `drain_pits` | `true` | Route water through pits via the lowest spillway |
-| `bnd_as_sink` | `true` | Domain-boundary cells act as sinks |
-| `nan_as_sink` | `true` | Cells adjacent to NaN DEM values become sinks |
-| `cellarea` | `ones` array | Source flux per cell; can be a tuple for multiple tracers |
-| `feedback_fn` | `nothing` | Applied to accumulated area before routing downstream |
 
 ## Routing physical fluxes
 
