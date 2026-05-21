@@ -1,0 +1,81 @@
+Data from Grab et al. (2020): https://doi.org/10.3929/ethz-b-000434697,
+which makes use of SwissTopo data.
+
+How the example data in this folder was obtained and processed
+=============================================================
+
+1) Download the source GeoTIFF files
+------------------------------------
+
+From the ETH research collection release, download:
+
+- https://www.research-collection.ethz.ch/bitstream/handle/20.500.11850/434697/08_SurfaceElevation_SGI.zip
+- https://www.research-collection.ethz.ch/bitstream/handle/20.500.11850/434697/04_IceThickness_SGI.zip
+
+Example commands:
+
+```sh
+wget https://www.research-collection.ethz.ch/bitstream/handle/20.500.11850/434697/08_SurfaceElevation_SGI.zip
+wget https://www.research-collection.ethz.ch/bitstream/handle/20.500.11850/434697/04_IceThickness_SGI.zip
+```
+
+2) Extract the specific glacier tiles
+-------------------------------------
+
+```sh
+unzip 04_IceThickness_SGI.zip 04_IceThickness_SGI/A54g-11_IceThickness.tif
+unzip 08_SurfaceElevation_SGI.zip 08_SurfaceElevation_SGI/A54g-11_SwissALTI3D_r2019.tif
+```
+
+3) Load and clean in Julia
+--------------------------
+
+Install and use `Rasters.jl` to read GeoTIFFs. Replace nodata values (`-9999`) with `NaN`.
+
+```julia
+using Rasters
+
+surface = Raster("08_SurfaceElevation_SGI/A54g-11_SwissALTI3D_r2019.tif")
+thick = Raster("04_IceThickness_SGI/A54g-11_IceThickness.tif")
+
+surface[surface .== -9999] .= NaN
+thick[thick .== -9999] .= NaN
+```
+
+4) Compute bed elevation
+------------------------
+
+```julia
+bed = surface - thick
+```
+
+5) Downsample and extract arrays
+--------------------------------
+
+The data was thinned by a factor of 2 in each direction.
+
+```julia
+thin = 2
+x = collect(surface.dims[1].val.data)[1:thin:end]
+y = collect(surface.dims[2].val.data)[1:thin:end]
+bed_arr = bed.data[1:thin:end, 1:thin:end, 1]
+surface_arr = surface.data[1:thin:end, 1:thin:end, 1]
+```
+
+6) Write binary files used by examples
+--------------------------------------
+
+```julia
+open("data/bed.bin", "w") do f
+    write(f, Float32.(bed_arr))
+end
+open("data/surface.bin", "w") do f
+    write(f, Float32.(surface_arr))
+end
+open("data/x.bin", "w") do f
+    write(f, Float32.(x))
+end
+open("data/y.bin", "w") do f
+    write(f, Float32.(y))
+end
+```
