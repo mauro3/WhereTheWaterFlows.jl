@@ -24,6 +24,7 @@ Folders with more in-depth scripts:
 
 - `core/`: additional WWF workflows and plotting demos
 - `feedback_function/`: shows how the `feedback_fn` of `waterflows` can be used for grid-based computations
+  - includes melt-production and MPM-like sediment transport examples
 - `subglacially/`: subglacial scenarios using WWFS
 - `randomly/`: advanced stochastic workflows using WWFR
 - `theory/`: theory and diagnostics
