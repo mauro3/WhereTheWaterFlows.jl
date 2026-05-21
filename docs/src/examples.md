@@ -11,6 +11,7 @@ Start Julia in the `examples/` folder with `julia --project` and run scripts via
 ## Topical examples
 
 - `core/`: additional core WWF workflows
+- `feedback_function/`: examples of custom `feedback_fn` models (melt and sediment transport)
 - `subglacially/`: richer subglacial scenarios
 - `randomly/`: advanced stochastic workflows
 - `theory/`: theory and diagnostic scripts
