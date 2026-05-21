@@ -55,7 +55,7 @@ ind2dir(ind::CartesianIndex) = dirnums[ind + I22]
 Translate a D8 direction number into a CartesianIndex (i.e. a flow vector), also
 maps SINK to CartesianIndex(0,0).
 
-If map_special_to_PIT==true, then any dir>9 is mapped to CartesianIndex(0,0).
+If `map_special_to_PIT`==true, then any dir>9 is mapped to CartesianIndex(0,0).
 """
 function dir2ind(dir, map_special_to_PIT=false)
     !map_special_to_PIT && dir>SINK && error("Cannot make CartisianIndex for a dir-number>9 (consider setting kw-arg map_special_to_PIT=true)")
@@ -103,7 +103,10 @@ or receive no special treatment otherwise.
 
 The argument `bnd_as_sink` determines whether cells at the domain boundary act as sinks.
 
-The extra_sinks and extra_barriers will be added to dir to act as sinks or barriers, respectively.
+The `extra_sinks` and `extra_barriers` arguments can be used to manually mark
+additional cells as sinks or barriers, respectively. Cells in `extra_sinks`
+act as outlets where flow leaves the domain. Cells in `extra_barriers` are
+excluded from routing and do not conduct flow.
 
 Return
 - dir  - direction, encoded as `dirnums`
@@ -112,7 +115,7 @@ Return
 - sinks - location of sinks as a `Vector{CartesianIndex{2}}` (sorted) (here dir==SINK)
 - pits - location of pits as a `Vector{CartesianIndex{2}}` (sorted) (here dir==PIT)
 - dem - DEM, unchanged
-- flowdir_extra_output -- nothing (not used by this function, but could be by custom ones)
+- `flowdir_extra_output` -- nothing (not used by this function, but could be by custom ones)
 """
 function d8dir_feature(dem, bnd_as_sink, nan_as_sink, extra_sinks=CartesianIndex{2}[], extra_barriers=CartesianIndex{2}[])
     # outputs
@@ -231,23 +234,23 @@ args:
      - Alternatively, `cellarea` can be a tuple of arrays. Then they are treated/routed
        separately, for instance `(water, tracer)`.  All quantities need to be extensive
        (i.e. additive, e.g. use internal energy and not temperature)
-- flowdir_fn=d8dir_feature -- the routing function.  Defaults to the built-in `d8dir_feature`
+- `flowdir_fn`=`d8dir_feature` -- the routing function.  Defaults to the built-in `d8dir_feature`
                               function but could be customized
 
 kwargs:
-- feedback_fn -- function which is applied to area-value(s) at each cell once all water
+- `feedback_fn` -- function which is applied to area-value(s) at each cell once all water
                  of the cell has been accumulated but before the water is routed further downstream.
-                 Signature `(uparea, ij, dir) -> new_uparea`
+                 Signature `(uparea, ij, dir) -> `new_uparea`
               --> for example, `(uparea, ij, dir) -> max(uparea, 0)` would ensure that all
                   upareas are non-negative.
-- drain_pits -- whether to route through pits (true)
-- bnd_as_sink (true) -- whether the domain boundary should be sinks, i.e. adjacent cells
+- `drain_pits` -- whether to route through pits (true)
+- `bnd_as_sink` (true) -- whether the domain boundary should be sinks, i.e. adjacent cells
                  can drain into them, or whether to ignore them.
-- nan_as_sink (true) -- whether NaN cells in the DEM should make adjacent cells a sink. Note that
+- `nan_as_sink` (true) -- whether NaN cells in the DEM should make adjacent cells a sink. Note that
                         on the NaN-cell itself no routing occurs (i.e. a `BARRIER`-cell).
-- `extra_sinks=CartesianIndex{2}[]` 
-- `extra_barriers=CartesianIndex{2}[]` 
-- stacksize (2^13 * 2^10) -- size of the call-stack in _flowrouting_catchments!, which is prone to
+- `extra_sinks=CartesianIndex{2}[]` -- additional cells that act as sinks, i.e. outlets where flow leaves the active domain.
+- `extra_barriers=CartesianIndex{2}[]` -- additional cells that act as barriers, i.e. cells that are excluded from routing and do not conduct flow.
+- stacksize (2^13 * 2^10) -- size of the call-stack in `_flowrouting_catchments!`, which is prone to
                  StackOverflowError.  Note however, that OutOfMemory errors are likely if increased.
 
 
@@ -261,7 +264,7 @@ Returns a `NamedTuple` with fields:
 - `pits` -- location of pits as Vector{CartesianIndex{2}}
 - `c` -- catchment map (color numbers ∈ 1:length(sinks) are for sinks, others for pits)
 - `bnds` -- boundaries between catchments.  The boundary to the exterior/NaNs is not in here.
-- `flowdir_extra_output` -- extra output of the flowdir_fn, which is `nothing` for the default
+- `flowdir_extra_output` -- extra output of the `flowdir_fn`, which is `nothing` for the default
 """
 function waterflows(dem, cellarea=fill!(similar(dem),1), flowdir_fn=d8dir_feature;
                     feedback_fn=nothing, drain_pits=true, bnd_as_sink=true, nan_as_sink=true,
@@ -274,7 +277,7 @@ function waterflows(dem, cellarea=fill!(similar(dem),1), flowdir_fn=d8dir_featur
 
     if drain_pits && !bnd_as_sink
         if !nan_as_sink || (nan_as_sink && sum(isnan.(dem4drainpits))==0)
-            error("No sinks in the domain.  Consider setting bnd_as_sink and/or nan_as_sink and add NaNs to the `dem`.")
+            error("No sinks in the domain.  Consider setting `bnd_as_sink` and/or `nan_as_sink` and add NaNs to the `dem`.")
         end
     end
 
@@ -396,7 +399,7 @@ Return:
 - bnds -- Vector of Vector{CartesianIndex{2}} containing the cells which are
           on the boundary of said catchment.
 
-[1] Note that when bnd_as_sink==true then no cells along the boundary will belong
+[1] Note that when `bnd_as_sink`==true then no cells along the boundary will belong
     to a pit-catchment.
 """
 function make_boundaries(catchments, pit_colors, bnds=Origin(firstindex(pit_colors))([CartesianIndex{2}[] for i in 1:length(pit_colors)]) )
