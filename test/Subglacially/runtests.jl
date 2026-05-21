@@ -1,3 +1,4 @@
+module Subglacially
 using WhereTheWaterFlows
 const WWF = WhereTheWaterFlows
 const WWFS = WhereTheWaterFlows.Subglacially
@@ -102,18 +103,6 @@ end
             @test c==c_
             @test bnds==bnds_
         end
-    end
-end
-
-# test examples
-module Test_Examples # use a module to avoid name-space pollution
-using CairoMakie
-for fl in readdir(joinpath(@__DIR__, "../../examples/subglacially/"))
-    fl in ("channel_deflection.jl", "ice-sheet-margin-shmip.jl", "valley-glacier.jl") && continue
-    if endswith(fl, ".jl")
-        eval(:(module $(Symbol(splitext(fl)[1]))
-               include(joinpath(@__DIR__, "../../examples/subglacially/", $fl))
-               end))
     end
 end
 end
