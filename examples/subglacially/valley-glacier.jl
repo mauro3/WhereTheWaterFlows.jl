@@ -1,3 +1,7 @@
+# This is an example of a synthetic valley glacier (a rather big one) with an
+# overdeepening.
+
+
 using WhereTheWaterFlows
 const WWFS = WhereTheWaterFlows.Subglacially
 const WWF = WhereTheWaterFlows
@@ -104,10 +108,11 @@ cov_fn = [WWFR.gaussian_kernel, WWFR.exponential_kernel][1]
 surfdem_uc = WWFR.Uncertainty(absuc=0, reluc=0.005, correlation_length=200, covariance_fn=cov_fn)
 beddem_uc = WWFR.Uncertainty(absuc=0, reluc=0.05, correlation_length=200, covariance_fn=cov_fn)
 floatfrac = 0.97 * ones(size(surfdem));
-floatfrac_uc = WWFR.Uncertainty(absuc=0, reluc=0.1, correlation_length=200, covariance_fn=cov_fn) # WWFR.gaussian_kernel)
+floatfrac_uc = WWFR.Uncertainty(absuc=0, reluc=0.1, correlation_length=200, covariance_fn=WWFR.gaussian_kernel)
 source = ones(size(surfdem));
 source_uc = WWFR.Uncertainty()
 
+# two catchment sinks: one all of x==0, one only half of x=0
 ctch_sinks = [CartesianIndices((1:10, 1:length(y)))[:], CartesianIndices((1:10, 1:length(y)÷2))[:]]
 
 
@@ -116,9 +121,11 @@ model, sample, reduce! = WWFR.make_fns_subglacial(step(x),
                                                    beddem, beddem_uc,
                                                    floatfrac, floatfrac_uc,
                                                    source, source_uc,
-                                                   ctch_sinks,
+                                                   ctch_sinks;
+                                                   gamma=[0,WWFS.GAMMA][2],
                                                    mask)
 input, output = model(sample()...)
 aggr = WWFR.map_mc(model, sample, reduce!, 20)
 WWF.plt_area(x, y, aggr.areas_total)
 # WWF.plt_area(x, y, aggr.sc_locs, prefn=x->x)
+WWF.plt_area(x, y, aggr.catchments[:,:,2], prefn=x->x)

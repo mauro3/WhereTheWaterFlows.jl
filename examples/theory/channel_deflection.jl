@@ -1,10 +1,10 @@
 """
-This script calculates the channel deflection which maximizes melt.
+This script calculates the channel deflection angle which maximizes melt.
 
 It does this for the continuous case as well as the "quantized" D8 routing case.
 
 Variables:
-- R: ratio between |-∇ϕ_m| and |-∇ϕ|
+- R: ratio between |-∇ϕ_m| and |-∇ϕ|, i.e. between bed slope and hydraulic slope
 - lambda: angle between -∇ϕ and -∇ϕ_m
 - kappa: angle between -∇ϕ and the flow direction
 """
@@ -21,7 +21,7 @@ const gamma = WWFS.GAMMA
 sc_threshold = (1+gamma) / gamma
 
 """
-Function to be maximised to get angle with max melt.
+Function to be maximised to get angle kappa with max melt.
 """
 function L(kappa, R, lambda)
     beta = [3/2, 2][1]
@@ -96,7 +96,7 @@ lines!(lambdas01.*180/pi, Rs, label="m=0.1", color=:black, linestyle=:dash)
 axislegend(position=:lt)
 Label(fig[1,1,TopLeft()], "A", font=:bold)
 Label(fig[1,3,TopLeft()], "B", font=:bold)
-save("deflection.png", fig)
+save(joinpath(@__DIR__, "deflection.png"), fig)
 
 ## Look at lookup table for the D8 case
 fig = Figure();
@@ -126,4 +126,4 @@ lines!(ax2, Rs.*0 .+ 90, Rs, label="", linestyle=:dash, color=cs[2])
 lines!(ax2, Rs.*0 .+ 135, Rs, label="", linestyle=:dash, color=cs[1])
 Label(fig[1,1,TopLeft()], "A", font=:bold)
 Label(fig[1,2,TopLeft()], "B", font=:bold)
-save("deflection-D8.png", fig)
+save(joinpath(@__DIR__, "deflection-D8.png"), fig)
