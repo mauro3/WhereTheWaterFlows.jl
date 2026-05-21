@@ -2,20 +2,16 @@
 # anything to you, you can just view this example with phi being an arbitrary
 # DEM.
 #
-# Additionally to subglacial-routing.jl, this adds a feedback where
+# Additionally to just routing, this adds a feedback where
 # waterflow will generate extra melt due to dissipation of potential energy.
+#
+# Note that this is all ready-made in WWWFS (using indeed feedback_fn).
+# This script thus serves as an illustration on how to use feedback_fn.
 
 # Load packages
-if !@isdefined plotyes
-    plotyes = true
-end
-if plotyes
-    @eval using CairoMakie
-end
+using CairoMakie
 using WhereTheWaterFlows
-if !(@isdefined WWF)
-    const WWF = WhereTheWaterFlows
-end
+const WWF = WhereTheWaterFlows
 
 
 # Read data for ??? glacier
@@ -106,15 +102,13 @@ end
 phi_filled = WWF.fill_dem(phi, sinks, dir) #, small=1e-6)
 lake_depth = phi_filled .- phi
 # Plot it
-if plotyes
-    fig = Figure()
-    _, pl = plt_area(fig[1,1], x, y, area[1])
-    Colorbar(fig[1,2], pl, label="Total discharge (log10 m^3/s)")
-    _, pl = plt_area(fig[2,1], x, y, area[2])
-    Colorbar(fig[2,2], pl, label="Melt discharge (log10 m^3/s)")
-    _, pl = plt_catchments(fig[3,1], x, y, c)
-    Colorbar(fig[3,2], pl, label="Catchments")
-    _,pl = heatmap(fig[4,1], x, y, lake_depth)
-    Colorbar(fig[4,2], pl, label="Lake depth (m)")
-    fig
-end
+fig = Figure()
+_, pl = plt_area(fig[1,1], x, y, area[1])
+Colorbar(fig[1,2], pl, label="Total discharge (log10 m^3/s)")
+_, pl = plt_area(fig[2,1], x, y, area[2])
+Colorbar(fig[2,2], pl, label="Discharge due to melt (log10 m^3/s)")
+_, pl = plt_catchments(fig[3,1], x, y, c)
+Colorbar(fig[3,2], pl, label="Catchments")
+_,pl = heatmap(fig[4,1], x, y, lake_depth)
+Colorbar(fig[4,2], pl, label="Lake depth (m)")
+fig

@@ -1,3 +1,8 @@
+# This example shows routing on a synthetic ice sheet margin.
+# It showcases:
+# - impact of overdeepening on subglacial water flow 
+# - stochastic routing with WWFR
+
 using WhereTheWaterFlows
 const WWFS = WhereTheWaterFlows.Subglacially
 const WWF = WhereTheWaterFlows
@@ -57,26 +62,28 @@ push!(ctch_sinks, CartesianIndex.(2, (nn-1)*ns+1:length(y)) )
 heatmap(x,y,beddem)
 heatmap(x,y,surfdem)
 
+# Pressure melting point turned on 
 @time out = WWFS.waterflows_subglacial(surfdem, beddem, dx, gamma=[0,WWFS.GAMMA][2], bnd_as_sink=true, drain_pits=true)
+(;dir, c, pits, area, sinks) = out.routing
+(;sc_locs) = out.pressmelt
+cc = WWF.catchments(dir, ctch_sinks);
+WWF.plt_area(x, y, area.total; sinks)
+# WWF.plt_area(x, y, c; sinks, prefn=x->x)
+# WWF.plt_area(x, y, sc_locs, prefn=x->x)
+WWF.plt_area(x, y, cc; prefn=x->x, title="pressmelt")
+cc_size_g = [sum(cc.==n) for n=1:length(ctch_sinks)]
+
+# Pressure melting point turned off 
+@time out = WWFS.waterflows_subglacial(surfdem, beddem, dx, gamma=[0,WWFS.GAMMA][1], bnd_as_sink=true, drain_pits=true)
 (;dir, pits, area, sinks) = out.routing
 (;sc_locs) = out.pressmelt
 cc = WWF.catchments(dir, ctch_sinks);
 WWF.plt_area(x, y, area.total; sinks)
-# WWF.plt_area(x, y, c, pits, prefn=x->x)
-# WWF.plt_area(x, y, sc_locs, [], prefn=x->x)
-# WWF.plt_area(x, y, beddem, pits, prefn=x->x)
-WWF.plt_area(x, y, cc; sinks , prefn=x->x, title="pressmelt")
-cc_size_g = [sum(cc.==n) for n=1:length(ctch_sinks)]
-
-
-@time out = WWFS.waterflows_subglacial(surfdem, beddem, dx, gamma=[0,WWFS.GAMMA][1], bnd_as_sink=true, drain_pits=true)
-(;dir, pits, area, sinks) = out.routing
-cc = WWF.catchments(dir, ctch_sinks);
-WWF.plt_area(x, y, area.total; sinks)
-# WWF.plt_area(x, y, c, pits, prefn=x->x)
+# WWF.plt_area(x, y, sc_locs, prefn=x->x)
 WWF.plt_area(x, y, cc; sinks, prefn=x->x, title="no press-melt")
-
 cc_size_g0 = [sum(cc.==n) for n=1:length(ctch_sinks)]
+
+# plot size of catchments defined by ctch_sinks
 p = plot(1:length(ctch_sinks), cc_size_g)
 plot!(1:length(ctch_sinks), cc_size_g0) #, title="Catchment size")#, legend=["press-melt", "no press-melt"])
 p
@@ -94,17 +101,16 @@ floatfrac_uc = WWFR.Uncertainty(absuc=0, reluc=0.05, correlation_length=0.5e3, c
 basal_melt = ones(size(surfdem));
 basal_melt_uc = WWFR.Uncertainty()
 mask = trues(size(surfdem))
-Base.GC.gc()
 model, sample, reduce! = WWFR.make_fns_subglacial(step(x),
                                                   surfdem, surfdem_uc,
                                                   beddem, beddem_uc,
                                                   floatfrac, floatfrac_uc,
                                                   basal_melt, basal_melt_uc,
-                                                  ctch_sinks,
+                                                  ctch_sinks;
                                                   mask)
 @time aggr = WWFR.map_mc(model, sample, reduce!, 10);
 WWF.plt_area(x, y, aggr.areas_total; sinks)
 WWF.plt_area(x, y, aggr.lake_depth_free_surface; prefn=x->x)
 # WWF.plt_area(x, y, aggr.sc_locs, prefn=x->x)
 hist(aggr.catchment_fluxes.total[2])
-WWF.plt_area(x, y, aggr.catchments[:,:,4], prefn=x->x)
+WWF.plt_area(x, y, aggr.catchments[:,:,2], prefn=x->x)
