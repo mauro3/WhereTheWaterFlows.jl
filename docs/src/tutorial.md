@@ -88,7 +88,8 @@ waterflows(dem, cellarea, flowdir_fn)
 | `drain_pits` | `true` | Route water through pits via the lowest spillway |
 | `bnd_as_sink` | `true` | Domain-boundary cells act as sinks |
 | `nan_as_sink` | `true` | Cells adjacent to NaN DEM values become sinks |
-| `cellarea` | `ones` array | Source flux per cell; can be a tuple for multiple tracers |
+| `extra_sinks` | `CartesianIndex{2}[]` | Additional cells that act as sinks |
+| `extra_barriers` | `CartesianIndex{2}[]` | Additional cells that act as barriers and do not conduct flow |
 | `feedback_fn` | `nothing` | Applied to accumulated area before routing downstream |
 
 

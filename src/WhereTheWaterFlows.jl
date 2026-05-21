@@ -103,7 +103,10 @@ or receive no special treatment otherwise.
 
 The argument `bnd_as_sink` determines whether cells at the domain boundary act as sinks.
 
-The `extra_sinks` and `extra_barriers` will be added to dir to act as sinks or barriers, respectively.
+The `extra_sinks` and `extra_barriers` arguments can be used to manually mark
+additional cells as sinks or barriers, respectively. Cells in `extra_sinks`
+act as outlets where flow leaves the domain. Cells in `extra_barriers` are
+excluded from routing and do not conduct flow.
 
 Return
 - dir  - direction, encoded as `dirnums`
@@ -245,8 +248,8 @@ kwargs:
                  can drain into them, or whether to ignore them.
 - `nan_as_sink` (true) -- whether NaN cells in the DEM should make adjacent cells a sink. Note that
                         on the NaN-cell itself no routing occurs (i.e. a `BARRIER`-cell).
-- `extra_sinks=CartesianIndex{2}[]` 
-- `extra_barriers=CartesianIndex{2}[]` 
+- `extra_sinks=CartesianIndex{2}[]` -- additional cells that act as sinks, i.e. outlets where flow leaves the active domain.
+- `extra_barriers=CartesianIndex{2}[]` -- additional cells that act as barriers, i.e. cells that are excluded from routing and do not conduct flow.
 - stacksize (2^13 * 2^10) -- size of the call-stack in `_flowrouting_catchments!`, which is prone to
                  StackOverflowError.  Note however, that OutOfMemory errors are likely if increased.
 
