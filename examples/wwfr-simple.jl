@@ -19,7 +19,7 @@ model, sample, reduce! = WWFR.make_fns_subaerial(dx,
                                                  source, source_uc,
                                                  ctch_sinks)
 
-aggr = WWFR.map_mc(model, sample, reduce!, 20)
+aggr = WWFR.map_mc(model, sample, reduce!, 20, progressmeter=false)
 
 println("WhereTheWaterFlowsRandomly simple example (WWF + uncertain source)")
 println("samples: ", aggr.n_samples[])

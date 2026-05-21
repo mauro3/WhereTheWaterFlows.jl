@@ -8,6 +8,12 @@ using Pkg; Pkg.up() # only run the very first time to install packages
 include("wwf-simple.jl") # or any other script
 ```
 
+Run all examples in the `examples` environment with:
+
+```julia
+include("run-all-examples.jl")
+```
+
 Introduction scripts (no plotting):
 
 - `wwf-simple.jl`: core deterministic routing with `WhereTheWaterFlows`
@@ -22,4 +28,3 @@ Folders with more in-depth scripts:
 - `randomly/`: advanced stochastic workflows using WWFR
 - `theory/`: theory and diagnostics
 - `data/`: example data and provenance scripts
-

@@ -1,3 +1,4 @@
+module Randomly
 using Test
 using WhereTheWaterFlows
 
@@ -133,4 +134,5 @@ end
     @test size(aggr.areas_total) == size(dem)
     @test size(aggr.catchments, 3) == length(ctch_sinks)
     @test aggr.n_samples[] == 3
+end
 end

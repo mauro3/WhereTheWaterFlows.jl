@@ -2,18 +2,6 @@ using WhereTheWaterFlows
 const WWF = WhereTheWaterFlows
 using Test
 
-# test examples
-module Test_Examples # use a module to avoid name-space pollution
-plotyes = true
-println("Running examples:")
-for fl in readdir(joinpath(@__DIR__, "../../examples/"), join=true)
-    isfile(fl) || continue
-    splitext(fl)[2]==".jl" || continue
-    println(fl)
-    include(fl)
-end
-end
-
 "An artificial DEM"
 function dem1(x, y; withpit=false, randfac=0.0)
     out = - (x^2 - 1)^2 - (x^2*y - x - 1)^2 + 6 + 0.1*x + 3*y
@@ -519,4 +507,4 @@ end
 # end
 
 #################################
-include(joinpath(@__DIR__, "../postproc.jl"))
+include(joinpath(@__DIR__, "postproc.jl"))
