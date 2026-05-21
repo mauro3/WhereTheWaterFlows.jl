@@ -1,19 +1,20 @@
 # Examples
 
-Run examples from this folder:
+Run examples from this folder with:
 
 ```julia
 julia --project
-include("wwf-simple.jl")
+using Pkg; Pkg.up() # only run the very first time to install packages
+include("wwf-simple.jl") # or any other script
 ```
 
-## Quick Start (top-level)
+Introduction scripts (no plotting):
 
 - `wwf-simple.jl`: core deterministic routing with `WhereTheWaterFlows`
 - `wwfs-simple.jl`: subglacial deterministic routing with `WhereTheWaterFlows.Subglacially`
 - `wwfr-simple.jl`: stochastic routing with `WhereTheWaterFlows.Randomly` (uncertain source, fixed DEM)
 
-## Topical Folders
+Folders with more in-depth scripts:
 
 - `core/`: additional WWF workflows and plotting demos
 - `subglacially/`: richer subglacial scenarios
@@ -21,9 +22,3 @@ include("wwf-simple.jl")
 - `theory/`: theory and diagnostics
 - `data/`: example data and provenance scripts
 
-## Suggested order
-
-1. `wwf-simple.jl`
-2. `wwfs-simple.jl`
-3. `wwfr-simple.jl`
-4. Then browse a topical folder of interest.

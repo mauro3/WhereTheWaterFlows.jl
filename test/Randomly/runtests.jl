@@ -83,7 +83,7 @@ end
                                                       beddem, beddem_uc,
                                                       floatfrac, floatfrac_uc,
                                                       source, source_uc,
-                                                      ctch_sinks,
+                                                      ctch_sinks;
                                                       mask)
 
     # reluc==0 should be deterministic and match direct WWFS call
@@ -111,7 +111,6 @@ end
     n = 60
     _, dem = peaks2_nan_edge(n)
     dx = 100.0
-    mask = .!isnan.(dem)
     source = fill!(similar(dem), 1.0) / dx^2
     ctch_sinks = [CartesianIndices((2:2, 2:n-1))[:]]
 
@@ -121,8 +120,7 @@ end
     model, sample, reduce! = WWFR.make_fns_subaerial(dx,
                                                      dem, dem_uc,
                                                      source, source_uc,
-                                                     ctch_sinks,
-                                                     mask)
+                                                     ctch_sinks)
 
     input, output = model(sample()...)
     out_ref = WWF.waterflows(dem, source .* dx^2; drain_pits=true, bnd_as_sink=true, nan_as_sink=true)
