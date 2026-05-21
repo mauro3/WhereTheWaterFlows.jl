@@ -123,8 +123,8 @@ function make_fns_subglacial(dx,
                               beddem, beddem_uc,
                               floatfrac, floatfrac_uc,
                               source, source_uc,
-                              ctch_sinks,
-                              mask;
+                              ctch_sinks;
+                              mask=mask::AbstractMatrix=fill!(similar(surfdem, Bool), true),
                               gamma=nothing,
                               min_lake_depth=10.0, # default min lake depth under which value are not aggregated
                               rhow=nothing, rhoi=nothing)
@@ -243,8 +243,7 @@ Requires `WhereTheWaterFlows` to be loaded.
 function make_fns_subaerial(dx,
                             dem, dem_uc,
                             source, source_uc,
-                            ctch_sinks,
-                            mask;
+                            ctch_sinks;
                             drain_pits=true,
                             bnd_as_sink=true,
                             nan_as_sink=true)
@@ -258,7 +257,6 @@ function make_fns_subaerial(dx,
         function ()
             dem_ = make_field_realization(dem, dem_sampler, dem_uc)
             src_ = make_field_realization(source, source_sampler, source_uc)
-            dem_[.!mask] .= NaN
             return dem_, src_
         end
     end

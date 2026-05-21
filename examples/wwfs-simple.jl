@@ -1,25 +1,19 @@
 using WhereTheWaterFlows
-using Random
+using Random; Random.seed!(42)
 
 const WWFS = WhereTheWaterFlows.Subglacially
 
-Random.seed!(42)
-
+# artifical topography
 n = 140
 dx = 100.0
-x = range(0, step=dx, length=n)
-y = x
-
-X = repeat(collect(x), 1, n)
-Y = repeat(collect(y)', n, 1)
-
-surfdem = 1200.0 .+ 0.015 .* X .+ 0.015 .* Y .+ 8.0 .* randn(n, n)
-beddem = 950.0 .+ 0.01 .* X .+ 0.01 .* Y .- 120.0 .* exp.(-((X .- x[end] / 2).^2 .+ (Y .- y[end] / 2).^2) ./ (2 * 5000.0^2))
+y = x = range(0, step=dx, length=n)
+surfdem = @. 1200 + 0.015*x + 0.015*y' + 8*$randn(n, n)
+beddem = @. 950 + 0.01*x + 0.01*y' - 120*exp(-((x - x[end]/2)^2 + (y' - y[end]/2)^2) / (2*5000^2))
 surfdem = max.(surfdem, beddem .+ 10.0)
 
 out = WWFS.waterflows_subglacial(surfdem, beddem, dx; gamma=WWFS.GAMMA)
 
-println("WWFS simple example")
+println("WhereTheWaterFlowsSubglacially simple example (WWF + Shreve-potential based routing)")
 println("grid size: ", size(surfdem))
 println("number of sinks: ", length(out.routing.sinks))
 println("supercooling-cell count: ", sum(out.pressmelt.sc_locs))
