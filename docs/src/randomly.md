@@ -61,7 +61,7 @@ mean(aggr.catchment_fluxes[1]), std(aggr.catchment_fluxes[1])
 
 - `n`: number of realizations in `map_mc`
 - `progressmeter`: set `false` to suppress progress output in batch runs
-- aggregation uses Float16 for catchment frequencies; therefore `n <= 2047`
+- aggregation uses Float16 for catchment frequencies; therefore `n <= 2048`
 
 ## Interpreting outputs
 

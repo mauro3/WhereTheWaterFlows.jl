@@ -52,7 +52,7 @@ For details, see the [documentation](https://mauro3.github.io/WhereTheWaterFlows
 
 [3] Malczyk et al., Constraints on Subglacial Melt Fluxes from Observations of Active Subglacial Lake Recharge, Journal of Glaciology, 2023. [link](https://doi.org/10.1017/jog.2023.70)
 
-[4] Delaney et al., Modeling the Spatially Distributed Nature of Subglacial Sediment Transport and Erosion, Earth Surface Dynamics, 2023. [link]](https://doi.org/10.5194/esurf-11-663-2023)
+[4] Delaney et al., Modeling the Spatially Distributed Nature of Subglacial Sediment Transport and Erosion, Earth Surface Dynamics, 2023. [link](https://doi.org/10.5194/esurf-11-663-2023)
 
 [5] Ogier et al., Definition, formation and rupture mechanisms of water pockets in alpine glaciers: Insights from an updated inventory for the Swiss Alps, Journal of Glaciology, 2025. [link](https://doi.org/10.1017/jog.2025.43)
 
