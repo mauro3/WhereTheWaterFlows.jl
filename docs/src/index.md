@@ -36,3 +36,10 @@ dem = sin.(xs) .* cos.(xs')
 ```
 
 See the [Tutorial](@ref) for a full walkthrough.
+
+Additional guides:
+
+- [Feedback Functionality](@ref FeedbackGuide)
+- [Randomly](@ref RandomlyGuide)
+- [Subglacially](@ref SubglaciallyGuide)
+- [Examples](@ref)
