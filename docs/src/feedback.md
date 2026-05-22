@@ -1,8 +1,9 @@
 # [Feedback Functionality](@id FeedbackGuide)
 
 `waterflows` can route one or several *extensive* quantities downstream. By
-providing `feedback_fn`, you can update those quantities at each cell before
-they are passed to the downstream receiver.
+providing `feedback_fn`, you can update those quantities at each cell after all
+upstream contributions have been accumulated but before the total is passed to
+the downstream receiver.
 
 This is useful for coupled process models where routed water modifies itself or
 other transported quantities, for example:
@@ -19,16 +20,16 @@ The callback signature is:
 feedback_fn(uparea, ij, dir) -> new_uparea
 ```
 
-- `uparea`: the accumulated routed quantity/quantities at `ij`
+- `uparea`: accumulated quantity/quantities arriving at `ij` from all upstream cells, plus `cellarea[ij]` itself
 - `ij`: current `CartesianIndex`
-- `dir`: flow-direction matrix
-- return value must match the shape used by `cellarea`
+- `dir`: the full flow-direction matrix (read-only)
+- return value: the updated quantity to be passed downstream; must have the same type and shape as `uparea`
 
-If `cellarea` is a single array, `uparea` is a scalar. If `cellarea` is a
-tuple of arrays, `uparea` is a tuple with matching structure.
+When `cellarea` is a single array, `uparea` is a scalar.  When `cellarea` is a
+tuple of arrays, `uparea` is a tuple of scalars with matching structure.
 
-In all cases, `feedback_fn` is called after upstream accumulation at the cell
-and before routing to the downstream receiver.
+The callback is invoked at every active cell (i.e. cells that are not barriers)
+once all upstream cells have been visited, in up-to-downstream order.
 
 ## Minimal scalar feedback
 
@@ -89,7 +90,7 @@ function toy_feedback(uparea, ij, dir)
     if d >= WhereTheWaterFlows.SINK
         return (Q, tracer)
     end
-    # local update (placeholder): damp tracer with discharge
+    # damp tracer with accumulated discharge (placeholder)
     tracer_new = tracer / (1 + 0.01 * Q)
     return (Q, tracer_new)
 end
@@ -127,7 +128,10 @@ include("feedback_function/subglacial-routing-feedback.jl")
 
 - Use only extensive/additive routed quantities.
 - Keep units consistent with your `cellarea` definition.
-- For slope-based laws, handle sink cells (`dir[ij] >= SINK`) explicitly.
-- Start simple, then add complexity once baseline behavior is validated.
+- For slope-based laws, check `dir[ij] >= WhereTheWaterFlows.SINK` to skip
+  cells with no valid downstream direction.
+- Check the return value at sink/barrier cells explicitly if the process law
+  would produce nonsensical results there.
+- Start simple, then add complexity once baseline behaviour is validated.
 
 See also: [Examples](@ref) and [API Reference](@ref).

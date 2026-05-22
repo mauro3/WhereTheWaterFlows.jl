@@ -41,23 +41,23 @@ nothing # hide
 |---|---|
 | `area` | Upslope area at each cell (cell count, or physical flux if `cellarea` is supplied) |
 | `slen` | Stream length: number of cells from the farthest upstream source |
-| `dir` | D8 flow direction at each cell, encoded as an integer 1–9 |
-| `nout` | `true` if the cell has a downstream neighbour, `false` if it is a pit |
-| `nin` | Number of upstream neighbours flowing into each cell |
-| `sinks` | Boundary/NaN-adjacent sink cells |
-| `pits` | Interior pit cells (local minima) |
-| `c` | Integer catchment map |
-| `bnds` | Boundary-cell lists, one per catchment |
-| `flowdir_extra_output` | Extra output from a custom `flowdir_fn` (`nothing` for the default) |
+| `dir` | D8 flow direction at each cell. Values 1–4 and 6–9 are active flow directions; 5 (`PIT`) means the cell is a local minimum with no outflow; 10 (`SINK`) means flow exits the domain here; 11 (`BARRIER`) marks NaN/inactive cells |
+| `nout` | `true` if the cell has a downstream neighbour; `false` for pits, sinks, and barriers |
+| `nin` | Number of upstream neighbours flowing into each cell (0–8) |
+| `sinks` | Cells where flow exits the domain (boundary, NaN-adjacent, or `extra_sinks`) |
+| `pits` | Undrained interior local minima after routing. Empty when `drain_pits=true` (the default). Indexed starting at `length(sinks)+1` |
+| `c` | Integer catchment map. `0` = barrier/NaN cell; `1:length(sinks)` = sink catchments; `length(sinks)+1:end` = pit catchments |
+| `bnds` | Boundary-cell lists for pit catchments, one vector per pit, co-indexed with `pits` |
+| `flowdir_extra_output` | Extra output from a custom `flowdir_fn`; `nothing` for the default `d8dir_feature` |
 
 
 ## Terminology and special cells
 
 `waterflows` distinguishes between several special cell types:
 
-- `NaN` cells are cells where the DEM value is `NaN`. They are treated as barriers: no routing is performed on these cells, and their `cellarea` contribution is ignored.
-- `sinks` are cells where flow leaves the active domain.
-- `pits` are interior local minima: cells that have no lower neighbouring cell to drain to under the D8 rule.
+- **NaN cells** (`dir == BARRIER`): the DEM value is `NaN`. No routing is performed on these cells and their `cellarea` contribution is ignored.
+- **Sinks** (`dir == SINK`): cells where flow leaves the active domain. By default this includes all domain-boundary cells (`bnd_as_sink=true`) and cells adjacent to NaN values (`nan_as_sink=true`). Additional sinks can be specified via `extra_sinks`.
+- **Pits** (`dir == PIT`): interior local minima that have no lower neighbouring cell under the D8 rule. With `drain_pits=true` (the default) the algorithm routes flow over the lowest spillway of each pit, so the returned `pits` vector is typically empty.
 
 
 ## Positional arguments of `waterflows`

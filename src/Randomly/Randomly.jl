@@ -77,7 +77,8 @@ Args
                 the aggregate storage with `aggr = reduce!()` and finalizes it
                 with `reduce!(aggr)`.
 - n -- number of samples to take
-       (needs to be below 2048 as otherwise aggregation does not work anymore)
+       (must be ≤ 2048; Float16 aggregation for catchment frequencies loses
+        precision for larger counts)
 
 Note: only `reduce!` is allowed to not be thread-safe.
 """
