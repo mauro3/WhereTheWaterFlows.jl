@@ -9,6 +9,7 @@ makedocs(;
         "Feedback" => "feedback.md",
         "Randomly" => "randomly.md",
         "Subglacially" => "subglacially.md",
+        "Worked Example" => "worked-example.md",
         "Examples" => "examples.md",
         "API"      => "api.md",
     ],
