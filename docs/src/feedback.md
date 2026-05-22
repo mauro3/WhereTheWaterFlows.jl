@@ -27,10 +27,14 @@ feedback_fn(uparea, ij, dir) -> new_uparea
 If `cellarea` is a single array, `uparea` is a scalar. If `cellarea` is a
 tuple of arrays, `uparea` is a tuple with matching structure.
 
+In all cases, `feedback_fn` is called after upstream accumulation at the cell
+and before routing to the downstream receiver.
+
 ## Minimal scalar feedback
 
 ```@example feedback
 using WhereTheWaterFlows
+using Statistics
 
 n = 80
 x = range(-pi, pi, length=n)
@@ -62,6 +66,38 @@ Qs_out = min(Qs_in, Qs_cap)
 
 and the feedback returns `(Q, Qs_out)`.
 
+You can run that full example directly from the examples environment:
+
+```julia
+include("feedback_function/sediment-transport-mpm.jl")
+```
+
+## Typical implementation skeleton
+
+```@example feedback
+using WhereTheWaterFlows
+
+n = 40
+x = range(-pi, pi, length=n)
+dem = sin.(x) .* cos.(x')
+
+cellarea = (ones(size(dem)), fill(0.1, size(dem)))
+
+function toy_feedback(uparea, ij, dir)
+    Q, tracer = uparea
+    d = dir[ij]
+    if d >= WhereTheWaterFlows.SINK
+        return (Q, tracer)
+    end
+    # local update (placeholder): damp tracer with discharge
+    tracer_new = tracer / (1 + 0.01 * Q)
+    return (Q, tracer_new)
+end
+
+out = waterflows(dem, cellarea; feedback_fn=toy_feedback)
+mean(out.area[2])
+```
+
 ## Multi-field feedback (subglacial melt)
 
 `examples/feedback_function/subglacial-routing-feedback.jl` illustrates a
@@ -73,6 +109,19 @@ three-field setup that routes:
 
 This pattern is especially useful when you need one or more additional fields
 for diagnostics while keeping the physically relevant transport state explicit.
+
+Run the full example with:
+
+```julia
+include("feedback_function/subglacial-routing-feedback.jl")
+```
+
+## Common patterns
+
+- **Clipping or limiting**: enforce positivity or capacity constraints.
+- **Production terms**: add melt/erosion/reaction source terms.
+- **Diagnostic fields**: route extra arrays for bookkeeping outputs.
+- **Coupled extensive fields**: route `(water, tracer)` or `(water, sediment)`.
 
 ## Practical tips
 

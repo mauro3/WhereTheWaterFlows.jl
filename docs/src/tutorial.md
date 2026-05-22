@@ -92,6 +92,9 @@ waterflows(dem, cellarea, flowdir_fn)
 | `extra_barriers` | `CartesianIndex{2}[]` | Additional cells that act as barriers and do not conduct flow |
 | `feedback_fn` | `nothing` | Applied to accumulated area before routing downstream |
 
+See [Feedback Functionality](@ref FeedbackGuide) for process-coupled examples
+using `feedback_fn`.
+
 
 ## Upslope area
 
@@ -181,3 +184,12 @@ heatmap(fig[1, 1], x, y, log10.(water_area);  colormap=:blues, axis=(title="Wate
 heatmap(fig[1, 2], x, y, tracer_area;          colormap=:reds,  axis=(title="Tracer",))
 fig
 ```
+
+## Next steps
+
+- Use [Feedback Functionality](@ref FeedbackGuide) to couple transport laws or
+  source-sink processes to routing.
+- Use [Subglacially](@ref SubglaciallyGuide) for hydraulic-potential based
+  subglacial workflows.
+- Use [Randomly](@ref RandomlyGuide) for uncertainty propagation and Monte
+  Carlo aggregation.
