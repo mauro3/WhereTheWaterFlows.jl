@@ -215,6 +215,7 @@ end
 # substantially reduce the number of catchments, as currently every boundary point
 # is a pit and thus a catchment (if bnd_as_sink==true).
 """
+
     waterflows(dem, cellarea=fill!(similar(dem),1), flowdir_fn=d8dir_feature;
                feedback_fn=nothing, drain_pits=true, bnd_as_sink=true, nan_as_sink=true,
                extra_sinks=CartesianIndex{2}[],
@@ -266,8 +267,12 @@ Returns a `NamedTuple` with fields:
 - `bnds` -- boundaries between catchments.  The boundary to the exterior/NaNs is not in here.
 - `flowdir_extra_output` -- extra output of the `flowdir_fn`, which is `nothing` for the default
 """
-function waterflows(dem, cellarea=fill!(similar(dem),1), flowdir_fn=d8dir_feature;
-                    feedback_fn=nothing, drain_pits=true, bnd_as_sink=true, nan_as_sink=true,
+function waterflows(dem, cellarea=fill!(similar(dem),1);
+                    flowdir_fn=d8dir_feature,
+                    feedback_fn=nothing,
+                    drain_pits=true,
+                    bnd_as_sink=true,
+                    nan_as_sink=true,
                     extra_sinks=CartesianIndex{2}[],
                     extra_barriers=CartesianIndex{2}[],
                     stacksize=2^13 * 2^10)

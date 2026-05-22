@@ -45,7 +45,7 @@ nothing # hide
 | `nout` | `true` if the cell has a downstream neighbour; `false` for pits, sinks, and barriers |
 | `nin` | Number of upstream neighbours flowing into each cell (0–8) |
 | `sinks` | Cells where flow exits the domain (boundary, NaN-adjacent, or `extra_sinks`) |
-| `pits` | Undrained interior local minima after routing. Empty when `drain_pits=true` (the default). Indexed starting at `length(sinks)+1` |
+| `pits` | List of undrained interior local minima after routing. Empty when `drain_pits=true` (the default). Indexed starting at `length(sinks)+1` |
 | `c` | Integer catchment map. `0` = barrier/NaN cell; `1:length(sinks)` = sink catchments; `length(sinks)+1:end` = pit catchments |
 | `bnds` | Boundary-cell lists for pit catchments, one vector per pit, co-indexed with `pits` |
 | `flowdir_extra_output` | Extra output from a custom `flowdir_fn`; `nothing` for the default `d8dir_feature` |
@@ -67,19 +67,17 @@ The simplest usage is:
 ```julia
 waterflows(dem)
 ```
-Additional positional arguments can be used to route physical fluxes or customise
-the flow-direction algorithm:
+An additional positional argument can be used to route physical fluxes:
 
 ```julia
 waterflows(dem, cellarea)
-waterflows(dem, cellarea, flowdir_fn)
 ```
 
 | Argument     | Meaning                                                                         |
 | ------------ | ------------------------------------------------------------------------------- |
 | `dem`        | Elevation or hydraulic-potential array used to determine flow directions        |
-| `cellarea`   | Source term accumulated downstream. By default, each valid cell contributes `1` |
-| `flowdir_fn` | Function used to compute flow directions. The default is `d8dir_feature`        |
+| `cellarea`   | Source term accumulated downstream. By default, each valid cell contributes `1`. If used, use a volume flux such as `m^3/s`. |
+
 
 ## Keyword arguments of `waterflows`
 
@@ -91,9 +89,12 @@ waterflows(dem, cellarea, flowdir_fn)
 | `extra_sinks` | `CartesianIndex{2}[]` | Additional cells that act as sinks |
 | `extra_barriers` | `CartesianIndex{2}[]` | Additional cells that act as barriers and do not conduct flow |
 | `feedback_fn` | `nothing` | Applied to accumulated area before routing downstream |
+| `flowdir_fn` | Function used to compute flow directions. The default is `d8dir_feature`        |
 
+The two last listed keyword-args are advanced features:
 See [Feedback Functionality](@ref FeedbackGuide) for process-coupled examples
-using `feedback_fn`.
+using `feedback_fn`. A custom `flowdir_fn` is used in `WWF.Subglacially.waterflows_subglacial` and the reader is
+referred to the code for an example.
 
 
 ## Upslope area

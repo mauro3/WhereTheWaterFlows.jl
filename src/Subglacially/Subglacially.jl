@@ -393,8 +393,8 @@ function waterflows_subglacial(surfdem::AbstractMatrix, beddem::AbstractMatrix, 
     feedback_fn = make_feedback_fn(phi, phim, gamma, dx)
 
     area, slen, dir, nout, nin, sinks, pits, c, bnds, (sc_locs, kappas, dir_) =
-        WWF.waterflows((phi, phim), inputs,
-                       (phi_phim, bnd_as_sink, nan_as_sink, _, _) -> d8dir_pressmelt(phi_phim, bnd_as_sink, nan_as_sink, gamma, avoid_sc);
+        WWF.waterflows((phi, phim), inputs;
+                       flowdir_fn=(phi_phim, bnd_as_sink, nan_as_sink, _, _) -> d8dir_pressmelt(phi_phim, bnd_as_sink, nan_as_sink, gamma, avoid_sc),
                        drain_pits, bnd_as_sink, nan_as_sink, feedback_fn);
 
 
