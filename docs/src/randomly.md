@@ -3,6 +3,12 @@
 `WhereTheWaterFlows.Randomly` provides Monte Carlo helpers for uncertainty
 propagation around deterministic routing models.
 
+Typical use cases:
+
+- uncertainty in runoff/source terms,
+- uncertainty in DEMs or derived potentials,
+- uncertainty propagation to catchment assignments or outlet fluxes.
+
 The main workflow is:
 
 1. define uncertainty for uncertain fields,
@@ -16,6 +22,9 @@ The main workflow is:
 - `make_fns_subglacial`: stochastic wrapper around
   `WhereTheWaterFlows.Subglacially.waterflows_subglacial`
 - `map_mc`: Monte Carlo loop with aggregation
+
+`Uncertainty` combines absolute and/or relative perturbations and a correlation
+length used by GRF sampling.
 
 ## Minimal subaerial run
 
@@ -48,6 +57,12 @@ aggr = WWFR.map_mc(model, sample, reduce!, 6; progressmeter=false)
 mean(aggr.catchment_fluxes[1]), std(aggr.catchment_fluxes[1])
 ```
 
+## Monte Carlo controls
+
+- `n`: number of realizations in `map_mc`
+- `progressmeter`: set `false` to suppress progress output in batch runs
+- aggregation uses Float16 for catchment frequencies; therefore `n <= 2047`
+
 ## Interpreting outputs
 
 For subaerial runs, the aggregate contains e.g.:
@@ -60,9 +75,20 @@ For subaerial runs, the aggregate contains e.g.:
 For subglacial runs, additional fields are included (lakes, supercooling,
 pressure-melt diagnostics).
 
+## Reproducibility
+
+Set `Random.seed!(...)` before building samplers to obtain reproducible
+realizations in scripted workflows.
+
 ## Suggested examples
 
 - `examples/wwfr-simple.jl`: quick intro
 - `examples/randomly/source-uncertainty-sweep.jl`: sensitivity-style sweep
+
+Run all examples in that folder from `examples/`:
+
+```julia
+include("randomly/source-uncertainty-sweep.jl")
+```
 
 See also: [Examples](@ref) and [API Reference](@ref).

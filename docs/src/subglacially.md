@@ -9,6 +9,9 @@ Compared with plain `waterflows`, it provides:
 - lake-depth diagnostics,
 - optional sink-catchment flux aggregation.
 
+This module is aimed at routing water under ice using Shreve-style hydraulic
+potential and optional pressure-melting-point effects.
+
 ## Minimal run
 
 ```@example subglacially
@@ -34,6 +37,9 @@ out = WWFS.waterflows_subglacial(surfdem, beddem, dx; gamma=WWFS.GAMMA)
 length(out.routing.sinks), sum(out.pressmelt.sc_locs)
 ```
 
+Set `gamma=0` to disable deflection/supercooling effects and recover routing
+equivalent to potential-only behavior.
+
 ## Output structure
 
 `waterflows_subglacial` returns a nested named tuple with sections:
@@ -51,10 +57,26 @@ length(out.routing.sinks), sum(out.pressmelt.sc_locs)
 - `source`: source term to route
 - `mask`: active routing mask
 
+Other useful controls include `ctch_sinks` for grouped sink-flux diagnostics,
+and `drain_pits`, `bnd_as_sink`, `nan_as_sink` inherited from core routing.
+
 ## Suggested examples
 
 - `examples/wwfs-simple.jl`: quick intro
 - `examples/subglacially/valley-glacier.jl`: valley setup
 - `examples/subglacially/ice-sheet-margin-shmip.jl`: SHMIP-like geometry
+
+You can run those from the examples environment, for example:
+
+```julia
+include("subglacially/valley-glacier.jl")
+```
+
+## Physical notes
+
+- Inputs are expected on a regular Cartesian grid with scalar `dx`.
+- Routing assumes local D8 connectivity.
+- Some diagnostics (e.g. supercooling masks) are model approximations and
+  should be interpreted accordingly.
 
 See also: [Tutorial](@ref), [Examples](@ref), and [API Reference](@ref).

@@ -7,6 +7,13 @@ waterflows
 fill_dem
 ```
 
+High-level guides:
+
+- [Tutorial](@ref)
+- [Feedback Functionality](@ref FeedbackGuide)
+- [Randomly](@ref RandomlyGuide)
+- [Subglacially](@ref SubglaciallyGuide)
+
 ## Post-processing
 
 These functions are exported but are called separately after `waterflows`:
