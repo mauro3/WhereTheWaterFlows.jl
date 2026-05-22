@@ -6,6 +6,9 @@ makedocs(;
     pages   = [
         "Home"     => "index.md",
         "Tutorial" => "tutorial.md",
+        "Feedback" => "feedback.md",
+        "Randomly" => "randomly.md",
+        "Subglacially" => "subglacially.md",
         "Examples" => "examples.md",
         "API"      => "api.md",
     ],
