@@ -18,7 +18,7 @@ const BARRIER = 11   # Direction number indicating no flow into or out of this c
                      # around these cells.
 
 """
-Direction numbers.  E.g. dirnums[1,1] will return the number
+Direction numbers.  E.g. `dirnums[1,1]` will return the number
 corresponding to the direction top-left.
 
 Note, I use the conversion that the x-axis corresponds to the row of
@@ -30,7 +30,7 @@ const dirnums = SMatrix{3,3}(reverse([ 7  8  9
                                        1  2  3]',
                                      dims=2))
 
-"Translation from dirnums to CartesianIndex"
+"Translation from `dirnums` to `CartesianIndex`"
 const cartesian = SMatrix{3,3}(reverse(permutedims([CartesianIndex(-1,1)  CartesianIndex(0,1)  CartesianIndex(1,1)
                                                     CartesianIndex(-1,0)  CartesianIndex(0,0)  CartesianIndex(1,0)
                                                     CartesianIndex(-1,-1) CartesianIndex(0,-1) CartesianIndex(1,-1)]),
@@ -46,16 +46,16 @@ to x and y direction.
 """
 showme(ar) = (display(reverse(ar',dims=1)); println(" "))
 
-"Translate a CartesianIndex, giving the offset, into a direction number"
+"Translate a `CartesianIndex`, giving the offset, into a direction number"
 ind2dir(ind::CartesianIndex) = dirnums[ind + I22]
 
 """
     dir2ind(dir, map_special_to_PIT=false)
 
-Translate a D8 direction number into a CartesianIndex (i.e. a flow vector), also
-maps SINK to CartesianIndex(0,0).
+Translate a D8 direction number into a `CartesianIndex` (i.e. a flow vector), also
+maps `SINK` to `CartesianIndex(0,0)`.
 
-If `map_special_to_PIT`==true, then any dir>9 is mapped to CartesianIndex(0,0).
+If `map_special_to_PIT==true`, then any dir>9 is mapped to `CartesianIndex(0,0)`.
 """
 function dir2ind(dir, map_special_to_PIT=false)
     !map_special_to_PIT && dir>SINK && error("Cannot make CartisianIndex for a dir-number>9 (consider setting kw-arg map_special_to_PIT=true)")
@@ -96,9 +96,9 @@ end
 """
     d8dir_feature(dem, bnd_as_sink, nan_as_sink, extra_sinks=CartesianIndex{2}[], extra_barriers=CartesianIndex{2}[])
 
-D8 directions of a DEM and drainage features (nin & nout).
+D8 directions of a DEM and drainage features (`nin` & `nout`).
 
-Elevations with NaN map to dir==BARRIER, cells around them will be set to SINK if nan_as_sink==true
+Elevations with NaN map to `dir==BARRIER`, cells around them will be set to `SINK` if `nan_as_sink==true`
 or receive no special treatment otherwise.
 
 The argument `bnd_as_sink` determines whether cells at the domain boundary act as sinks.
@@ -109,13 +109,13 @@ act as outlets where flow leaves the domain. Cells in `extra_barriers` are
 excluded from routing and do not conduct flow.
 
 Return
-- dir  - direction, encoded as `dirnums`
-- nout - number of outflow cells of a cell (0 or 1)
-- nin  - number of inflow cells of a cell (0-8)
-- sinks - location of sinks as a `Vector{CartesianIndex{2}}` (sorted) (here dir==SINK)
-- pits - location of pits as a `Vector{CartesianIndex{2}}` (sorted) (here dir==PIT)
-- dem - DEM, unchanged
-- `flowdir_extra_output` -- nothing (not used by this function, but could be by custom ones)
+- `dir`  - direction, encoded as `dirnums`
+- `nout` - number of outflow cells of a cell (0 or 1)
+- `nin`  - number of inflow cells of a cell (0-8)
+- `sinks` - location of sinks as a `Vector{CartesianIndex{2}}` (sorted) (here `dir==SINK`)
+- `pits` - location of pits as a `Vector{CartesianIndex{2}}` (sorted) (here `dir==PIT`)
+- `dem` - DEM, unchanged
+- `flowdir_extra_output` -- `nothing` (not used by this function, but could be by custom ones)
 """
 function d8dir_feature(dem, bnd_as_sink, nan_as_sink, extra_sinks=CartesianIndex{2}[], extra_barriers=CartesianIndex{2}[])
     # outputs
@@ -174,8 +174,8 @@ end
 """
     make_flowfeatures(dir)
 
-Makes nout, nin, sinks, pits by iterating once over the
-dir array
+Makes `nout`, `nin`, `sinks`, `pits` by iterating once over the
+`dir` array
 """
 function make_flowfeatures(dir)
     R = CartesianIndices(size(dir))
@@ -227,8 +227,8 @@ a breach-type algorithm, this means that the input DEM does not need to be pre-f
 args:
 - `dem` -- the DEM (or hydro-potential); array
 - `cellarea=fill!(similar(dem),1)` -- the source per cell, defaults to 1.
-     - if cellarea is negative in places, flux may go to zero but not below.
-     - in areas where no routing takes place, typically NaNs in the dem, cellarea
+     - if `cellarea` is negative in places, flux may go to zero but not below.
+     - in areas where no routing takes place, typically NaNs in the dem, `cellarea`
        is ignored.  This maybe affects mass-conservation.
      - if using physical units then use a volumetric flux per cell, e.g. m3/s.
      - Alternatively, `cellarea` can be a tuple of arrays. Then they are treated/routed
@@ -246,23 +246,23 @@ kwargs:
 - `drain_pits` -- whether to route through pits (true)
 - `bnd_as_sink` (true) -- whether the domain boundary should be sinks, i.e. adjacent cells
                  can drain into them, or whether to ignore them.
-- `nan_as_sink` (true) -- whether NaN cells in the DEM should make adjacent cells a sink. Note that
-                        on the NaN-cell itself no routing occurs (i.e. a `BARRIER`-cell).
+- `nan_as_sink` (true) -- whether `NaN` cells in the DEM should make adjacent cells a sink. Note that
+                        on the `NaN`-cell itself no routing occurs (i.e. a `BARRIER`-cell).
 - `extra_sinks=CartesianIndex{2}[]` -- additional cells that act as sinks, i.e. outlets where flow leaves the active domain.
 - `extra_barriers=CartesianIndex{2}[]` -- additional cells that act as barriers, i.e. cells that are excluded from routing and do not conduct flow.
-- stacksize (2^13 * 2^10) -- size of the call-stack in `_flowrouting_catchments!`, which is prone to
-                 StackOverflowError.  Note however, that OutOfMemory errors are likely if increased.
+- `stacksize` (2^13 * 2^10) -- size of the call-stack in `_flowrouting_catchments!`, which is prone to
+                 `StackOverflowError`.  Note however, that `OutOfMemory` errors are likely if increased.
 
 
 Returns a `NamedTuple` with fields:
-- `area` -- upslope area (or a tuple of upslope areas if cellarea is a tuple too)
+- `area` -- upslope area (or a tuple of upslope areas if `cellarea` is a tuple too)
 - `slen` -- length of stream to the farthest source (number of cells traversed)
 - `dir` -- flow direction at each location
-- `nout` -- whether the point has outlflow.  I.e. nout[I]==0 --> I is a pit
+- `nout` -- whether the point has outlflow.  I.e. `nout[I]==0` --> I is a pit
 - `nin` -- number of inflow cells
-- `sinks` -- location of sinks as Vector{CartesianIndex{2}}
-- `pits` -- location of pits as Vector{CartesianIndex{2}}
-- `c` -- catchment map (color numbers ∈ 1:length(sinks) are for sinks, others for pits)
+- `sinks` -- location of sinks as `Vector{CartesianIndex{2}}`
+- `pits` -- location of pits as `Vector{CartesianIndex{2}}`
+- `c` -- catchment map (color numbers ∈ `1:length(sinks)` are for sinks, others for pits)
 - `bnds` -- boundaries between catchments.  The boundary to the exterior/NaNs is not in here.
 - `flowdir_extra_output` -- extra output of the `flowdir_fn`, which is `nothing` for the default
 """
@@ -294,16 +294,17 @@ end
     flowrouting_catchments(dir, pits, cellarea, feedback_fn, stacksize)
 
 Recursively calculate flow-routing and catchments from
-- dir - direction field
-- pits - pit coordinates
-- cellarea - water input
-- stacksize - how large the call-stack is (in bytes)
+- `dir` - direction field
+- `pits` - pit coordinates
+- `cellarea` - water input
+- `stacksize` - how large the call-stack is (in bytes)
 
-Return:
-- upslope area
-- stream length (number of cells traversed)
-- catchments Matrix{Int}.  Value==0 corresponds to NaNs in the DEM
-  which are not pits (i.e. where no water flows into).
+Returns:
+- `area` -- upslope contributing area
+- `slen` -- stream length, i.e. the number of cells traversed along the
+  longest upstream flow path
+- `c` -- catchment map (`Matrix{Int}`); `c==0` corresponds to `NaN`/`BARRIER`
+  regions where no water flows into.
 
 Note: this function may cause a stackoverflow on very big catchments.
 """
@@ -390,16 +391,16 @@ end
     make_boundaries(catchments, pit_colors, bnds=Origin(firstindex(pit_colors))([CartesianIndex{2}[] for i in 1:length(pit_colors)]) )
 
 Make vectors of boundary cells for catchments of `pit_colors` (as the name suggests,
-typically just the pit-catchment colors.)  Assumes that pit_colors is sorted.
+typically just the pit-catchment colors.)  Assumes that `pit_colors` is sorted.
 
-Note that cells along the edge of the domain[1] as well as cells only bordering
+Note that cells along the edge of the `domain[1]` as well as cells only bordering
 BARRIER-cells are not included (because the algorithms do not need to traverse them).
 
 Return:
-- bnds -- Vector of Vector{CartesianIndex{2}} containing the cells which are
+- `bnds` -- Vector of `Vector{CartesianIndex{2}}` containing the cells which are
           on the boundary of said catchment.
 
-[1] Note that when `bnd_as_sink`==true then no cells along the boundary will belong
+[1] Note that when `bnd_as_sink==true` then no cells along the boundary will belong
     to a pit-catchment.
 """
 function make_boundaries(catchments, pit_colors, bnds=Origin(firstindex(pit_colors))([CartesianIndex{2}[] for i in 1:length(pit_colors)]) )
@@ -428,7 +429,7 @@ Update in place the direction field such that it drains pits. This is done by
 reversing the flow connecting the lowest point (which can drain) on the catchment
 boundary to the pit for each such catchment.
 
-Update in place dir, nin, nout, pits (sorted), c; returns an empty bnds
+Update in place `dir`, `nin`, `nout`, `pits` (sorted), `c`; returns an empty `bnds`
 """
 function drainpits!(dir, nin, nout, sinks, pits, ctch, bnds, dem)
     length(pits)==0 && return bnds
@@ -574,17 +575,17 @@ function _recolor_catchments!(ctch, colormap, new_consecutive_colormap)
 end
 
 """
-Update dir, nin, and nout such that flow at P1 is now from P1 to P2.
+Update `dir`, `nin`, and `nout` such that flow at `P1` is now from `P1` to `P2`.
 
-It can potentially modify `dir, nin, nout` at three locations
-- P1: dir, nout, nin
-- P2: nin
-  - if allow_P2_pit==true, then P2's dir, nout can also be modified.
-- P3 (previous receiver cell of P1): nin
+It can potentially modify `dir`, `nin`, and `nout` at three locations:
+- `P1`: `dir`, `nout`, `nin`
+- `P2`: `nin`
+  - if `allow_P2_pit==true`, then `P2`'s `dir` and `nout` can also be modified.
+- `P3` (previous receiver cell of `P1`): `nin`
 
-Note that
-- if P1 and P2 lie in the same catchment, then P3 is also in that catchment.
-- if flow was from P2 to P1, then P2 has to become a pit (PIT) to keep dir consistent
+Note that:
+- if `P1` and `P2` lie in the same catchment, then `P3` is also in that catchment.
+- if flow was from `P2` to `P1`, then `P2` has to become a pit (`PIT`) to keep `dir` consistent.
 """
 function _flow_from_to!(P1, P2, dir, nin, nout, allow_P2_pit=false)
     # already right
