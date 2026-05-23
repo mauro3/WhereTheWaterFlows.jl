@@ -59,7 +59,7 @@ Finds locus where the meltratio==mu as a function of R.
 function locus(mu, R)
     bracket = (0.0,pi)
     f = lambda -> meltratio(R, lambda) - mu
-    if sign(f(bracket[1])) == sign(f(bracket[2]))
+    if !(f(bracket[1]) * f(bracket[2]) < 0)
         return NaN
     else
         return Roots.find_zero(f, bracket)
@@ -105,7 +105,7 @@ ratio =0:0.01:8.5
 cs = [:red, :magenta, :green]
 for (i, lambda) = enumerate((3:-1:1).*pi/4)
     kappa_ = kappa.(ratio, lambda)
-    kappa__ = round.(Int, kappa_ / (pi/4))*pi/4
+    kappa__ = round.(kappa_ / (pi/4))*pi/4
     kappa__ = kappa__ .+ pi/2/180 * (1-i) * 1.0
     lines!(ratio, rad2deg.(kappa__), color=cs[i], linestyle=:solid,
             label="λ=$(rad2deg(lambda)), D8-quantized")
