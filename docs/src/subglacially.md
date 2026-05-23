@@ -132,4 +132,4 @@ include("subglacially/valley-glacier.jl")
   water slightly uphill out of a filled depression; the corresponding freeze
   upstream balances this.
 
-See also: [Tutorial](@ref), [Examples](@ref), and [API Reference](@ref).
+See also: [Tutorial](@ref), [Examples](@ref ExamplesPage), and [API Reference](@ref APIReference).

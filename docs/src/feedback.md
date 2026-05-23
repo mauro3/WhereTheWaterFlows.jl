@@ -145,4 +145,4 @@ Tips
 - Check the return value at sink/barrier cells explicitly if the process law
   would produce nonsensical results there.
 
-See also: [Examples](@ref) and [API Reference](@ref).
+See also: [Examples](@ref ExamplesPage) and [API Reference](@ref APIReference).

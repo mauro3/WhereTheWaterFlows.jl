@@ -1,4 +1,4 @@
-# Examples
+# [Examples](@id ExamplesPage)
 
 Start Julia in the `examples/` folder with `julia --project` and run scripts via `include`.
 

@@ -72,8 +72,8 @@ depressions) takes roughly 30 s on a laptop-class CPU.
 
 ## Guides
 
-- [Feedback Functionality](@ref FeedbackGuide)
 - [Randomly](@ref RandomlyGuide)
 - [Subglacially](@ref SubglaciallyGuide)
-- [Examples](@ref)
-- [API Reference](@ref)
+- [Examples](@ref ExamplesPage)
+- [Feedback Functionality](@ref FeedbackGuide)
+- [API Reference](@ref APIReference)

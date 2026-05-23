@@ -230,4 +230,4 @@ MC aggregates.
   Source: Federal Office of Topography swisstopo.
 
 See also: [Subglacially](@ref SubglaciallyGuide), [Randomly](@ref RandomlyGuide),
-[Tutorial](@ref), and [API Reference](@ref).
+[Tutorial](@ref), and [API Reference](@ref APIReference).
