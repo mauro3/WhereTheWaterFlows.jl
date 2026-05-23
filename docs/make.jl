@@ -6,8 +6,8 @@ makedocs(;
     pages   = [
         "Home"     => "index.md",
         "Tutorial" => "tutorial.md",
-        "Monte Carlo `Randomly`" => "randomly.md",
         "Subglacial flow `Subglacially`" => "subglacially.md",
+        "Monte Carlo `Randomly`" => "randomly.md",
         "Worked Example" => "worked-example.md",
         "Example scipts" => "examples.md",
         "Feedback function" => "feedback.md",

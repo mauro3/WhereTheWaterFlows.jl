@@ -16,6 +16,13 @@ Typical usage is:
 2. build `model`, `sample`, and `reduce!` with `make_fns_*`,
 3. run Monte Carlo with `map_mc`.
 
+The key design idea is that `map_mc` is generic: it does not know anything
+about routing fields. It only calls three functions you provide:
+
+- `sample()`: generate one stochastic input realization,
+- `model(args...)`: run one deterministic forward model,
+- `reduce!`: aggregate outputs over many realizations.
+
 ## Uncertainty model
 
 `Uncertainty` stores how one field should be perturbed:
@@ -100,6 +107,112 @@ so kernels operate in grid-cell units.
 - uncertain fields: `surfdem`, `beddem`, `floatfrac`, `source`
 - physical controls: `gamma`, `rhow`, `rhoi`
 - processing controls: `mask`, `ctch_sinks`, `min_lake_depth`
+
+## Why reduction is needed
+
+A Monte Carlo run can easily produce hundreds of large 2D outputs. Storing all
+realizations is expensive and often unnecessary. `reduce!` keeps only summary
+statistics (means, frequencies, selected per-sample vectors), which is both
+memory-efficient and directly useful for interpretation.
+
+In WWFR wrappers, reduction happens in three stages:
+
+1. `reduce!()` initializes aggregate storage.
+2. `reduce!(aggr, sample_output)` updates aggregate values per realization.
+3. `reduce!(aggr)` finalizes (typically divides accumulated maps by `n`).
+
+## How outputs are reduced
+
+### `make_fns_subaerial`
+
+Per sample, it accumulates:
+
+- `areas_total += output.area / dx^2`
+- `stream_length += output.slen`
+- `catchments[:, :, i] += catchment(output.dir, ctch_sinks[i])`
+- `catchment_fluxes[i]` stores one scalar per sample (not averaged in place)
+
+At finalize step it divides `areas_total`, `stream_length`, and `catchments` by
+`n_samples`, so these become Monte Carlo means/frequencies.
+
+### `make_fns_subglacial`
+
+Per sample, it accumulates routed maps and diagnostics (`areas_total`,
+`lake_depth_*`, `lake_mask_*`, `sc_locs`, `kappas`, `catchments`) and appends
+sink-flux records to vectors (`catchment_fluxes.total/dissipation/pressmelt`).
+
+At finalize step it normalizes map-style fields by `n_samples` (so they are
+means/frequencies). Flux vectors remain per-sample records by design.
+
+## `ctch_sinks`: what it means
+
+`ctch_sinks` defines *sink groups* for which WWFR reports catchment membership
+and integrated fluxes.
+
+Each element of `ctch_sinks` is a collection of sink cells (typically a
+`Vector{CartesianIndex}` or `CartesianIndices`). For each Monte Carlo sample,
+WWFR computes the full upstream catchment draining to each sink group.
+
+This enables statistics like:
+
+- probability that a cell drains to outlet group `i` (`aggr.catchments[:, :, i]`),
+- distribution of total flux entering outlet group `i`
+  (`aggr.catchment_fluxes[i]` in subaerial, and named tuples in subglacial).
+
+Example (left-margin outlet band):
+
+```@example randomly
+n = 80
+ctch_sinks = [CartesianIndices((2:2, 2:n-1))[:]]
+length(ctch_sinks), length(ctch_sinks[1])
+```
+
+You can pass multiple groups, e.g. upper/lower terminus sectors, to compare
+how uncertainty redistributes flux between outlets.
+
+## Defining custom `make_fns_*`
+
+The built-in `make_fns_subaerial`/`make_fns_subglacial` are templates. If your
+model has different outputs, constraints, or diagnostics, define your own trio:
+
+- `model(args...)`
+- `sample()`
+- `reduce!` (three-method interface)
+
+then call `map_mc(model, sample, reduce!, n)`.
+
+Minimal skeleton:
+
+```julia
+model(a, b) = my_forward_model(a, b)
+sample() = (draw_a(), draw_b())
+
+function reduce!()
+    return (sumfield = 0.0, n = Ref(0))
+end
+
+function reduce!(aggr, out)
+    aggr.sumfield += out.metric
+    aggr.n[] += 1
+    return aggr
+end
+
+function reduce!(aggr)
+    aggr.sumfield /= aggr.n[]
+    return aggr
+end
+```
+
+The `reduce!` function has three methods: 0-arg method sets up the storage needed
+in the reduction (this gets called once at the beginning of the mc-iterations); the
+2-arg method is called after each forward model evaluation and reduces/aggergates the
+forward model output into what is stored; the 1-arg method is then called at the end
+to finalised the aggregated results.
+
+Note: only `reduce!` is allowed to not be thread-safe, `model` and `sample` need to be thread-safe.
+
+This pattern is often the cleanest route for problem-specific uncertainty
+metrics.
 
 ## Minimal subaerial example
 

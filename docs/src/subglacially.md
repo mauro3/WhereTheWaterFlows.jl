@@ -35,16 +35,14 @@ using Random
 
 Random.seed!(42)
 
-WWFS = WhereTheWaterFlows.Subglacially
+const WWFS = WhereTheWaterFlows.Subglacially
 
 n = 90
 dx = 100.0
-x = range(0, step=dx, length=n)
-X = repeat(collect(x), 1, n)
-Y = repeat(collect(x)', n, 1)
+x = y = range(0, step=dx, length=n)
 
-surfdem = 1200.0 .+ 0.015 .* X .+ 0.015 .* Y .+ 4.0 .* randn(n, n)
-beddem = 950.0 .+ 0.01 .* X .+ 0.01 .* Y .- 100.0 .* exp.(-((X .- x[end] / 2).^2 .+ (Y .- x[end] / 2).^2) ./ (2 * 4000.0^2))
+surfdem = 1200 .+ 0.015.*x .+ 0.015.*y' .+ 4 .* randn(n, n)
+beddem = 950 .+ 0.01.*x .+ 0.01.*y' .- 100 .* exp.(-((x .- x[end]/2).^2 .+ (y' .- y[end]/2).^2) ./ (2 * 4000.0^2))
 surfdem = max.(surfdem, beddem .+ 10.0)
 
 out = WWFS.waterflows_subglacial(surfdem, beddem, dx; gamma=WWFS.GAMMA)
