@@ -1,7 +1,10 @@
 name = "WhereTheWaterFlows"
 uuid = "ea906314-1493-4d22-a0af-f886a20c9fba"
-authors = ["Mauro Werder <mauro3@runbox.com>"]
 version = "0.12.1"
+authors = ["Mauro Werder <mauro3@runbox.com>"]
+
+[workspace]
+projects = ["test", "docs", "examples"]
 
 [deps]
 FFTW = "7a1cc6ca-52ef-59f5-83cd-3a7055c09341"
@@ -23,13 +26,11 @@ MakieExt = "Makie"
 [compat]
 FFTW = "1"
 GeometryBasics = "0.5"
+Makie = "0.24"
 OffsetArrays = "1"
 Primes = "0.5"
 ProgressMeter = "1"
 StaticArrays = "0.11.1, 0.12, 1.0"
+Statistics = "1"
 StatsBase = "0.34"
-Makie = "0.24"
 julia = "1.12"
-
-[workspace]
-projects = ["test", "docs", "examples"]
