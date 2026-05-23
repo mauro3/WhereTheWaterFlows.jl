@@ -6,11 +6,11 @@ makedocs(;
     pages   = [
         "Home"     => "index.md",
         "Tutorial" => "tutorial.md",
-        "Feedback function" => "feedback.md",
         "Monte Carlo `Randomly`" => "randomly.md",
         "Subglacial flow `Subglacially`" => "subglacially.md",
         "Worked Example" => "worked-example.md",
         "Example scipts" => "examples.md",
+        "Feedback function" => "feedback.md",
         "API"      => "api.md",
         "References"      => "references.md",
     ],

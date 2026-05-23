@@ -1,7 +1,7 @@
 # [Randomly](@id RandomlyGuide)
 
 `WhereTheWaterFlows.Randomly` provides Monte Carlo helpers for uncertainty
-propagation around deterministic routing models.
+propagation through the deterministic WWF and WWFS routing models.
 
 Typical use cases:
 
@@ -18,9 +18,8 @@ The main workflow is:
 ## Core pieces
 
 - `Uncertainty`: uncertainty model for a field
-- `make_fns_subaerial`: stochastic wrapper around `WhereTheWaterFlows.waterflows`
-- `make_fns_subglacial`: stochastic wrapper around
-  `WhereTheWaterFlows.Subglacially.waterflows_subglacial`
+- `make_fns_subaerial`: stochastic wrapper around `WWF.waterflows`
+- `make_fns_subglacial`: stochastic wrapper around `WWFS.waterflows_subglacial`
 - `map_mc`: Monte Carlo loop with aggregation
 
 `Uncertainty` combines absolute and/or relative perturbations and a correlation
@@ -42,7 +41,7 @@ x = range(-pi, pi, length=n)
 dem = sin.(x) .* cos.(x')
 source = fill(1e-3 / dx^2, size(dem))
 
-dem_uc = WWFR.Uncertainty()  # keep DEM fixed
+dem_uc = WWFR.Uncertainty()  # no uncertainty on DEM
 source_uc = WWFR.Uncertainty(absuc=0.0, reluc=0.2, correlation_length=15 * dx)
 
 ctch_sinks = [CartesianIndices((2:2, 2:n-1))[:]]

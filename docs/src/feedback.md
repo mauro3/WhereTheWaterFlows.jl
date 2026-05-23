@@ -1,4 +1,4 @@
-# [Feedback Functionality](@id FeedbackGuide)
+# [Feedback Functionality (advanced usage)](@id FeedbackGuide)
 
 `waterflows` can route one or several *extensive* quantities downstream. By
 providing `feedback_fn`, you can update those quantities at each cell after all
