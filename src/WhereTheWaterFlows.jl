@@ -215,12 +215,15 @@ end
 # substantially reduce the number of catchments, as currently every boundary point
 # is a pit and thus a catchment (if bnd_as_sink==true).
 """
-
-    waterflows(dem, cellarea=fill!(similar(dem),1), flowdir_fn=d8dir_feature;
-               feedback_fn=nothing, drain_pits=true, bnd_as_sink=true, nan_as_sink=true,
-               extra_sinks=CartesianIndex{2}[],
-               extra_barriers=CartesianIndex{2}[],
-               stacksize=2^13 * 2^10)
+    waterflows(dem, cellarea=fill!(similar(dem),1);
+                drain_pits=true,
+                bnd_as_sink=true,
+                nan_as_sink=true,
+                extra_sinks=CartesianIndex{2}[],
+                extra_barriers=CartesianIndex{2}[],
+                stacksize=2^13 * 2^10,
+                flowdir_fn=d8dir_feature,
+                feedback_fn=nothing)
 
 Water flow routing according to the D8 algorithm. Local minima are filled, by default, using
 a breach-type algorithm, this means that the input DEM does not need to be pre-filled.
@@ -235,24 +238,24 @@ args:
      - Alternatively, `cellarea` can be a tuple of arrays. Then they are treated/routed
        separately, for instance `(water, tracer)`.  All quantities need to be extensive
        (i.e. additive, e.g. use internal energy and not temperature)
-- `flowdir_fn`=`d8dir_feature` -- the routing function.  Defaults to the built-in `d8dir_feature`
-                              function but could be customized
 
 kwargs:
+- `drain_pits` -- whether to route through pits (true)
+- `bnd_as_sink` (true) -- whether the domain boundary should be sinks, i.e. adjacent cells
+                          can drain into them, or whether to ignore them.
+- `nan_as_sink` (true) -- whether `NaN` cells in the DEM should make adjacent cells a sink. Note that
+                          on the `NaN`-cell itself no routing occurs (i.e. a `BARRIER`-cell).
+- `extra_sinks=CartesianIndex{2}[]` -- additional cells that act as sinks, i.e. outlets where flow leaves the active domain.
+- `extra_barriers=CartesianIndex{2}[]` -- additional cells that act as barriers, i.e. cells that are excluded from routing and do not conduct flow.
+- `stacksize` (2^13 * 2^10) -- size of the call-stack in `_flowrouting_catchments!`, which is prone to
+                 `StackOverflowError`.  Note however, that `OutOfMemory` errors are likely if increased.
+- `flowdir_fn`=`d8dir_feature` -- the routing function.  Defaults to the built-in `d8dir_feature`
+                                  function but could be customized
 - `feedback_fn` -- function which is applied to area-value(s) at each cell once all water
                  of the cell has been accumulated but before the water is routed further downstream.
                  Signature `(uparea, ij, dir) -> `new_uparea`
               --> for example, `(uparea, ij, dir) -> max(uparea, 0)` would ensure that all
                   upareas are non-negative.
-- `drain_pits` -- whether to route through pits (true)
-- `bnd_as_sink` (true) -- whether the domain boundary should be sinks, i.e. adjacent cells
-                 can drain into them, or whether to ignore them.
-- `nan_as_sink` (true) -- whether `NaN` cells in the DEM should make adjacent cells a sink. Note that
-                        on the `NaN`-cell itself no routing occurs (i.e. a `BARRIER`-cell).
-- `extra_sinks=CartesianIndex{2}[]` -- additional cells that act as sinks, i.e. outlets where flow leaves the active domain.
-- `extra_barriers=CartesianIndex{2}[]` -- additional cells that act as barriers, i.e. cells that are excluded from routing and do not conduct flow.
-- `stacksize` (2^13 * 2^10) -- size of the call-stack in `_flowrouting_catchments!`, which is prone to
-                 `StackOverflowError`.  Note however, that `OutOfMemory` errors are likely if increased.
 
 
 Returns a `NamedTuple` with fields:

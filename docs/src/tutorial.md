@@ -76,7 +76,7 @@ waterflows(dem, cellarea)
 | Argument     | Meaning                                                                         |
 | ------------ | ------------------------------------------------------------------------------- |
 | `dem`        | Elevation or hydraulic-potential array used to determine flow directions        |
-| `cellarea`   | Source term accumulated downstream. By default, each valid cell contributes `1`. If used, use a volume flux such as `m^3/s`. |
+| `cellarea`   | Source term accumulated downstream, by default `1`.  See [Routing physical fluxes](#Routing-physical-fluxes)|
 
 
 ## Keyword arguments of `waterflows`
@@ -145,8 +145,7 @@ heatmap(x, y, cc2)
 
 ## Fill depressions
 
-After `waterflows` (with `drain_pits=true`, the default), flow directions are
-consistent across depressions. `fill_dem` raises each pit cell to its spillway
+After `waterflows` with `drain_pits=true` (the default), flow crosses depressions (via a breach-type approach). `fill_dem` raises each pit cell to its spillway
 elevation, useful for visualising lake depth:
 
 ```@example tutorial
@@ -164,14 +163,17 @@ accumulate real fluxes rather than cell counts:
 precip = 1e-3 .* ones(size(dem))   # uniform 1 mm/s
 discharge = waterflows(dem, precip).area
 
-heatmap(x, y, log10.(discharge); colormap=:viridis, axis=(title="Discharge (log₁₀ m³/s)",))
+plt_area(x, y, discharge)
 ```
+
+Note that because `waterflows` does not know the cell area, `cellarea` has to be set to a
+the input into a cell, e.g. m³/s, and not a input per unit area, e.g. m/s.
 
 ## Routing multiple quantities simultaneously
 
 Pass a tuple of arrays as `cellarea` to accumulate several quantities at once.
 All quantities must be *extensive* (additive), e.g. energy not temperature.
-Here we route uniform water alongside a point tracer:
+Here we route uniformly input water alongside a tracer injected into a single cell:
 
 ```@example tutorial
 water  = ones(size(dem))

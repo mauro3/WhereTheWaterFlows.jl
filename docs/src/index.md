@@ -10,9 +10,9 @@ feedbacks, subglacial routing physics, and uncertainty propagation.
 
 The package currently has three modules:
 
-- `WhereTheWaterFlows`: core deterministic routing and post-processing
-- `WhereTheWaterFlows.Subglacially`: subglacial hydraulic-potential routing
-- `WhereTheWaterFlows.Randomly`: Monte Carlo wrappers for uncertainty studies
+- `WhereTheWaterFlows`: core deterministic routing and post-processing (WWF)
+- `WhereTheWaterFlows.Subglacially`: subglacial hydraulic-potential routing (WWFS)
+- `WhereTheWaterFlows.Randomly`: Monte Carlo wrappers for uncertainty studies (WWFR)
 
 ## Installation
 
@@ -28,12 +28,13 @@ backend alongside the package to enable them:
 using WhereTheWaterFlows, GLMakie   # or CairoMakie, WGLMakie, …
 ```
 
-Submodules are bundled in the same package:
+Submodules are bundled in the same package and could be used like so:
 
 ```julia
 using WhereTheWaterFlows
-WWFS = WhereTheWaterFlows.Subglacially
-WWFR = WhereTheWaterFlows.Randomly
+const WWF  = WhereTheWaterFlows
+const WWFS = WhereTheWaterFlows.Subglacially
+const WWFR = WhereTheWaterFlows.Randomly
 ```
 
 ## Quick start
@@ -42,8 +43,7 @@ WWFR = WhereTheWaterFlows.Randomly
 using WhereTheWaterFlows
 
 # build a small synthetic DEM
-n = 200
-xs = range(-π, π, length=n)
+xs = range(-π, π, length=200)
 dem = sin.(xs) .* cos.(xs')
 
 out = waterflows(dem)
@@ -58,10 +58,10 @@ The core routing uses the D8 algorithm: each cell drains to whichever of its
 eight neighbours has the steepest downward gradient.  Local minima (pits) are
 handled by default via a breach-type algorithm that finds the lowest spillway
 for each pit and reverses flow along that path, so the input DEM does not need
-to be pre-filled.
+to be pre-filled. See O’Callaghan & Mark (1984).
 
-The tree traversal used for accumulation is O(n) and recursive.  On very large
-DEMs the recursion depth can exceed the default Julia call-stack size and cause
+The tree traversal used for accumulation is O(n) and recursive (Braun & Willett, 2013).
+On very large DEMs the recursion depth can exceed the default Julia call-stack size and cause
 a `StackOverflowError`.  See the `stacksize` keyword argument of `waterflows`
 if this occurs.
 
