@@ -80,7 +80,7 @@ Args
        (must be ≤ 2048; Float16 aggregation for catchment frequencies loses
         precision for larger counts)
 
-Note: only `reduce!` is allowed to not be thread-safe.
+Thread saftey: only `reduce!` is allowed to not be thread-safe.
 """
 function map_mc(model, sample, reduce!, n; progressmeter=true)
     n>2048 && error("""Cannot take more than 2047 samples as otherwise

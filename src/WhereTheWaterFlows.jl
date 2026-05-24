@@ -314,7 +314,7 @@ Returns:
 - `c` -- catchment map (`Matrix{Int}`); `c==0` corresponds to `NaN`/`BARRIER`
   regions where no water flows into.
 
-Note: this function may cause a stackoverflow on very big catchments.
+Note: this function may cause a stackoverflow on very big catchments, see kwarg `stacksize`.
 """
 function flowrouting_catchments(dir, sinks, pits, cellarea, feedback_fn, stacksize) # on linux standard is 2^13 * 2^10
     c = fill!(similar(dir, Int), 0) # catchment color of BARRIER is 0

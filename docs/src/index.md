@@ -58,16 +58,10 @@ The core routing uses the D8 algorithm: each cell drains to whichever of its
 eight neighbours has the steepest downward gradient.  Local minima (pits) are
 handled by default via a breach-type algorithm that finds the lowest spillway
 for each pit and reverses flow along that path, so the input DEM does not need
-to be pre-filled (or pre-processed in any other way). Both algorithms are descibed by O’Callaghan & Mark (1984).
+to be pre-filled (or pre-processed in any other way). Both algorithms are described by O’Callaghan & Mark (1984).
 
-The flow is accumulated by recusively traversing the drainage tree, the algorithm has O(n) complexity where n is the number of cells (Braun & Willett, 2013).
-On very large DEMs the recursion depth can exceed the default Julia call-stack size and cause
+The flow is accumulated by recursively traversing the drainage tree, the algorithm has O(n) complexity where n is the number of cells (Braun & Willett, 2013).
+On large DEMs the recursion depth can exceed the default Julia call-stack size and cause
 a `StackOverflowError`.  See the `stacksize` keyword argument of `waterflows`
 if this occurs.
-
-## Performance
-<!-- TODO: Reconcile with JOSS paper -->
-
-Routing a 14 000 × 14 000 Antarctica DEM (~2 × 10⁸ cells, ~150 000
-depressions) takes roughly 30 s on a laptop-class CPU.
 

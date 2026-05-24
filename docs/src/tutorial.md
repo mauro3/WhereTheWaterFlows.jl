@@ -166,7 +166,8 @@ plt_area(x, y, discharge)
 ```
 
 Note that because `waterflows` does not know the cell area, `cellarea` has to be set to a
-the input into a cell, e.g. m³/s, and not a input per unit area, e.g. m/s.
+the input into a cell, e.g. m³/s, and not a input per unit area, e.g. m/s. I.e. `cellarea` needs to
+be an extensive quantity.
 
 ## Routing multiple quantities simultaneously
 
