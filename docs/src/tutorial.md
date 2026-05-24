@@ -2,7 +2,7 @@
 
 This tutorial walks through a complete flow-routing analysis on a synthetic DEM.
 
-## Setup
+## Package loading
 
 ```@example tutorial
 using WhereTheWaterFlows, CairoMakie, Random
@@ -39,13 +39,13 @@ nothing # hide
 
 | Name | Description |
 |---|---|
-| `area` | Upslope area at each cell (cell count, or physical flux if `cellarea` is supplied) |
+| `area` | Upslope area at each cell (cell count, or physical flux if input `cellarea` is supplied) |
 | `slen` | Stream length: number of cells from the farthest upstream source |
 | `dir` | D8 flow direction at each cell. Values 1–4 and 6–9 are active flow directions; 5 (`PIT`) means the cell is a local minimum with no outflow; 10 (`SINK`) means flow exits the domain here; 11 (`BARRIER`) marks NaN/inactive cells |
 | `nout` | `true` if the cell has a downstream neighbour; `false` for pits, sinks, and barriers |
 | `nin` | Number of upstream neighbours flowing into each cell (0–8) |
 | `sinks` | Cells where flow exits the domain (boundary, NaN-adjacent, or `extra_sinks`) |
-| `pits` | List of undrained interior local minima after routing. Empty when `drain_pits=true` (the default). Indexed starting at `length(sinks)+1` |
+| `pits` | List of undrained interior local minima after routing. Empty when `drain_pits=true` (the default) as then all the pits are drained. Indexed starting at `length(sinks)+1` |
 | `c` | Integer catchment map. `0` = barrier/NaN cell; `1:length(sinks)` = sink catchments; `length(sinks)+1:end` = pit catchments |
 | `bnds` | Boundary-cell lists for pit catchments, one vector per pit, co-indexed with `pits` |
 | `flowdir_extra_output` | Extra output from a custom `flowdir_fn`; `nothing` for the default `d8dir_feature` |
@@ -76,7 +76,7 @@ waterflows(dem, cellarea)
 | Argument     | Meaning                                                                         |
 | ------------ | ------------------------------------------------------------------------------- |
 | `dem`        | Elevation or hydraulic-potential array used to determine flow directions        |
-| `cellarea`   | Source term accumulated downstream, by default `1`.  See [Routing physical fluxes](#Routing-physical-fluxes)|
+| `cellarea`   | Source term accumulated downstream, by default `1`.  See [Routing physical fluxes](#Routing-physical-fluxes).|
 
 
 ## Keyword arguments of `waterflows`
@@ -89,17 +89,15 @@ waterflows(dem, cellarea)
 | `extra_sinks` | `CartesianIndex{2}[]` | Additional cells that act as sinks |
 | `extra_barriers` | `CartesianIndex{2}[]` | Additional cells that act as barriers and do not conduct flow |
 | `feedback_fn` | `nothing` | Applied to accumulated area before routing downstream |
-| `flowdir_fn` | Function used to compute flow directions. The default is `d8dir_feature`        |
+| `flowdir_fn` | `d8dir_feature` | Function used to compute flow directions. The default is `d8dir_feature`        |
 
 The two last listed keyword-args are advanced features:
 See [Feedback Functionality](@ref FeedbackGuide) for process-coupled examples
-using `feedback_fn`. A custom `flowdir_fn` is used in `WWF.Subglacially.waterflows_subglacial` and the reader is
-referred to the code for an example.
-
+using `feedback_fn`.
 
 ## Upslope area
 
-`plt_area` plots the log₁₀ upslope area. Sink locations are marked in red.
+`plt_area` plots the log₁₀ upslope area. Sink locations are marked in red (all of the domain boundary).
 
 ```@example tutorial
 plt_area(x, y, area; sinks)
@@ -108,7 +106,7 @@ plt_area(x, y, area; sinks)
 ## Catchments
 
 `plt_catchments` colours each catchment uniquely. Catchments smaller than
-`minsize` cells are hidden.
+`minsize` cells not plotted.
 
 ```@example tutorial
 plt_catchments(x, y, c; minsize=50)
@@ -142,6 +140,7 @@ cc2[box] .= NaN
 
 heatmap(x, y, cc2)
 ```
+Note that any collection of cells, passed in as a list of `CartesianIndex`, can serve to delineate a catchment.
 
 ## Fill depressions
 

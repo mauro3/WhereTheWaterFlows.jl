@@ -125,7 +125,8 @@ Run the full example with:
 include("feedback_function/subglacial-routing-feedback.jl")
 ```
 
-Note that this is essentially how WWFS calculates extra subglacial melt. 
+Note that this is essentially how WWFS calculates extra subglacial melt and the
+code of WWFS can serve as another example. 
 
 ## Tips and tricks
 
