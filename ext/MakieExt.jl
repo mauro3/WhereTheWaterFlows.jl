@@ -82,7 +82,7 @@ end
 function Makie.plot!(plot::Plt_Sinks)
     pp = lift((x,y,sinks) -> sinks2vecs(x, y, sinks), plot.x, plot.y, plot.sinks)
     px, py = lift(x->x, pp[])
-    scatter!(plot, px, py, color=:red, markersize=25)
+    scatter!(plot, px, py, color=:red, markersize=12)
 end
 
 """
