@@ -15,7 +15,7 @@ Files are stored under `examples/data/` in the package (CC BY 4.0).
 ## Loading the data
 
 Unteraar glacier lies in the Bernese Oberland, Switzerland.  The DEM covers a
-539 × 459 cell grid at 20 m spacing in the Swiss LV95 coordinate system.  The
+539 × 459 grid of cells at 20 m spacing in the Swiss LV95 coordinate system.  The
 western edge (low x-index, low easting) is the glacier terminus.
 
 ```@example unteraar

@@ -80,7 +80,7 @@ If the grid spacing is `dx`, then WWFR converts:
 len = correlation_length / dx
 ```
 
-so kernels operate in grid-cell units.
+so kernels operate in cell units.
 
 ### Kernel choice
 

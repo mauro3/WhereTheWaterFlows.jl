@@ -63,7 +63,7 @@ When `cellarea` is a single array, `uparea` is a scalar.  When `cellarea` is a
 tuple of arrays, `uparea` is a tuple of scalars with matching structure.
 
 The callback is invoked at every active cell (i.e. cells that are not barriers)
-once all upstream cells have been visited, in up-to-downstream order.
+once all upstream cells have been visited, in upstream-to-downstream order.
 
 ## Minimal example
 

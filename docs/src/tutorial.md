@@ -56,7 +56,7 @@ nothing # hide
 `waterflows` distinguishes between several special cell types:
 
 - **NaN cells** (`dir == BARRIER`): the DEM value is `NaN`. No routing is performed on these cells and their `cellarea` contribution is ignored.
-- **Sinks** (`dir == SINK`): cells where flow leaves the active domain. By default this includes all domain-boundary cells (`bnd_as_sink=true`) and cells adjacent to NaN values (`nan_as_sink=true`). Additional sinks can be specified via `extra_sinks`.
+- **Sinks** (`dir == SINK`): cells where flow leaves the active domain. By default this includes all domain boundary cells (`bnd_as_sink=true`) and cells adjacent to NaN values (`nan_as_sink=true`). Additional sinks can be specified via `extra_sinks`.
 - **Pits** (`dir == PIT`): interior local minima that have no lower neighbouring cell under the D8 rule. With `drain_pits=true` (the default) the algorithm routes flow over the lowest spillway of each pit, so the returned `pits` vector is typically empty.
 
 
@@ -179,7 +179,7 @@ Here we route uniformly input water alongside a tracer injected into a single ce
 ```@example tutorial
 water  = ones(size(dem))
 tracer = zeros(size(dem))
-tracer[40, 40] = 1.0   # single point source
+tracer[40, 40] = 1.0   # single-cell source
 
 (water_area, tracer_area), = waterflows(dem, (water, tracer))
 
