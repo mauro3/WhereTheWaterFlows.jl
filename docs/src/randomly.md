@@ -93,7 +93,7 @@ so kernels operate in grid-cell units.
 ### High-level Monte Carlo controls
 
 - `map_mc(model, sample, reduce!, n; progressmeter=true)`
-- `n`: number of realizations (`n <= 2047` enforced)
+- `n`: number of realizations (`n <= 2048` enforced)
 - `progressmeter`: set `false` for quiet batch/CI runs
 
 ### Subaerial wrapper (`make_fns_subaerial`)

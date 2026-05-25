@@ -286,11 +286,9 @@ end
 """
     phi_fn(surface, thick, floatfrac=1, waterdepth=0; rhow=RHOW, rhoi=RHOI)
 
-Shreve hydraulic potential [m H2O], optionally taking a waterlayer of depth `waterdepth` into account.
+Shreve hydraulic potential [m H2O].
 
-TODO to think about:
-- waterdepth is not actually used, and not sure how it could/should be used
-- if floating, as a non-zero waterdepth would suggest, the floatfrac ought to be 1...
+`waterdepth` shifts the bed-elevation term additively.
 """
 phi_fn(surface, thick, floatfrac=1, waterdepth=0; rhow=RHOW, rhoi=RHOI) =
     @. floatfrac*thick*rhoi/rhow + (surface - thick + waterdepth)

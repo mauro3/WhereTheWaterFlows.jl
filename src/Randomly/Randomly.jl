@@ -77,13 +77,13 @@ Args
                 the aggregate storage with `aggr = reduce!()` and finalizes it
                 with `reduce!(aggr)`.
 - n -- number of samples to take
-       (must be ≤ 2048; Float16 aggregation for catchment frequencies loses
-        precision for larger counts)
+       (must be <= 2048; Float16 aggregation for catchment frequencies loses
+         precision for larger counts)
 
 Thread saftey: only `reduce!` is allowed to not be thread-safe.
 """
 function map_mc(model, sample, reduce!, n; progressmeter=true)
-    n>2048 && error("""Cannot take more than 2047 samples as otherwise
+    n>2048 && error("""Cannot take more than 2048 samples as otherwise
                        the aggregation for the catchment probabilities does not work anymore
                        as Float16 are used.""")
 
@@ -107,17 +107,38 @@ function map_mc(model, sample, reduce!, n; progressmeter=true)
 end
 
 """
-    make_fns_subglacial(...)
+    make_fns_subglacial(dx,
+                          surfdem, surfdem_uc,
+                          beddem, beddem_uc,
+                          floatfrac, floatfrac_uc,
+                          source, source_uc,
+                          ctch_sinks;
+                          mask=mask::AbstractMatrix=fill!(similar(surfdem, Bool), true),
+                          gamma=0.0,
+                          min_lake_depth=10.0, # default min lake depth under which value are not aggregated
+                          rhow=ROHW, rhoi=RHOW)
 
-Make functions needed by `map_mc` for our purpose here.
 Build `model`, `sample`, and `reduce!` functions for stochastic subglacial routing
 which are then used in `map_mc`.
 
+Args
+- `dx` -- grid spacing
+- `surfdem, beddem, floatfrac, source` -- baseline fields used for sampling and routing
+- `surfdem_uc, beddem_uc, floatfrac_uc, source_uc` -- corresponding `Uncertainty` objects
+- `ctch_sinks` -- sink groups used for catchment masks/flux aggregation
+
+Kwargs
+- `mask` -- routing mask passed to `Subglacially.waterflows_subglacial`
+- `gamma` -- pressure-melting deflection parameter; defaults to `0.0` when omitted. Otherwise
+             set to WWF.GAMMA for a standard value.
+- `min_lake_depth` -- threshold used for lake-occurrence masks and lake-volume vectors
+- `rhow`, `rhoi` -- water and ice density overrides
+
 Return:
-- model(surf, bed, floatfrac, source, gamma=gamma) -> runs a model run returning
+- model(surf, bed, floatfrac, source) -> runs one model realisation returning
   `(;surf, bed, dx, floatfrac, source), waterflows_subglacial(...)`
 - sample() -> surf, bed, float, source
-- reduce! -> reduction function needed to aggregate model runs within MC sampling.
+- reduce! -> three-method reduction function (`reduce!()`, `reduce!(aggr, out)`, `reduce!(aggr)`).
 """
 function make_fns_subglacial(dx,
                               surfdem, surfdem_uc,
@@ -126,19 +147,16 @@ function make_fns_subglacial(dx,
                               source, source_uc,
                               ctch_sinks;
                               mask=mask::AbstractMatrix=fill!(similar(surfdem, Bool), true),
-                              gamma=nothing,
+                              gamma=0.0,
                               min_lake_depth=10.0, # default min lake depth under which value are not aggregated
-                              rhow=nothing, rhoi=nothing)
-    gamma_ = isnothing(gamma) ? 0.0 : Float64(gamma)
-    rhow_ = isnothing(rhow) ? Subglacially.RHOW : Float64(rhow)
-    rhoi_ = isnothing(rhoi) ? Subglacially.RHOI : Float64(rhoi)
+                              rhow=Subglacially.RHOW, rhoi=Subglacially.RHOI)
 
-    model(surf, bed, floatfrac, source, gamma=gamma_) = ((;surf, bed, dx, floatfrac, source),
-                                                         Subglacially.waterflows_subglacial(surf, bed, dx, floatfrac, source, mask;
-                                                                                            gamma, drain_pits=true,
-                                                                                            bnd_as_sink=true,
-                                                                                            nan_as_sink=true,
-                                                                                            rhow=rhow_, rhoi=rhoi_, ctch_sinks))
+    model(surf, bed, floatfrac, source) = ((;surf, bed, dx, floatfrac, source),
+                                             Subglacially.waterflows_subglacial(surf, bed, dx, floatfrac, source, mask;
+                                                                                gamma, drain_pits=true,
+                                                                                bnd_as_sink=true,
+                                                                                nan_as_sink=true,
+                                                                                rhow, rhoi, ctch_sinks))
 
     sample = let
         # pre-compute the GRF samplers
@@ -236,10 +254,29 @@ function make_fns_subglacial(dx,
 end
 
 """
-    make_fns_subaerial(...)
+    make_fns_subaerial(dx,
+                        dem, dem_uc,
+                        source, source_uc,
+                        ctch_sinks;
+                        drain_pits=true,
+                        bnd_as_sink=true,
+                        nan_as_sink=true)
 
 Build `model`, `sample`, and `reduce!` functions for stochastic subaerial routing.
-Requires `WhereTheWaterFlows` to be loaded.
+
+Args
+- `dx` -- grid spacing
+- `dem, source` -- baseline elevation and source fields
+- `dem_uc, source_uc` -- corresponding `Uncertainty` objects
+- `ctch_sinks` -- sink groups used for catchment masks/flux aggregation
+
+Kwargs
+- `drain_pits`, `bnd_as_sink`, `nan_as_sink` -- forwarded to `WhereTheWaterFlows.waterflows`
+
+Return
+- model(dem_, source_) -> returns `(; dem, dx, source), waterflows(...)`
+- sample() -> returns one sampled `(dem_, source_)`
+- reduce! -> three-method reduction function (`reduce!()`, `reduce!(aggr, out)`, `reduce!(aggr)`).
 """
 function make_fns_subaerial(dx,
                             dem, dem_uc,

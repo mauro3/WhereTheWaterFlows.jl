@@ -197,7 +197,7 @@ sensitive to bed geometry there.
 
 Add `CairoMakie` to plot the spatial fields:
 
-```julia
+```@example unteraar
 using CairoMakie
 
 fig = Figure(size=(1100, 340))
@@ -212,7 +212,7 @@ heatmap!(ax1, x, y, log10.(max.(aggr.areas_total,        1e-10)); colormap=:viri
 heatmap!(ax2, x, y, aggr.sc_locs;                                 colormap=:inferno, colorrange=(0,1))
 heatmap!(ax3, x, y, aggr.lake_mask_fixed_surface;                 colormap=:Blues,   colorrange=(0,1))
 
-display(fig)
+fig
 ```
 
 To visualize the single deterministic run instead, use `out.routing.area.total`,

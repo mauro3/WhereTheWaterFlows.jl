@@ -91,12 +91,12 @@ function mask_contiguous(mask, IJ, out=similar(mask, Bool))
 end
 
 """
-    get_boudary_cells(mask, value)
+    get_boundary_cells(mask, value)
 
 Get all the cells of mask of value `value` which border
 on cells of different value.
 """
-function get_boudary_cells(mask, value)
+function get_boundary_cells(mask, value)
     out = similar(mask, Bool) .* false
 
     for IJ in CartesianIndices(mask)
@@ -140,15 +140,15 @@ end
 
 
 """
-    catchment_sinks(ctch_polygons::Vector{Vector{T}} where T<:Point2, routing_mask, x, y, sinks=get_boudary_cells(routing_mask, true);
+    catchment_sinks(ctch_polygons::Vector{Vector{T}} where T<:Point2, routing_mask, x, y, sinks=get_boundary_cells(routing_mask, true);
                     check=true, threshold_dist=Inf,
                     D9_iters=4, D25_iter=2)
-    catchment_sinks(ctch_polygons::AbstractVector, routing_mask, x, y, sinks=get_boudary_cells(routing_mask, true);
+    catchment_sinks(ctch_polygons::AbstractVector, routing_mask, x, y, sinks=get_boundary_cells(routing_mask, true);
                     kws...)
 
 Calculate the catchment sink cells for basins given by polygons.  The
 output is intended to be fed to waterflows_subglacial via its `ctch_sinks` argument.
-This is inteded to mark the cells of grounding line of a catchment as sinks.
+This is intended to mark the cells of grounding line of a catchment as sinks.
 
 Correctness check can be done with the `check_catchment_sinks` function, which is
 done by default.
@@ -176,10 +176,10 @@ Algo:
 - assign groundingline cells to catchment to which it is closest
 - do some cleanup...
 """
-catchment_sinks(ctch_polygons::AbstractVector, routing_mask, x, y, sinks=findall(get_boudary_cells(routing_mask, true)); kws...) =
+catchment_sinks(ctch_polygons::AbstractVector, routing_mask, x, y, sinks=findall(get_boundary_cells(routing_mask, true)); kws...) =
     catchment_sinks([Point2.(cp) for cp in ctch_polygons], routing_mask, x, y, sinks; kws...)
 function catchment_sinks(ctch_polygons::Vector{Vector{T}} where T<:Point2, routing_mask, x, y,
-                         sinks=findall(get_boudary_cells(routing_mask, true));
+                         sinks=findall(get_boundary_cells(routing_mask, true));
                          check=true, threshold_dist=Inf,
                          D9_iters=4, D25_iter=2)
     ## Get all cells on the boundary of the routing_mask

@@ -88,6 +88,7 @@ waterflows(dem, cellarea)
 | `nan_as_sink` | `true` | Cells adjacent to NaN DEM values become sinks |
 | `extra_sinks` | `CartesianIndex{2}[]` | Additional cells that act as sinks |
 | `extra_barriers` | `CartesianIndex{2}[]` | Additional cells that act as barriers and do not conduct flow |
+| `stacksize` | `2^13 * 2^10` | Call-stack size hint used by recursive routing internals |
 | `feedback_fn` | `nothing` | Applied to accumulated area before routing downstream |
 | `flowdir_fn` | `d8dir_feature` | Function used to compute flow directions. The default is `d8dir_feature`        |
 
@@ -165,8 +166,8 @@ discharge = waterflows(dem, precip).area
 plt_area(x, y, discharge)
 ```
 
-Note that because `waterflows` does not know the cell area, `cellarea` has to be set to a
-the input into a cell, e.g. m³/s, and not a input per unit area, e.g. m/s. I.e. `cellarea` needs to
+Note that because `waterflows` does not know the cell area, `cellarea` has to be set to
+the input into a cell, e.g. m³/s, and not an input per unit area, e.g. m/s. I.e. `cellarea` needs to
 be an extensive quantity.
 
 ## Routing multiple quantities simultaneously
