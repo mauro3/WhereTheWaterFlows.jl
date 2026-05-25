@@ -332,7 +332,7 @@ the Shreve-potential for routing.  Utilizes `WhereTheWaterFlows.waterflows`.
 
 args:
 - surfdem, beddem -- the surface and bed DEM
-- floatfrac -- floation fraction
+- floatfrac -- flotation fraction
 - dx -- grid size (must be equal in x and y-direction)
 - source=ones(size(dem)) -- the source per cell, defaults to 1.  If using physical units
                             then use a source in volume per unit area, e.g. m/s

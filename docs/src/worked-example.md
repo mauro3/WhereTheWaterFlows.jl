@@ -51,7 +51,7 @@ println("Fraction of NaN bed cells: $(round(nan_frac, digits=3))")
 ## Preparing inputs
 
 `NaN` bed values would propagate into the Shreve hydraulic potential
-φ = *f H* (ρᵢ/ρ_w) + *z_b*, where *H* = *z_s* − *z_b* is ice thickness.
+φ = fH(ρᵢ/ρ_w) + z_b, where H = z_s − z_b is ice thickness.
 We replace off-glacier bed values with the surface elevation (zero ice
 thickness) so that φ stays finite everywhere; the routing `mask` then restricts
 actual routing to glacier cells only.
@@ -176,7 +176,7 @@ println("Max lake-occurrence fraction:",
 | `aggr.sc_locs` | Fraction of realizations in which each cell was supercooled (0–1) |
 | `aggr.lake_mask_fixed_surface` | Fraction of realizations with lake depth > 10 m (fixed-surface) |
 | `aggr.lake_depth_fixed_surface` | Mean lake depth [m] over all realizations |
-| `aggr.melt_rate` | Cumulative melt-rate field (sum over all realizations) |
+| `aggr.melt_rate` | Mean melt-rate field [m/s] over all realizations |
 
 A summary across all glacier cells:
 

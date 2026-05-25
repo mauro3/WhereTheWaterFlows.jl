@@ -14,6 +14,14 @@ High-level guides:
 - [Randomly](@ref RandomlyGuide)
 - [Subglacially](@ref SubglaciallyGuide)
 
+## Used in Documentation
+
+```@docs
+WhereTheWaterFlows.PIT
+WhereTheWaterFlows.SINK
+WhereTheWaterFlows.BARRIER
+```
+
 ## Post-processing
 
 These functions are exported but are called separately after `waterflows`:

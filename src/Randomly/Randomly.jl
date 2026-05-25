@@ -80,7 +80,7 @@ Args
        (must be <= 2048; Float16 aggregation for catchment frequencies loses
          precision for larger counts)
 
-Thread saftey: only `reduce!` is allowed to not be thread-safe.
+Thread safety: only `reduce!` is allowed to not be thread-safe.
 """
 function map_mc(model, sample, reduce!, n; progressmeter=true)
     n>2048 && error("""Cannot take more than 2048 samples as otherwise
@@ -116,7 +116,7 @@ end
                           mask=mask::AbstractMatrix=fill!(similar(surfdem, Bool), true),
                           gamma=0.0,
                           min_lake_depth=10.0, # default min lake depth under which value are not aggregated
-                          rhow=ROHW, rhoi=RHOW)
+                          rhow=RHOW, rhoi=RHOI)
 
 Build `model`, `sample`, and `reduce!` functions for stochastic subglacial routing
 which are then used in `map_mc`.

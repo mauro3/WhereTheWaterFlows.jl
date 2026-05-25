@@ -30,7 +30,7 @@ A linear snow-melt model where discharge is driven by local melt (proportional
 to snow depth) rather than a uniform source illustrates the second mode:
 
 ```julia
-snowdepth = ...      # auxiliary field — read inside callback, never routed
+snowdepth = ...      # pseudo-code placeholder; replace with your field array
 k         = 0.1      # melt rate constant
 
 function snowmelt_feedback(uparea_Q, ij, dir)

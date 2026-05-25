@@ -8,14 +8,27 @@ export waterflows
 const I11 = CartesianIndex(1,1)
 const I22 = CartesianIndex(2,2)
 # Special direction constants (do not define any <1!)
-const PIT = 5        # Direction number indicating no flow, this is a "pit", i.e. a
-                     # local minimum or a cell in a completely flat area.
-const SINK = 10      # A cell where water disappears, typically located at the domain boundary
-                     # (when setting bnd_as_sink=true) adjacent to NaN-cells of the DEM.
-                     # Note: PITs can also be sinks if drain_pits==false.
-const BARRIER = 11   # Direction number indicating no flow into or out of this cell.  All DEM
-                     # cells which are NaNs map to this.  If NaNs are not acting as sinks, then water routes
-                     # around these cells.
+
+"""
+Direction number/constant: indicating no flow, this is a "pit", i.e. a
+local minimum or a cell in a completely flat area.
+Note: PITs are sinks if drain_pits==false.
+"""
+const PIT = 5        
+
+"""
+Direction number/constant: indicating a cell where water disappears,
+typically located at the domain boundary
+(when setting bnd_as_sink=true) adjacent to NaN-cells of the DEM.
+"""
+const SINK = 10      
+
+"""
+Direction number/constant: indicating no flow into or out of this cell.  All DEM
+cells which are NaNs map to this.  If NaNs are not acting as sinks, then water routes
+around these cells.                     
+"""
+const BARRIER = 11   
 
 """
 Direction numbers.  E.g. `dirnums[1,1]` will return the number
@@ -233,7 +246,7 @@ args:
 - `cellarea=fill!(similar(dem),1)` -- the source per cell, defaults to 1.
      - if `cellarea` is negative in places, flux may go to zero but not below.
      - in areas where no routing takes place, typically NaNs in the dem, `cellarea`
-       is ignored.  This maybe affects mass-conservation.
+       is ignored.  This may affect mass-conservation.
      - if using physical units then use a volumetric flux per cell, e.g. m3/s.
      - Alternatively, `cellarea` can be a tuple of arrays. Then they are treated/routed
        separately, for instance `(water, tracer)`.  All quantities need to be extensive

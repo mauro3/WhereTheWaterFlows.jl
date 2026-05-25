@@ -205,9 +205,9 @@ end
 
 The `reduce!` function has three methods: 0-arg method sets up the storage needed
 in the reduction (this gets called once at the beginning of the mc-iterations); the
-2-arg method is called after each forward model evaluation and reduces/aggergates the
+2-arg method is called after each forward model evaluation and reduces/aggregates the
 forward model output into what is stored; the 1-arg method is then called at the end
-to finalised the aggregated results.
+to finalize the aggregated results.
 
 Note: only `reduce!` is allowed to not be thread-safe, `model` and `sample` need to be thread-safe.
 
