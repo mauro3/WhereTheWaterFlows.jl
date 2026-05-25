@@ -13,6 +13,9 @@ This module is aimed at routing water under ice using the Shreve hydraulic
 potential.  Optionally, pressure-melting-point effects (the Röthlisberger
 deflection) are accounted for.
 
+Recent applications using this workflow include Malczyk et al. (2023),
+Delaney et al. (2023), Ogier et al. (2025), and Ogier et al. (2026).
+
 ## Hydraulic potential
 
 The Shreve hydraulic potential φ used for routing is

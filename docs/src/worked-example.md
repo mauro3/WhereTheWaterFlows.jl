@@ -8,9 +8,8 @@ the package.  It demonstrates the full WWFS → WWFR workflow:
 2. Monte Carlo uncertainty propagation over uncertain bed topography with
    `WhereTheWaterFlows.Randomly`.
 
-**Data source:** Grab et al. (2020),
-DOI: [10.3929/ethz-b-000434697](https://doi.org/10.3929/ethz-b-000434697),
-incorporating SwissTopo SwissALTI3D surface data (OGD).
+**Data source:** Grab (2020), incorporating SwissTopo SwissALTI3D surface
+data (OGD).
 Files are stored under `examples/data/` in the package (CC BY 4.0).
 
 ## Loading the data
@@ -221,13 +220,8 @@ MC aggregates.
 
 ## Data attribution
 
-- Grab, M., Bauder, A., et al. (2020). *Ice thickness distribution of all
-  Swiss glaciers based on extended ground-penetrating radar data and
-  glaciological modeling.* ETH Research Collection.
-  DOI: [10.3929/ethz-b-000434697](https://doi.org/10.3929/ethz-b-000434697).
-  Licensed CC BY 4.0.
-- Surface elevation derived from SwissTopo SwissALTI3D data (OGD).
-  Source: Federal Office of Topography swisstopo.
+- This example uses the Grab (2020) Swiss Glacier Thickness dataset and
+  SwissTopo SwissALTI3D data under OGD terms; see [References](@ref).
 
 See also: [Subglacially](@ref SubglaciallyGuide), [Randomly](@ref RandomlyGuide),
 [Tutorial](@ref), and [API Reference](@ref APIReference).
