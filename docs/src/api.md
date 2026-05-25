@@ -60,3 +60,10 @@ Modules = [WhereTheWaterFlows.Subglacially]
 ```@autodocs
 Modules = [WhereTheWaterFlows.Randomly]
 ```
+
+## Makie extension
+
+```@autodocs
+Modules = [Base.get_extension(WhereTheWaterFlows, :MakieExt)]
+Filter = f -> f isa Function && startswith(string(nameof(f)), "plt_")
+```

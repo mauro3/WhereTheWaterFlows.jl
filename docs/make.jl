@@ -1,7 +1,10 @@
 using Documenter, WhereTheWaterFlows, CairoMakie
 
+const MakieExt = Base.get_extension(WhereTheWaterFlows, :MakieExt)
+isnothing(MakieExt) && error("WhereTheWaterFlows Makie extension did not load. Ensure Makie is available when building docs.")
+
 makedocs(;
-    modules = [WhereTheWaterFlows],
+    modules = [WhereTheWaterFlows, MakieExt],
     format  = Documenter.HTML(),
     pages   = [
         "Home"     => "index.md",
