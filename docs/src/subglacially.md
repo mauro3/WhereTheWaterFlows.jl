@@ -163,6 +163,17 @@ You can run those from the examples environment, for example:
 include("subglacially/valley-glacier.jl")
 ```
 
+## Next steps
+
+To propagate uncertainty through the subglacial routing model (for example
+uncertain bed topography), use
+`WhereTheWaterFlows.Randomly.make_fns_subglacial`, which wraps
+`waterflows_subglacial` for use with `map_mc`. The `ctch_sinks` groups defined
+for a deterministic run can be passed directly to `make_fns_subglacial`.
+
+See [WhereTheWaterFlows.Randomly (WWFR)](@ref RandomlyGuide) and
+[Worked Example](@ref) for complete deterministic-plus-Monte-Carlo workflows.
+
 ## Physical notes
 
 - Inputs are expected on a regular Cartesian grid with scalar `dx`.
