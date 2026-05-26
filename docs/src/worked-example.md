@@ -172,6 +172,11 @@ println("Max lake-occurrence fraction:",
 
 `map_mc` returns an aggregate named tuple with ensemble statistics:
 
+For the full subglacial aggregate-output API (including shapes/types and
+reduction semantics), see the consolidated table in
+[WhereTheWaterFlows.Randomly (WWFR)](@ref RandomlyGuide), section
+"Consolidated subglacial aggregate outputs (`make_fns_subglacial`)".
+
 | Field | Contents |
 |-------|----------|
 | `aggr.areas_total` | Mean discharge field [m³/s] over all realizations |
