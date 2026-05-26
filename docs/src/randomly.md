@@ -285,6 +285,37 @@ For subaerial runs, aggregated outputs include:
 For subglacial runs, aggregation also includes lake, supercooling, and
 pressure-melt diagnostics.
 
+### Consolidated subglacial aggregate outputs (`make_fns_subglacial`)
+
+The table below consolidates all fields produced by `aggr = map_mc(...)` when
+using `make_fns_subglacial`.
+
+| Field | Shape / type | Meaning | Reduction semantics |
+|---|---|---|---|
+| `aggr.areas_total` | `Matrix{Float32}` | Total routed discharge proxy [m^3/s] | Mean over samples |
+| `aggr.areas_extra` | `Matrix{Float32}` | Extra routed discharge from subglacial melt terms [m^3/s] | Mean over samples |
+| `aggr.melt_rate` | `Matrix{Float32}` | Dissipation + pressure-melt generation rate [m/s] | Mean over samples |
+| `aggr.lake_depth_fixed_surface` | `Matrix{Float32}` | Lake depth for fixed-surface assumption [m] | Mean over samples |
+| `aggr.lake_mask_fixed_surface` | `Matrix{Float32}` | Lake-occurrence frequency (depth `> min_lake_depth`) for fixed-surface case [0, 1] | Fraction over samples |
+| `aggr.lake_depth_free_surface` | `Matrix{Float32}` | Lake depth for free-surface assumption [m] | Mean over samples |
+| `aggr.lake_mask_free_surface` | `Matrix{Float32}` | Lake-occurrence frequency (depth `> min_lake_depth`) for free-surface case [0, 1] | Fraction over samples |
+| `aggr.sc_locs` | `Matrix{Float32}` | Supercooling occurrence frequency [0, 1] | Fraction over samples |
+| `aggr.kappas` | `Matrix{Float32}` | Mean supercooling threshold field used by WWFS | Mean over samples |
+| `aggr.catchments` | `Array{Float16,3}` (`nx x ny x n_groups`) | Catchment-membership frequency for each `ctch_sinks` group [0, 1] | Fraction over samples |
+| `aggr.catchment_fluxes.total` | `Vector{Vector{Float32}}` (length `n_groups`) | Per-group total outlet flux records [m^3/s] | Per-sample vectors (not averaged) |
+| `aggr.catchment_fluxes.dissipation` | `Vector{Vector{Float32}}` (length `n_groups`) | Per-group dissipation-melt flux contribution records [m^3/s] | Per-sample vectors (not averaged) |
+| `aggr.catchment_fluxes.pressmelt` | `Vector{Vector{Float32}}` (length `n_groups`) | Per-group pressure-melt flux contribution records [m^3/s] | Per-sample vectors (not averaged) |
+| `aggr.lake_vol_fixed_surface` | `Vector{Float32}` (length `n_samples`) | Domain-summed lake depth above threshold (fixed-surface case), sample by sample | Per-sample vector (not averaged) |
+| `aggr.lake_vol_free_surface` | `Vector{Float32}` (length `n_samples`) | Domain-summed lake depth above threshold (free-surface case), sample by sample | Per-sample vector (not averaged) |
+| `aggr.n_samples[]` | `Int` (`Ref`) | Number of Monte Carlo realizations accumulated | Final count |
+
+Notes:
+
+- For `aggr.catchment_fluxes.*`, element `i` is the flux distribution for outlet
+  group `i`; each inner vector has length `aggr.n_samples`.
+- If `ctch_sinks` is empty, `aggr.catchments` has zero groups and
+  `aggr.catchment_fluxes.*` are empty vectors.
+
 ## Practical guidance
 
 - Use `absuc` for additive error floors; `reluc` for proportional uncertainty.
