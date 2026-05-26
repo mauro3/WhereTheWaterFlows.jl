@@ -34,9 +34,7 @@ Water flows down the gradient of φ, not down the gradient of the bed.
 
 ```@example subglacially
 using WhereTheWaterFlows
-using Random
-
-Random.seed!(42)
+using Random; Random.seed!(42)
 
 const WWFS = WhereTheWaterFlows.Subglacially
 

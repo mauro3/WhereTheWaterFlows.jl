@@ -12,7 +12,8 @@
 # Run from the examples/ environment:
 #   include("subglacially/ice-cap-full-workflow.jl")
 
-using WhereTheWaterFlows, CairoMakie, Statistics, Random
+using WhereTheWaterFlows, CairoMakie, Statistics
+using Random; Random.seed!(43)
 
 const WWFS = WhereTheWaterFlows.Subglacially
 const WWFR = WhereTheWaterFlows.Randomly
@@ -23,7 +24,6 @@ const WWFR = WhereTheWaterFlows.Randomly
 # Vatnajökull is roughly 150 km × 100 km.  We use a 100×80 grid at 1500 m
 # spacing.  All coordinates are in metres.
 # ─────────────────────────────────────────────────────────────────────────────
-Random.seed!(43)
 
 nx, ny = 100, 80
 dx     = 1_500.0              # grid spacing [m]
@@ -240,7 +240,6 @@ model, sample, reduce! = WWFR.make_fns_subglacial(
 # 20 samples is deliberately small for quick execution.
 # Use 50–200 samples for stable statistics in production.
 n_samples = 20
-Random.seed!(123)
 aggr = WWFR.map_mc(model, sample, reduce!, n_samples)
 
 println("Samples completed:            ", aggr.n_samples[])

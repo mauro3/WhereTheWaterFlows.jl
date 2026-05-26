@@ -5,7 +5,8 @@ This tutorial walks through a complete flow-routing analysis on a synthetic DEM.
 ## Package loading
 
 ```@example tutorial
-using WhereTheWaterFlows, CairoMakie, Random
+using WhereTheWaterFlows, CairoMakie
+using Random; Random.seed!(42)
 ```
 
 ## Build a synthetic DEM
@@ -22,7 +23,6 @@ function peaks2(n=100, randfac=0.05)
            randfac .* randn(n, n)
 end
 
-Random.seed!(42)
 x, y, dem = peaks2(200)
 
 heatmap(x, y, dem; axis=(title="DEM",))

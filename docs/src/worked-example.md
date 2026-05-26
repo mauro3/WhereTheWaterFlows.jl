@@ -19,7 +19,8 @@ Unteraar glacier lies in the Bernese Oberland, Switzerland.  The DEM covers a
 western edge (low x-index, low easting) is the glacier terminus.
 
 ```@example unteraar
-using WhereTheWaterFlows, Statistics, Random
+using WhereTheWaterFlows, Statistics
+using Random; Random.seed!(42)
 
 WWFS = WhereTheWaterFlows.Subglacially
 WWFR = WhereTheWaterFlows.Randomly
@@ -152,7 +153,6 @@ model, sample, reduce! = WWFR.make_fns_subglacial(
     gamma = WWFS.GAMMA,
 )
 
-Random.seed!(42)
 aggr = WWFR.map_mc(model, sample, reduce!, 5; progressmeter=false)
 
 println("MC samples completed:        ", aggr.n_samples[])

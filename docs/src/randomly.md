@@ -247,9 +247,8 @@ metrics.
 
 ```@example randomly
 using WhereTheWaterFlows
-using Random, Statistics
-
-Random.seed!(42)
+using Statistics
+using Random; Random.seed!(42)
 
 WWFR = WhereTheWaterFlows.Randomly
 
