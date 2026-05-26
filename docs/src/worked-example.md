@@ -98,8 +98,10 @@ println("Unresolved pits:            ", length(pits))
 println("Supercooled cells:          ", sum(out.pressmelt.sc_locs))
 println("Max discharge [m³/s]:       ",
         round(maximum(area.total[glacier]), digits=4))
-println("Max lake depth (fixed surf) [m]:  ",
+println("Max lake depth (fixed surf) [m water equivalent]:  ",
         round(maximum(out.lakes.depth_fixed_surface[glacier]), digits=1))
+println("Max lake depth (free surface) [m]:   ",
+        round(maximum(out.lakes.depth_free_surface[glacier]), digits=1))
 ```
 
 **Interpreting the output:**
