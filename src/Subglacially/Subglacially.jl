@@ -380,8 +380,8 @@ function waterflows_subglacial(surfdem::AbstractMatrix, beddem::AbstractMatrix, 
 
     # preparation
     thick_orig = (surfdem .- beddem)
-    phi  = phi_fn(surfdem, thick_orig, floatfrac, 0.0; rhow, rhoi)
-    phim = phi_fn(surfdem, thick_orig, 0.0,       0.0; rhow, rhoi)
+    phi  = phi_fn(surfdem, thick_orig, floatfrac; rhow, rhoi)
+    phim = phi_fn(surfdem, thick_orig, 0.0,     ; rhow, rhoi)
     phi[.!mask]  .= NaN
     phim[.!mask] .= NaN
 
