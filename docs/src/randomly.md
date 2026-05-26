@@ -105,6 +105,8 @@ so kernels operate in cell units.
 ### Subglacial wrapper (`make_fns_subglacial`)
 
 - uncertain fields: `surfdem`, `beddem`, `floatfrac`, `source`
+  - Note: unlike `waterflows_subglacial`, which accepts scalar `floatfrac`,
+    `make_fns_subglacial` requires `floatfrac` to be an array.
 - physical controls: `gamma`, `rhow`, `rhoi`
 - processing controls: `mask`, `ctch_sinks`, `min_lake_depth`
 

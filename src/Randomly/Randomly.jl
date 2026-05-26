@@ -124,6 +124,9 @@ which are then used in `map_mc`.
 Args
 - `dx` -- grid spacing
 - `surfdem, beddem, floatfrac, source` -- baseline fields used for sampling and routing
+- `floatfrac` must be an array with the same size as `surfdem`.
+  A scalar is not accepted here; use `fill(value, size(surfdem)...)` for a
+  spatially uniform flotation field.
 - `surfdem_uc, beddem_uc, floatfrac_uc, source_uc` -- corresponding `Uncertainty` objects
 - `ctch_sinks` -- sink groups used for catchment masks/flux aggregation
 
