@@ -132,7 +132,15 @@ end
     plt_lakedepth(x, y, dem; lowerlimit=0)
     plt_lakedepth(x, y, dem, dir, sinks; lowerlimit=0)
 
-Plot lake depth.  
+Plot lake depth.
+
+Argument semantics:
+- `plt_lakedepth(x, y, dem; ...)`: `dem` is a raw elevation (or hydraulic-potential)
+  field. The function first runs `waterflows(dem)` to obtain `dir` and `sinks`, then
+  computes `fill_dem(dem, sinks, dir) .- dem` internally.
+- `plt_lakedepth(x, y, dem, dir, sinks; ...)`: `dem` is again the raw elevation
+  (or hydraulic-potential) field, while `dir` and `sinks` are supplied explicitly.
+  Lake depth is computed internally via `fill_dem`.
 """
 @recipe(Plt_Lakedepth, x, y, dem, dir, sinks) do scene
     Attributes(
