@@ -15,7 +15,7 @@ Raess, L., Kolyukhin, D., and Minakov, A. (2019): Efficient parallel random
 field generator for large 3-D geophysical problems. Computers & Geosciences,
 131, 158-169. DOI: [10.1016/j.cageo.2019.06.007](https://doi.org/10.1016/j.cageo.2019.06.007)
 
-## Subglacial flow method
+## Subglacial water flow
 
 Shreve, R. L. (1972): Movement of water in glaciers. Journal of Glaciology, 11(62), 205-214. DOI: [10.3189/S002214300002219X](https://doi.org/10.3189/S002214300002219X)
 
