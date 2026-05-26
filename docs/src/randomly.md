@@ -299,12 +299,16 @@ pressure-melt diagnostics.
 - `examples/wwfr-simple.jl`: quick start
 - `examples/randomly/source-uncertainty-sweep.jl`: source-vs-DEM uncertainty
   comparison and sensitivity sweep
+- `examples/subglacially/ice-cap-full-workflow.jl`: subglacial deterministic+
+  Monte Carlo workflow, including sink discovery and `ctch_sinks`
+  partitioning for per-outlet flux distributions
 
 From the `examples/` environment:
 
 ```julia
 include("wwfr-simple.jl")
 include("randomly/source-uncertainty-sweep.jl")
+include("subglacially/ice-cap-full-workflow.jl")
 ```
 
 See also: [Examples](@ref ExamplesPage), [Subglacially](@ref SubglaciallyGuide), and

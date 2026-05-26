@@ -19,6 +19,9 @@ include("run-all-examples.jl")
 - `core/`: additional core WWF workflows
 - `feedback_function/`: examples of custom `feedback_fn` models (melt and sediment transport)
 - `subglacially/`: richer subglacial scenarios
+  - includes `subglacially/ice-cap-full-workflow.jl`: full deterministic + Monte Carlo
+    workflow with the two-step `ctch_sinks` sink-group pattern and per-outlet
+    flux statistics
 - `randomly/`: advanced stochastic workflows
 - `theory/`: theory and diagnostic scripts
 - `data/`: input data and provenance scripts

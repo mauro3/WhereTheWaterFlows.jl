@@ -156,11 +156,15 @@ approach: it derives sink-group partitions from outlet polygons.
 - `examples/wwfs-simple.jl`: quick intro
 - `examples/subglacially/valley-glacier.jl`: valley setup
 - `examples/subglacially/ice-sheet-margin-shmip.jl`: SHMIP-like geometry
+- `examples/subglacially/ice-cap-full-workflow.jl`: full deterministic +
+  stochastic workflow with two-step `ctch_sinks` partitioning and per-outlet
+  flux statistics
 
 You can run those from the examples environment, for example:
 
 ```julia
 include("subglacially/valley-glacier.jl")
+include("subglacially/ice-cap-full-workflow.jl")
 ```
 
 ## Next steps

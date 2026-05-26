@@ -1,4 +1,4 @@
-# examples/ice-cap-full-workflow.jl
+# examples/subglacially/ice-cap-full-workflow.jl
 #
 # Full subglacial routing workflow for an ice cap with multiple outlet glaciers.
 #
@@ -10,7 +10,7 @@
 #      analysis.
 #
 # Run from the examples/ environment:
-#   include("ice-cap-full-workflow.jl")
+#   include("subglacially/ice-cap-full-workflow.jl")
 
 using WhereTheWaterFlows, CairoMakie, Statistics, Random
 

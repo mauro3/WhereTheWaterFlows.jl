@@ -26,6 +26,8 @@ Folders with more in-depth scripts:
 - `feedback_function/`: shows how the `feedback_fn` of `waterflows` can be used for grid-based computations
   - includes melt-production and MPM-like sediment transport examples
 - `subglacially/`: subglacial scenarios using WWFS
+  - includes `subglacially/ice-cap-full-workflow.jl`: end-to-end deterministic
+    plus Monte Carlo workflow with two-step `ctch_sinks` partitioning
 - `randomly/`: advanced stochastic workflows using WWFR
 - `theory/`: theory and diagnostics
 - `data/`: example data and provenance scripts
