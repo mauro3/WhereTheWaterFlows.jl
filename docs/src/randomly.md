@@ -144,6 +144,32 @@ sink-flux records to vectors (`catchment_fluxes.total/dissipation/pressmelt`).
 At finalize step it normalizes map-style fields by `n_samples` (so they are
 means/frequencies). Flux vectors remain per-sample records by design.
 
+When `ctch_sinks` is non-empty, `aggr.catchment_fluxes` has subglacial-specific
+structure:
+
+- `aggr.catchment_fluxes` is a named tuple
+  `(total, dissipation, pressmelt)`.
+- Each field is a `Vector` with length `length(ctch_sinks)`.
+- Element `i` of each field is a `Vector{Float32}` with length `n_samples`,
+  containing the per-realization flux for outlet group `i`.
+
+So for subglacial runs, the total-flux distribution at outlet group `i` is
+accessed as `aggr.catchment_fluxes.total[i]`.
+
+This differs from the subaerial wrapper, where per-outlet total fluxes are
+stored directly as `aggr.catchment_fluxes[i]` (no `.total`).
+
+Minimal usage pattern:
+
+```julia
+using Statistics
+
+for i in eachindex(ctch_sinks)
+    fluxes = aggr.catchment_fluxes.total[i]   # Vector{Float32}, length n_samples
+    println("Outlet $i: mean=$(mean(fluxes)), std=$(std(fluxes))")
+end
+```
+
 ## `ctch_sinks`: what it means
 
 `ctch_sinks` defines *sink groups* for which WWFR reports catchment membership
@@ -157,7 +183,8 @@ This enables statistics like:
 
 - probability that a cell drains to outlet group `i` (`aggr.catchments[:, :, i]`),
 - distribution of total flux entering outlet group `i`
-  (`aggr.catchment_fluxes[i]` in subaerial, and named tuples in subglacial).
+  (`aggr.catchment_fluxes[i]` in subaerial, and
+  `aggr.catchment_fluxes.total[i]` in subglacial).
 
 Example (left-margin outlet band):
 
