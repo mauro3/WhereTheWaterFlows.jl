@@ -111,6 +111,46 @@ Only populated when `ctch_sinks` is non-empty:
 | `rhow`, `rhoi` | 1000, 910 | Water and ice densities [kg m⁻³] |
 | `drain_pits`, `bnd_as_sink`, `nan_as_sink` | `true` | Inherited from core routing |
 
+## Defining outlet groups (`ctch_sinks`)
+
+`ctch_sinks` groups routing sinks for per-outlet masks and flux aggregation.
+Each group must contain only *actual routing cells*. Typically these would be cells from
+`out.routing.sinks` but also interior cells can be used. Using arbitrary boundary indices can silently include
+inactive cells (for example off-glacier boundary cells that are barriers), which
+can produce zero-flux groups and misleading accounting.
+
+The robust pattern for partitioning sinks at the routing boundary is a two-step workflow:
+
+1. Run one deterministic routing pass without `ctch_sinks` to discover active
+   sinks.
+2. Partition `out.routing.sinks` into outlet groups.
+3. Re-run routing (or Monte Carlo) with this partition as `ctch_sinks`.
+
+```julia
+# Step 1: discover active sinks
+out_first = WWFS.waterflows_subglacial(surfdem, beddem, dx; gamma=WWFS.GAMMA)
+all_sinks = out_first.routing.sinks
+
+# Step 2: partition sinks by position (simple example)
+sw_sinks = filter(ci -> ci[1] <= nx ÷ 2 && ci[2] <= ny ÷ 2, all_sinks)
+ne_sinks = filter(ci -> ci[1] >  nx ÷ 2 && ci[2] >  ny ÷ 2, all_sinks)
+ctch_sinks = [sw_sinks, ne_sinks]
+
+# Optional check for an exhaustive non-overlapping partition
+@assert length(all_sinks) == sum(length.(ctch_sinks))
+
+# Step 3: run again with outlet groups
+out = WWFS.waterflows_subglacial(surfdem, beddem, dx;
+                                 gamma=WWFS.GAMMA,
+                                 ctch_sinks=ctch_sinks)
+```
+
+For exhaustive outlet partitions, groups are typically non-overlapping. The API
+also allows overlapping groups if that is useful for a specific application.
+
+For real datasets, `WWFS.catchment_sinks` is usually the most practical
+approach: it derives sink-group partitions from outlet polygons.
+
 ## Suggested examples
 
 - `examples/wwfs-simple.jl`: quick intro
