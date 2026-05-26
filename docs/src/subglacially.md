@@ -176,7 +176,7 @@ uncertain bed topography), use
 for a deterministic run can be passed directly to `make_fns_subglacial`.
 
 See [WhereTheWaterFlows.Randomly (WWFR)](@ref RandomlyGuide) and
-[Worked Example](@ref) for complete deterministic-plus-Monte-Carlo workflows.
+[Worked Example](@ref WorkedExample) for complete deterministic-plus-Monte-Carlo workflows.
 
 ## Physical notes
 

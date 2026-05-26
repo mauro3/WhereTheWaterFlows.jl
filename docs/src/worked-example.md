@@ -1,4 +1,4 @@
-# Worked Example: Unteraar Glacier
+# [Worked Example: Unteraar Glacier](@id WorkedExample)
 
 This page works through a complete subglacial routing analysis on Unteraar
 glacier, Switzerland, using the real bedrock and surface DEM data bundled with
