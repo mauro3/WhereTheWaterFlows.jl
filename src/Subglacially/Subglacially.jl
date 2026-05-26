@@ -284,14 +284,15 @@ function getkappa_D8(R, lambda::Int, gamma)
 end
 
 """
-    phi_fn(surface, thick, floatfrac=1, waterdepth=0; rhow=RHOW, rhoi=RHOI)
+    phi_fn(surface, thick, floatfrac=1; rhow=RHOW, rhoi=RHOI)
 
 Shreve hydraulic potential [m H2O].
-
-`waterdepth` shifts the bed-elevation term additively.
 """
-phi_fn(surface, thick, floatfrac=1, waterdepth=0; rhow=RHOW, rhoi=RHOI) =
-    @. floatfrac*thick*rhoi/rhow + (surface - thick + waterdepth)
+phi_fn(surface, thick, floatfrac=1; rhow=RHOW, rhoi=RHOI) =
+    @. floatfrac*thick*rhoi/rhow + (surface - thick)
+# Note: there was a waterdepth kwarg
+#    @. floatfrac*thick*rhoi/rhow + (surface - thick + waterdepth)
+# Maybe there is some value for this?
 
 """
     lake_depth(phi_filled, phi_orig; fixed_surface=true, rhow=RHOW, rhoi=RHOI)
