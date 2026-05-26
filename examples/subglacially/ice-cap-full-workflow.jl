@@ -174,11 +174,10 @@ end
 
 # ── Plot 2a: Discharge (log₁₀) with sink locations ───────────────────────────
 fig2a = plt_area(x, y, out.routing.area.total; sinks=out.routing.sinks)
-fig2a
 # save("ice-cap_2a_discharge.png", fig2a)
 
 # ── Plot 2b: Catchment map ────────────────────────────────────────────────────
-fig2b = plt_catchments(x, y, out.routing.c; minsize=1)
+fig2b = plt_catchments(x, y, out.routing.c; minsize=0)
 # save("ice-cap_2b_catchments.png", fig2b)
 
 # ── Plot 3: Subglacial diagnostics ───────────────────────────────────────────

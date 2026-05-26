@@ -17,6 +17,16 @@ end
 const WWF=WhereTheWaterFlows
 using Makie
 
+function _tight_axis_margins!()
+    ax = Makie.current_axis()
+    if ax !== nothing
+        ax.xautolimitmargin = (0.0, 0.0)
+        ax.yautolimitmargin = (0.0, 0.0)
+        tightlimits!(ax)
+    end
+    return nothing
+end
+
 ## Preprocessing functions
 sinks2inds(sinks) = ([p.I[1] for p in sinks],
                    [p.I[2] for p in sinks])
@@ -68,6 +78,7 @@ function Makie.plot!(plot::Plt_Area)
     end
     plt_sinks!(plot, x, y, sinks)
     heatmap!(plot, x, y, pl)
+    _tight_axis_margins!()
     return plot
 end
 
@@ -131,6 +142,7 @@ function Makie.plot!(plot::Plt_Catchments)
         end
     end
     heatmap!(plot, x, y, c; colorrange=(1,maximum(c[])), lowclip=(:red, 0), colormap)
+    _tight_axis_margins!()
 end
 
 # Note, this cannot be a recipe as it has several subplots
@@ -143,12 +155,15 @@ Plot DEM, uparea, flow-dir
 plt_it(x, y, dem) = plt_it(x, y, waterflows(dem), dem)
 function plt_it(x, y, out::NamedTuple, dem)
     f = Makie.Figure()
-    ax1 = Axis(f[1, 1]; aspect=1, title="")
+    ax1 = Axis(f[1, 1]; aspect=1, title="", xautolimitmargin=(0.0, 0.0), yautolimitmargin=(0.0, 0.0))
     contour!(x, y, dem)
-    ax2 = Axis(f[2, 1]; aspect=1, title="")
+    tightlimits!(ax1)
+    ax2 = Axis(f[2, 1]; aspect=1, title="", xautolimitmargin=(0.0, 0.0), yautolimitmargin=(0.0, 0.0))
     heatmap!(x, y, log10.(out.area))
-    ax1 = Axis(f[3, 1]; aspect=1, title="")
+    tightlimits!(ax2)
+    ax1 = Axis(f[3, 1]; aspect=1, title="", xautolimitmargin=(0.0, 0.0), yautolimitmargin=(0.0, 0.0))
     plt_dir!(x, y, out.dir)
+    tightlimits!(ax1)
     return f
 end
 
