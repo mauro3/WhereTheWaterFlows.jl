@@ -239,6 +239,8 @@ function make_fns_subglacial(dx,
     function reduce!(aggr)
         n = aggr.n_samples[]
         aggr.areas_total ./= n
+        aggr.areas_extra ./= n
+        aggr.melt_rate ./= n
         aggr.lake_depth_fixed_surface ./= n
         aggr.lake_mask_fixed_surface ./= n
 
