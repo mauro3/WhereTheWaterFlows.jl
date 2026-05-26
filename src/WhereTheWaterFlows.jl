@@ -646,7 +646,7 @@ include("Subglacially/Subglacially.jl")
 include("Randomly/Randomly.jl")
 
 ## define and export generic functions for plotting
-for fn in [:plt_dir, :plt_catchments, :plt_lakedepth, :plt_bnds, :plt_it, :plt_area, :plt_sinks] 
+for fn in [:plt_dir, :plt_catchments, :plt_bnds, :plt_it, :plt_area, :plt_sinks] 
     @eval function $fn end
     @eval export $fn
     if fn!=:plt_it

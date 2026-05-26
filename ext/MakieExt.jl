@@ -10,9 +10,9 @@ module MakieExt
 
 
 using WhereTheWaterFlows
-for fn in [:plt_dir, :plt_catchments, :plt_lakedepth, :plt_bnds, :plt_it, :plt_area, :plt_sinks]
+for fn in [:plt_dir, :plt_catchments, :plt_bnds, :plt_it, :plt_area, :plt_sinks]
     @eval import WhereTheWaterFlows:$fn
-    @eval import WhereTheWaterFlows:$(Symbol(fn,:!))
+    fn!=:plt_it && @eval import WhereTheWaterFlows:$(Symbol(fn,:!))
 end
 const WWF=WhereTheWaterFlows
 using Makie
@@ -100,13 +100,16 @@ function Makie.plot!(plot::Plt_Bnds)
 end
 
 """
-    plt_catchments(x, y, c; minsize=10)
+    plt_catchments(x, y, c; minsize=0)
 
-Plot catchments.  Catchments below `minsize` size are not plotted.
+Plot catchments.  Catchments below `minsize` size are not plotted. With
+the default `minsize=0` all catchments are plotted.
+
+Note, `minsize>0` can be quite slow to compute.
 """ 
 @recipe(Plt_Catchments, x, y, c) do scene
     Attributes(
-        minsize = 10,
+        minsize = 0,
         colormap = :flag
         )
 end
@@ -114,52 +117,20 @@ function Makie.plot!(plot::Plt_Catchments)
     (;x, y, c, minsize, colormap) = plot
     c = lift(copy, c)
     tokeep = BitMatrix[]
-    for cc = 1:maximum(c[])
-        inds = c[].==cc
-        if sum(inds)<minsize[]
-            c[][inds] .= 0
-        else
-            push!(tokeep, inds)
+    if minsize[]>0
+        for cc = 1:maximum(c[])
+            inds = c[].==cc
+            if sum(inds)<minsize[]
+                c[][inds] .= 0
+            else
+                push!(tokeep, inds)
+            end
+        end
+        for (i,inds) in enumerate(tokeep)
+            c[][inds] .= i
         end
     end
-    for (i,inds) in enumerate(tokeep)
-        c[][inds] .= i
-    end
     heatmap!(plot, x, y, c; colorrange=(1,maximum(c[])), lowclip=(:red, 0), colormap)
-end
-
-"""
-    plt_lakedepth(x, y, dem; lowerlimit=0)
-    plt_lakedepth(x, y, dem, dir, sinks; lowerlimit=0)
-
-Plot lake depth.
-
-Argument semantics:
-- `plt_lakedepth(x, y, dem; ...)`: `dem` is a raw elevation (or hydraulic-potential)
-  field. The function first runs `waterflows(dem)` to obtain `dir` and `sinks`, then
-  computes `fill_dem(dem, sinks, dir) .- dem` internally.
-- `plt_lakedepth(x, y, dem, dir, sinks; ...)`: `dem` is again the raw elevation
-  (or hydraulic-potential) field, while `dir` and `sinks` are supplied explicitly.
-  Lake depth is computed internally via `fill_dem`.
-"""
-@recipe(Plt_Lakedepth, x, y, dem, dir, sinks) do scene
-    Attributes(
-        lowerlimit=0
-    )
-end
-function Makie.plot!(plot::Plt_Lakedepth)
-    (;x, y, dem, dir, sinks, lowerlimit) = plot
-    lakedepth = WWF.fill_dem(dem[], sinks[], dir[]) .- dem[]
-    heatmap!(plot, x, y, lakedepth; colorrange=(lowerlimit[], maximum(lakedepth)), lowclip=(:red, 0))
-end
-# specialize for 3-arg call:
-const _Plt_Lakedepth_type = Plt_Lakedepth{<:NTuple{3,Any}}
-argument_names(::Type{_Plt_Lakedepth_type}) = (:x, :y, :dem)
-function Makie.plot!(plot::_Plt_Lakedepth_type)
-    (;x, y, dem, lowerlimit) = plot
-    (;lowerlimit) = plot
-    o = waterflows(dem[])
-    plt_lakedepth!(plot, x, y, dem, o.dir, o.sinks; lowerlimit)
 end
 
 # Note, this cannot be a recipe as it has several subplots

@@ -200,10 +200,9 @@ heatmap(fig3[1, 3], x, y, sc_plt;
 fig3
 # save("ice-cap_3_subglacial.png", fig3)
 
-# ── Plot 3b: Lake depth via plt_lakedepth ────────────────────────────────────
-# Five-argument form: takes the raw hydraulic potential, direction array, and
-# sinks; lake depths are computed internally via fill_dem.
-fig3b = plt_lakedepth(x, y, out.routing.phi, out.routing.dir, out.routing.sinks)
+# ── Plot 3b: Lake depth via fill_dem ────────────────────────────────────
+phi_filled = fill_dem(out.routing.phi, out.routing.sinks, out.routing.dir)
+fig3b = heatmap(x, y, phi_filled .- out.routing.phi)
 # save("ice-cap_3b_lakedepth.png", fig3b)
 
 # ─────────────────────────────────────────────────────────────────────────────
