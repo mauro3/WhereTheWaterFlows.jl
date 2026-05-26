@@ -300,9 +300,9 @@ using `make_fns_subglacial`.
 | `aggr.lake_depth_free_surface` | `Matrix{Float32}` | Lake depth for free-surface assumption [m] | Mean over samples |
 | `aggr.lake_mask_free_surface` | `Matrix{Float32}` | Lake-occurrence frequency (depth `> min_lake_depth`) for free-surface case [0, 1] | Fraction over samples |
 | `aggr.sc_locs` | `Matrix{Float32}` | Supercooling occurrence frequency [0, 1] | Fraction over samples |
-| `aggr.kappas` | `Matrix{Float32}` | Mean supercooling threshold field used by WWFS | Mean over samples |
+| `aggr.kappas` | `Matrix{Float32}` | Mean supercooling deflection | Mean over samples |
 | `aggr.catchments` | `Array{Float16,3}` (`nx x ny x n_groups`) | Catchment-membership frequency for each `ctch_sinks` group [0, 1] | Fraction over samples |
-| `aggr.catchment_fluxes.total` | `Vector{Vector{Float32}}` (length `n_groups`) | Per-group total outlet flux records [m^3/s] | Per-sample vectors (not averaged) |
+| `aggr.catchment_fluxes.total` | `Vector{Vector{Float32}}` (length `n_groups`) | Per-group total outlet flux [m^3/s] | Per-sample vectors (not averaged) |
 | `aggr.catchment_fluxes.dissipation` | `Vector{Vector{Float32}}` (length `n_groups`) | Per-group dissipation-melt flux contribution records [m^3/s] | Per-sample vectors (not averaged) |
 | `aggr.catchment_fluxes.pressmelt` | `Vector{Vector{Float32}}` (length `n_groups`) | Per-group pressure-melt flux contribution records [m^3/s] | Per-sample vectors (not averaged) |
 | `aggr.lake_vol_fixed_surface` | `Vector{Float32}` (length `n_samples`) | Domain-summed lake depth above threshold (fixed-surface case), sample by sample | Per-sample vector (not averaged) |
