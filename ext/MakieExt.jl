@@ -54,7 +54,8 @@ function Makie.plot!(plot::Plt_Dir)
 end
 
 """
-    plt_area(x, y, area; prefn=log10, sinks=[], threshold=Inf)
+    plt_area(x, y, area; prefn=log10, sinks=[], threshold=Inf, colorbar=true,
+             colorbar_label="log10(upstream_area)", colorbar_kwargs=(;))
 
 Plot uparea, or another variable.
 
@@ -62,22 +63,44 @@ Kwargs:
 - pre-proc with `prefun`, typically and by default this is `log10`
 - if sinks (or pits) are passed, plot as points
 - threshold the area: do not plot pixels with area below threshold
+- add a colorbar with `colorbar=true`
+- set colorbar label with `colorbar_label`
+- pass additional kwargs to `Colorbar` via `colorbar_kwargs`
 """
 @recipe(Plt_Area, x, y, area) do scene
     Attributes(
         prefn = log10,
         sinks = CartesianIndex{2}[],
-        threshold = Inf
+        threshold = Inf,
+        colorbar = true,
+        colorbar_label = "log10(Upstream area)",
+        colorbar_kwargs = (;)
     )
 end
 function Makie.plot!(plot::Plt_Area)
-    (;x, y, area, sinks, threshold, prefn) = plot
+    (;x, y, area, sinks, threshold, prefn, colorbar, colorbar_label, colorbar_kwargs) = plot
     pl = lift(a -> prefn[].(a), area)
     if threshold[]<Inf
         pl[][area[].<threshold[]] .= NaN
     end
     plt_sinks!(plot, x, y, sinks)
-    heatmap!(plot, x, y, pl)
+    hm = heatmap!(plot, x, y, pl)
+    ax = Makie.current_axis()
+    if ax !== nothing
+        ax.xlabel = "x"
+        ax.ylabel = "y"
+    end
+    if colorbar[]
+        fig = Makie.current_figure()
+        if fig !== nothing
+            cbkw = colorbar_kwargs[]
+            if haskey(cbkw, :label)
+                Colorbar(fig[:, end+1], hm; cbkw...)
+            else
+                Colorbar(fig[:, end+1], hm; label=colorbar_label[], cbkw...)
+            end
+        end
+    end
     _tight_axis_margins!()
     return plot
 end
@@ -142,17 +165,20 @@ function Makie.plot!(plot::Plt_Catchments)
         end
     end
     heatmap!(plot, x, y, c; colorrange=(1,maximum(c[])), lowclip=(:red, 0), colormap)
+    ax = Makie.current_axis()
+    if ax !== nothing
+        ax.xlabel = "x"
+        ax.ylabel = "y"
+    end
     _tight_axis_margins!()
 end
 
 # Note, this cannot be a recipe as it has several subplots
 """
-    plt_it(x, y, dem)
     plt_it(x, y, waterflows_output, dem)
 
 Plot DEM, uparea, flow-dir
 """
-plt_it(x, y, dem) = plt_it(x, y, waterflows(dem), dem)
 function plt_it(x, y, out::NamedTuple, dem)
     f = Makie.Figure()
     ax1 = Axis(f[1, 1]; aspect=1, title="", xautolimitmargin=(0.0, 0.0), yautolimitmargin=(0.0, 0.0))
