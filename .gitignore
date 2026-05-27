@@ -8,3 +8,6 @@ Manifest.toml
 /docs/site/
 /docs/web-server-docs.sh
 /notes
+/benchmarks/data_raw/
+/benchmarks/outputs/
+/benchmarks/settings.json

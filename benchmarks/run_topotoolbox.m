@@ -3,19 +3,50 @@ clear; clc;
 %We compare the time required to compute single-flow-direction routing, flow accumulation, and drainage basin labels from the same DEM. 
 % For WWF this is one waterflows call; for TopoToolbox this is FLOWobj + flowacc + drainagebasins.
 
-maxNumCompThreads(1);
+threads_env = getenv('TOPO_THREADS');
+if isempty(threads_env)
+    nthreads_req = 1;
+else
+    nthreads_req = str2double(threads_env);
+    if isnan(nthreads_req) || nthreads_req < 1
+        error('TOPO_THREADS must be a positive integer')
+    end
+end
+
+dataset_env = getenv('TOPO_DATASET');
+if isempty(dataset_env)
+    dataset = 'large';
+else
+    dataset = lower(strtrim(dataset_env));
+end
+if ~strcmp(dataset, 'small') && ~strcmp(dataset, 'large')
+    error('TOPO_DATASET must be "small" or "large"')
+end
+
+runs_env = getenv('TOPO_RUNS');
+if isempty(runs_env)
+    nruns = 6;
+else
+    nruns = str2double(runs_env);
+    if isnan(nruns) || nruns < 1 || mod(nruns, 1) ~= 0
+        error('TOPO_RUNS must be a positive integer')
+    end
+end
+
+maxNumCompThreads(nthreads_req);
 nthreads = maxNumCompThreads;
 
 fprintf('MATLAB threads: %d\n', nthreads);
+fprintf('Dataset: %s\n', dataset);
+fprintf('Runs: %d\n', nruns);
 
 % Reproducible paths
-scriptdir = fileparts(mfilename('fullpath'));
-root = fileparts(scriptdir);
+root = fileparts(mfilename('fullpath'));
 
-topodir = fullfile(fileparts(root), 'topotoolbox3');
+topodir = fullfile(root, 'topotoolbox3');
 
 if ~exist(topodir, 'dir')
-    error('TopoToolbox not found. Clone it next to this repository: git clone https://github.com/TopoToolbox/topotoolbox3.git')
+    error('TopoToolbox not found. Clone it into benchmarks/: git clone https://github.com/TopoToolbox/topotoolbox3.git topotoolbox3')
 end
 
 addpath(genpath(topodir))
@@ -23,32 +54,27 @@ addpath(genpath(topodir))
 datadir = fullfile(root, 'data_raw');
 outdir  = fullfile(root, 'outputs', 'topotoolbox');
 
+if ~exist(datadir, 'dir')
+    mkdir(datadir);
+end
+if ~exist(outdir, 'dir')
+    mkdir(outdir);
+end
+
 demfile_small = fullfile(datadir, 'swissalti3d_tile.tif');
 demfile_large = fullfile(datadir, 'swissalti3d_tilelarge.tif');
 
-if ~exist(demfile_large, 'file')
-    fprintf('Creating large DEM for TopoToolbox...\n');
-
-    [Z, R] = readgeoraster(demfile_small);
-    Z = single(Z);
-
-    Zlarge = imresize(Z, 4, 'bicubic');
-
-    Rlarge = R;
-    Rlarge.RasterSize = size(Zlarge);
-    Rlarge.CellExtentInWorldX = R.CellExtentInWorldX / 4;
-    Rlarge.CellExtentInWorldY = R.CellExtentInWorldY / 4;
-
-    geotiffwrite(demfile_large, Zlarge, Rlarge, ...
-        'CoordRefSysCode', 2056);
-
-    fprintf('Saved large DEM to: %s\n', demfile_large);
+if strcmp(dataset, 'large') && ~exist(demfile_large, 'file')
+    error(['Large DEM not found: ' demfile_large newline ...
+           'Create it first by running WWF once in real-large mode, e.g.:' newline ...
+           'julia --project run_wwf.jl --mode real --dataset large --runs 1']);
 end
 
-demfile = demfile_large; % or change to demfile_small
-
-
-DEM = GRIDobj(demfile);
+if strcmp(dataset, 'small')
+    demfile = demfile_small;
+else
+    demfile = demfile_large;
+end
 
 % -------------------------------------------------------
 % Load DEM
@@ -62,8 +88,6 @@ npixels = nnz(~isnan(DEM.Z));
 % -------------------------------------------------------
 % Run TopoToolbox benchmark
 % -------------------------------------------------------
-
-nruns = 6;
 
 runtime_flowdir_s = zeros(nruns, 1);
 runtime_flowacc_s = zeros(nruns, 1);
@@ -99,8 +123,13 @@ features = "FLOWobj + flowacc + drainagebasins";
 % Save benchmark CSV
 % -------------------------------------------------------
 
-mean_runtime = mean(runtime_total_s(3:end));
-std_runtime  = std(runtime_total_s(3:end));
+if strcmp(dataset, 'large')
+    warmup_drop = min(1, nruns - 1);
+else
+    warmup_drop = min(2, nruns - 1);
+end
+mean_runtime = mean(runtime_total_s((warmup_drop + 1):end));
+std_runtime  = std(runtime_total_s((warmup_drop + 1):end));
 
 Tnew = table( ...
     "topotoolbox", ...
@@ -134,6 +163,7 @@ writetable(T, csvfile);
 
 fprintf('Saved benchmark CSV: %s\n', csvfile);
 
+%{
 % -------------------------------------------------------
 % Plot DEM
 % -------------------------------------------------------
@@ -204,6 +234,4 @@ colorbar;
 saveas(fig, fullfile(outdir, 'topotoolbox_catchments_hillshade.png'));
 
 close(fig);
-
-
-
+%}

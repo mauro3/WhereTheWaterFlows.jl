@@ -5,7 +5,9 @@
 [![DOI](https://zenodo.org/badge/218504028.svg)](https://doi.org/10.5281/zenodo.7086860)
 
 WhereTheWaterFlows routes water on gridded topography (or hydraulic potential)
-with a D8 algorithm combined with a breach algorithm for depression filling. It supports deterministic flow routing, coupled feedbacks, subglacial routing physics, and uncertainty propagation.
+with a D8 algorithm combined with a breach algorithm for depression filling.
+It supports deterministic flow routing, DEM filling, catchment analysis,
+coupled feedbacks, subglacial routing physics, and uncertainty propagation.
 
 The package currently has three modules:
 
@@ -43,8 +45,8 @@ const WWFR = WhereTheWaterFlows.Randomly
 using WhereTheWaterFlows
 
 # build a small synthetic DEM
-xs = range(-π, π, length=200)
-dem = sin.(xs) .* cos.(xs')
+x = y = range(-π, π, length=200)
+dem = sin.(x) .* cos.(y')
 
 out = waterflows(dem)
 maximum(out.area), length(out.sinks)

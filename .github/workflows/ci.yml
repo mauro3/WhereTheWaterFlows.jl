@@ -65,3 +65,21 @@ jobs:
           Pkg.instantiate()
       - name: Run all examples
         run: julia --color=yes --project=examples examples/run-all-examples.jl
+
+  benchmarks-smoke:
+    name: Benchmarks Smoke (WWF mock)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      actions: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v6
+      - uses: julia-actions/setup-julia@v3
+        with:
+          version: '1.12'
+      - uses: julia-actions/cache@v3
+      - name: Instantiate benchmarks environment
+        run: julia --color=yes --project=benchmarks -e 'using Pkg; Pkg.instantiate()'
+      - name: Run WWF benchmark mock smoke
+        run: julia --color=yes --project=benchmarks benchmarks/run_wwf.jl --mode mock --dataset small --runs 1
