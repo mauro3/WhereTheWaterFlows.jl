@@ -6,3 +6,7 @@ DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
 Rasters = "a3a2b9e3-a471-40c9-b274-f788e487c689"
 WhereTheWaterFlows = "ea906314-1493-4d22-a0af-f886a20c9fba"
 Whitebox = "b538f1be-d065-4026-b484-95330fe3abdc"
+
+[sources]
+WhereTheWaterFlows = {path = ".."}
+Whitebox = {url = "https://github.com/mauro3/Whitebox.jl.git", rev = "m3/rm-double-fn-def"}
