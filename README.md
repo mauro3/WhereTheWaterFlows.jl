@@ -8,13 +8,13 @@
 [![Coverage](https://codecov.io/gh/mauro3/WhereTheWaterFlows.jl/branch/master/graph/badge.svg)](https://codecov.io/gh/mauro3/WhereTheWaterFlows.jl)
 [![DOI](https://zenodo.org/badge/218504028.svg)](https://doi.org/10.5281/zenodo.7086860)
 
-This package allows to calculate water flow paths on digital elevation models (DEMs).
+This package calculates water flow paths on digital elevation models (DEMs).
 
 It implements the D8 flow routing algorithm combined with a
 breach-type basin-filling algorithm as descibed by [1].  Its implementation uses a
 O(n), recursive algorithm [2].
 
-This code is reasonably fast: flow routing on a DEM of Antarctica of
+This model is reasonably fast: flow routing on a DEM of Antarctica of
 about 2e8 points (14000x14000) with 150000 depressions takes about 30s
 on a Ryzen 4750U laptop. Due to recursion it can run
 into a stackoverflow error on very large DEMs.
