@@ -36,7 +36,7 @@ dem = sin.(x).*cos.(y') .+ 0.05*rand(n,n)
 out = waterflows(dem)
 plt_area(x, y, out.area)
 ```
-![Upslope area](https://user-images.githubusercontent.com/4098145/67853636-e319b880-fb06-11e9-933d-9f55ace99ce1.png)
+![Upslope area](https://private-user-images.githubusercontent.com/4098145/598786029-5bfd3617-07c0-4d4c-b5d8-ca9e91a4d956.png?jwt=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJnaXRodWIuY29tIiwiYXVkIjoicmF3LmdpdGh1YnVzZXJjb250ZW50LmNvbSIsImtleSI6ImtleTUiLCJleHAiOjE3Nzk4ODQyMzQsIm5iZiI6MTc3OTg4MzkzNCwicGF0aCI6Ii80MDk4MTQ1LzU5ODc4NjAyOS01YmZkMzYxNy0wN2MwLTRkNGMtYjVkOC1jYTllOTFhNGQ5NTYucG5nP1gtQW16LUFsZ29yaXRobT1BV1M0LUhNQUMtU0hBMjU2JlgtQW16LUNyZWRlbnRpYWw9QUtJQVZDT0RZTFNBNTNQUUs0WkElMkYyMDI2MDUyNyUyRnVzLWVhc3QtMSUyRnMzJTJGYXdzNF9yZXF1ZXN0JlgtQW16LURhdGU9MjAyNjA1MjdUMTIxMjE0WiZYLUFtei1FeHBpcmVzPTMwMCZYLUFtei1TaWduYXR1cmU9YjU5MDc2NmUwZjMzNjE4ZDhhZmUxZWVlZGZhNTEwYjNkYjFhMWI3NDhlYWViM2U1YTQ4YzZlOGY0NTA3NWM4YyZYLUFtei1TaWduZWRIZWFkZXJzPWhvc3QmcmVzcG9uc2UtY29udGVudC10eXBlPWltYWdlJTJGcG5nIn0.LRG_LqUv7KJ7o0KXNY13OZGg4KPX1UntBH3wDYREbH0)
 
 For details, see the [documentation](https://mauro3.github.io/WhereTheWaterFlows.jl).
 
