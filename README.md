@@ -10,14 +10,14 @@
 
 This package allows to calculate water flow paths on digital elevation models (DEMs).
 
-This package implements the D8 flow routing algorithm [1] as well as a
-basin-filling algorithm, also by [1].  In its implementation it uses a
-O(n), recursive algorithm similar as in [2].  Due to recursion it can run
-into a stackoverflow error on very large DEMs.
+It implements the D8 flow routing algorithm combined with a
+breach-type basin-filling algorithm as descibed by [1].  Its implementation uses a
+O(n), recursive algorithm [2].
 
 This code is reasonably fast: flow routing on a DEM of Antarctica of
 about 2e8 points (14000x14000) with 150000 depressions takes about 30s
-on a Ryzen 4750U laptop.
+on a Ryzen 4750U laptop. Due to recursion it can run
+into a stackoverflow error on very large DEMs.
 
 WhereTheWaterFlows has been used in glaciological contexts [3,4,5,6] but could be useful in other settings as well.
 
