@@ -20,9 +20,9 @@ using Makie
 function _tight_axis_margins!()
     ax = Makie.current_axis()
     if ax !== nothing
-        ax.xautolimitmargin = (0.0, 0.0)
-        ax.yautolimitmargin = (0.0, 0.0)
-        tightlimits!(ax)
+        ax.xautolimitmargin = (0.01, 0.01)
+        ax.yautolimitmargin = (0.01, 0.01)
+        # tightlimits!(ax, Bottom())
     end
     return nothing
 end
