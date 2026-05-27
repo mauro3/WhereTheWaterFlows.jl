@@ -4,14 +4,13 @@
 
 Compared with plain `waterflows`, it provides:
 
-- routing based on Shreve hydraulic potential,
+- routing based on Shreve (1972) hydraulic potential,
 - pressure-melting/supercooling-aware flow deflection,
 - lake-depth diagnostics,
 - optional per-sink flux aggregation.
 
-This module is aimed at routing water under ice using the Shreve hydraulic
-potential (Shreve, 1972).  Optionally, pressure-melting-point effects (the Röthlisberger
-deflection) are accounted for (Röthlisberger, 1972).
+This module is aimed at routing water at the ice-bed interface below glaciers and ice sheets using the Shreve hydraulic
+potential (Shreve, 1972).  Optionally, pressure-melting-point effects are accounted for (Röthlisberger, 1972).
 
 Recent applications using this workflow include Malczyk et al. (2023),
 Delaney et al. (2023), Ogier et al. (2025), and Ogier et al. (2026).
@@ -25,15 +24,15 @@ The Shreve hydraulic potential φ used for routing is
 ```
 
 where *H* is ice thickness, *z_s* is surface elevation, *f* is the flotation
-fraction, and *ρᵢ*, *ρ_w* are ice and water density.  At full flotation (*f* = 1)
-this is the standard Shreve potential.  The bed elevation is z_b = z_s − H.
+fraction, and *ρᵢ*, *ρ_w* are ice and water density (units in m water level).
+At full flotation (*f* = 1) this is the standard Shreve potential.  The bed elevation is z_b = z_s − H.
 
 Water flows down the gradient of φ, not down the gradient of the bed.
 
 ## Minimal run
 
 ```@example subglacially
-using WhereTheWaterFlows
+using WhereTheWaterFlows, CairoMakie
 using Random; Random.seed!(42)
 
 const WWFS = WhereTheWaterFlows.Subglacially
@@ -48,11 +47,11 @@ surfdem = max.(surfdem, beddem .+ 10.0)
 
 out = WWFS.waterflows_subglacial(surfdem, beddem, dx; gamma=WWFS.GAMMA)
 
-length(out.routing.sinks), sum(out.pressmelt.sc_locs)
+plt_area(x,y,out.routing.area.total)
 ```
 
 Set `gamma=0` to disable deflection/supercooling effects and recover
-potential-only behaviour.
+Shreve-potential-only behaviour.
 
 ## Output structure
 

@@ -3,10 +3,11 @@
 This tutorial walks through a complete flow-routing analysis on a synthetic DEM.
 
 ## Package loading
+And seeding the random number generator for deterministic runs.
 
 ```@example tutorial
 using WhereTheWaterFlows, CairoMakie
-using Random; Random.seed!(42); # seed for deterministic runs
+using Random; Random.seed!(42) # hide
 ```
 
 ## Build a synthetic DEM
@@ -113,6 +114,8 @@ plt_area(x, y, area; sinks)
 plt_catchments(x, y, c; minsize=50)
 ```
 
+Note that setting `minsize=0` (the default) may run a lot faster on large DEMs.
+
 ## Delineate a single catchment
 
 Pick the cell with the largest upslope area along row 50 and trace everything
@@ -142,6 +145,7 @@ cc2[box] .= NaN
 heatmap(x, y, cc2)
 ```
 Note that any collection of cells, passed in as a list of `CartesianIndex`, can serve to delineate a catchment.
+See [Subglacially: Defining outlet groups](@ref "Defining outlet groups (`ctch_sinks`)") documentation for an example.
 
 ## Fill depressions
 
@@ -188,12 +192,3 @@ heatmap(fig[1, 1], x, y, log10.(water_area);  colormap=:blues, axis=(title="Wate
 heatmap(fig[1, 2], x, y, tracer_area;          colormap=:reds,  axis=(title="Tracer",))
 fig
 ```
-
-## Next steps
-
-- Use [Feedback Functionality](@ref FeedbackGuide) to couple transport laws or
-  source-sink processes to routing.
-- Use [Subglacially](@ref SubglaciallyGuide) for hydraulic-potential based
-  subglacial workflows.
-- Use [Randomly](@ref RandomlyGuide) for uncertainty propagation and Monte
-  Carlo aggregation.

@@ -132,10 +132,10 @@ code of WWFS can serve as another example.
 
 Common patterns
 
-- **Clipping or limiting**: enforce positivity or capacity constraints.
-- **Production terms**: add melt/erosion/reaction source terms.
-- **Diagnostic fields**: route extra arrays for bookkeeping outputs.
-- **Coupled extensive fields**: route `(water, tracer)` or `(water, sediment)`.
+- Clipping or limiting: enforce positivity or capacity constraints.
+- Production terms: add melt/erosion/reaction source terms.
+- Diagnostic fields: route extra arrays for bookkeeping outputs.
+- Coupled extensive fields: route `(water, tracer)` or `(water, sediment)`.
 
 Tips
 

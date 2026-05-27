@@ -14,7 +14,7 @@ makedocs(;
         "Worked Example" => "worked-example.md",
         "Example scripts" => "examples.md",
         "Feedback function" => "feedback.md",
-        "References"      => "references.md",
+        "Lit. references"      => "references.md",
         "API"      => "api.md",
     ],
     repo     = "https://github.com/mauro3/WhereTheWaterFlows.jl/blob/{commit}{path}#L{line}",
