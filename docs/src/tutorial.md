@@ -6,7 +6,7 @@ This tutorial walks through a complete flow-routing analysis on a synthetic DEM.
 
 ```@example tutorial
 using WhereTheWaterFlows, CairoMakie
-using Random; Random.seed!(42)
+using Random; Random.seed!(42); # seed for deterministic runs
 ```
 
 ## Build a synthetic DEM
