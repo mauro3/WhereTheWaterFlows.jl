@@ -19,7 +19,7 @@ There are three distinct modes of WWF use:
 | Mode | When to use it |
 |---|---|
 | **Pure routing** | Omit `feedback_fn`; supply source quantities via `cellarea`. |
-| **Local source injection** | The source at each cell is computed from a non-routed auxiliary field (e.g. snow depth, rainfall intensity). Close over the auxiliary array and inject into `uparea` inside the callback; the auxiliary field is never accumulated itself. |
+| **Local source injection** | The source at each cell is computed from a non-routed auxiliary field (e.g. snow depth, rainfall intensity). Likely just pass in as field into `cellarea`, however, `feedback_fn` could be used for a more integrated approach. |
 | **State-dependent modification** | The quantity leaving a cell depends on how much has arrived from upstream (capacity limits, storage release, reactive loss). Only a callback — not a pre-computed raster — can express this, because the rule must be evaluated at traversal time. |
 
 Real process models often combine all three.

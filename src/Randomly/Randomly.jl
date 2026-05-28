@@ -314,7 +314,7 @@ function make_fns_subaerial(dx,
         end
 
         (_, output) = res
-        aggr.areas_total .+= output.area ./ dx^2
+        aggr.areas_total .+= output.area
         aggr.stream_length .+= output.slen
 
         for i=1:length(ctch_sinks)

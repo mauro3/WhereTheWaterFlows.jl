@@ -125,7 +125,8 @@ The robust pattern for partitioning sinks at the routing boundary is a two-step 
 3. Re-run routing (or Monte Carlo) with this partition as `ctch_sinks`.
 
 This examples, continuing from above, shows the workflow:
-```@example ctch_sinks; continued = true
+
+```@example subglacially
 # Step 1: discover active sinks
 out_first = WWFS.waterflows_subglacial(surfdem, beddem, dx; gamma=WWFS.GAMMA)
 all_sinks = out_first.routing.sinks

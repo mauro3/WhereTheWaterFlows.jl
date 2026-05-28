@@ -62,48 +62,32 @@ f_realization = f .+ delta
 
 ## GRFs: how they work
 
-WWFR uses FFT-based GRF sampling (following Raess et al., 2019):
+WWFR uses FFT-based GRF sampling (following Raess et al., 2019).
 
-1. sample white noise `Z`,
-2. transform with FFT,
-3. multiply by `sqrt(FFT(kernel))` to enforce target covariance,
-4. inverse FFT to get a correlated field.
-
-Internally, the domain is padded before FFT to improve non-periodic behavior
-and to reach FFT-friendly sizes (factors of 2, 3, 5, 7).
-
-### Correlation length conversion
-
-If the grid spacing is `dx`, then WWFR converts:
-
+Correlation length conversion: if the grid spacing is `dx`, then WWFR converts:
 ```julia
 len = correlation_length / dx
 ```
-
 so kernels operate in cell units.
 
-### Kernel choice
-
+Kernel choice:
 - `gaussian_kernel`: smoother, more diffuse perturbations
 - `exponential_kernel`: rougher, shorter-scale structure for same nominal length
 - custom kernel: pass any `kernel_fn(nx, ny, len)` compatible function
 
 ## What can be configured
 
-### High-level Monte Carlo controls
-
+High-level Monte Carlo controls:
 - `map_mc(model, sample, reduce!, n; progressmeter=true)`
 - `n`: number of realizations (`n <= 2048` enforced)
 - `progressmeter`: set `false` for quiet batch/CI runs
 
-### Subaerial wrapper (`make_fns_subaerial`)
-
+Subaerial wrapper (`make_fns_subaerial`):
 - uncertain fields: `dem`, `source`
 - routing controls: `drain_pits`, `bnd_as_sink`, `nan_as_sink`
 - sink groups for aggregation: `ctch_sinks`
 
-### Subglacial wrapper (`make_fns_subglacial`)
-
+Subglacial wrapper (`make_fns_subglacial`):
 - uncertain fields: `surfdem`, `beddem`, `floatfrac`, `source`
   - Note: unlike `waterflows_subglacial`, which accepts scalar `floatfrac`,
     `make_fns_subglacial` requires `floatfrac` to be an array.
@@ -125,30 +109,29 @@ In WWFR wrappers, reduction happens in three stages:
 
 ## How outputs are reduced
 
-### `make_fns_subaerial`
+### Subaerial
 
-Per sample, it accumulates:
-
-- `areas_total += output.area / dx^2`
+The reduction function returned by `make_fns_subaerial` accumulates:
+- `areas_total += output.area`
 - `stream_length += output.slen`
 - `catchments[:, :, i] += catchment(output.dir, ctch_sinks[i])`
 - `catchment_fluxes[i]` stores one scalar per sample (not averaged in place)
 
-At finalize step it divides `areas_total`, `stream_length`, and `catchments` by
-`n_samples`, so these become Monte Carlo means/frequencies.
+At the finalize step map-style fields are normalized by `n_samples` (so they are
+means/frequencies) and flux vectors remain per-sample records by design.
 
-### `make_fns_subglacial`
+### Subglacial
 
-Per sample, it accumulates routed maps and diagnostics (`areas_total`,
+The reduction function returned by `make_fns_subglacial` accumulates:
+routed maps and diagnostics (`areas_total`,
 `lake_depth_*`, `lake_mask_*`, `sc_locs`, `kappas`, `catchments`) and appends
 sink-flux records to vectors (`catchment_fluxes.total/dissipation/pressmelt`).
 
-At finalize step it normalizes map-style fields by `n_samples` (so they are
-means/frequencies). Flux vectors remain per-sample records by design.
+At the finalize step map-style fields are normalized by `n_samples` (so they are
+means/frequencies) and flux vectors remain per-sample records by design.
 
 When `ctch_sinks` is non-empty, `aggr.catchment_fluxes` has subglacial-specific
 structure:
-
 - `aggr.catchment_fluxes` is a named tuple
   `(total, dissipation, pressmelt)`.
 - Each field is a `Vector` with length `length(ctch_sinks)`.
@@ -157,7 +140,6 @@ structure:
 
 So for subglacial runs, the total-flux distribution at outlet group `i` is
 accessed as `aggr.catchment_fluxes.total[i]`.
-
 This differs from the subaerial wrapper, where per-outlet total fluxes are
 stored directly as `aggr.catchment_fluxes[i]` (no `.total`).
 
@@ -174,12 +156,14 @@ end
 
 ## `ctch_sinks`: what it means
 
-`ctch_sinks` defines *sink groups* for which WWFR reports catchment membership
+`ctch_sinks` defines *sink groups*, as described in [Subglacially: Defining outlet groups](@ref "Defining outlet groups (`ctch_sinks`)"), for which WWFR reports catchment membership
 and integrated fluxes.
 
 Each element of `ctch_sinks` is a collection of sink cells (typically a
 `Vector{CartesianIndex}` or `CartesianIndices`). For each Monte Carlo sample,
 WWFR computes the full upstream catchment draining to each sink group.
+You can pass multiple groups, e.g. upper/lower terminus sectors, to compare
+how uncertainty redistributes flux between outlets.
 
 This enables statistics like:
 
@@ -188,16 +172,6 @@ This enables statistics like:
   (`aggr.catchment_fluxes[i]` in subaerial, and
   `aggr.catchment_fluxes.total[i]` in subglacial).
 
-Example (left-margin outlet band):
-
-```@example randomly
-n = 80
-ctch_sinks = [CartesianIndices((2:2, 2:n-1))[:]]
-length(ctch_sinks), length(ctch_sinks[1])
-```
-
-You can pass multiple groups, e.g. upper/lower terminus sectors, to compare
-how uncertainty redistributes flux between outlets.
 
 ## Defining custom `make_fns_*`
 
@@ -240,13 +214,10 @@ to finalize the aggregated results.
 
 Note: only `reduce!` is allowed to not be thread-safe, `model` and `sample` need to be thread-safe.
 
-This pattern is often the cleanest route for problem-specific uncertainty
-metrics.
-
 ## Minimal subaerial example
 
 ```@example randomly
-using WhereTheWaterFlows
+using WhereTheWaterFlows, CairoMakie
 using Statistics
 using Random; Random.seed!(42)
 
@@ -261,31 +232,32 @@ source = fill(1e-3 / dx^2, size(dem))
 dem_uc = WWFR.Uncertainty()  # fixed DEM
 source_uc = WWFR.Uncertainty(absuc=0.0, reluc=0.2, correlation_length=15 * dx)
 
-ctch_sinks = [CartesianIndices((2:2, 2:n-1))[:]]
+ctch_sinks = [CartesianIndices((1:n, 1:1))[:]]
 
 model, sample, reduce! = WWFR.make_fns_subaerial(dx,
                                                  dem, dem_uc,
                                                  source, source_uc,
                                                  ctch_sinks)
 
-aggr = WWFR.map_mc(model, sample, reduce!, 6; progressmeter=false)
+aggr = WWFR.map_mc(model, sample, reduce!, 100; progressmeter=false)
 
-mean(aggr.catchment_fluxes[1]), std(aggr.catchment_fluxes[1])
+mu, sd = mean(aggr.catchment_fluxes[1]), std(aggr.catchment_fluxes[1])
+hist(aggr.catchment_fluxes[1],
+     axis=(title  = "mean = $(round(mu, sigdigits=4)), std = $(round(sd, sigdigits=4))",
+     xlabel = "flux", ylabel="freq."))
 ```
 
 ## Output interpretation
 
-For subaerial runs, aggregated outputs include:
+### Subareal aggregate outputs (`make_fns_subaerial`)
+For subaerial runs, aggregated outputs:
 
 - `areas_total`: Monte Carlo mean routed area/discharge field
 - `stream_length`: Monte Carlo mean stream-length field
 - `catchments`: per-sink occurrence frequency map (0-1)
 - `catchment_fluxes`: per-sink vectors of sample fluxes
 
-For subglacial runs, aggregation also includes lake, supercooling, and
-pressure-melt diagnostics.
-
-### Consolidated subglacial aggregate outputs (`make_fns_subglacial`)
+### subglacial aggregate outputs (`make_fns_subglacial`)
 
 The table below consolidates all fields produced by `aggr = map_mc(...)` when
 using `make_fns_subglacial`.
