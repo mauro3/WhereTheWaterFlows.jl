@@ -40,6 +40,14 @@ pockets in alpine glaciers: Insights from an updated inventory for the Swiss
 Alps. Journal of Glaciology, 71.
 DOI: [10.1017/jog.2025.43](https://doi.org/10.1017/jog.2025.43)
 
+Horgan, H. J., ..., Werder, M. A., ... et al. (2025): A West Antarctic grounding-zone environment shaped by episodic water flow.3
+Nature Geoscience, 1–7. DOI: [10.1038/s41561-025-01687-3](https://doi.org/10.1038/s41561-025-01687-3)
+
+Washam, P., Schmidt, B. E., Loose, B., Horgan, H. J., Stewart, C. L., Stevens, C. L., Lawrence,
+J. D., Hulbe, C. L., Mullen, A. D., Quartini, E. S., & Hurwitz, B. (2026): Oceanic and
+volcanic heat converge in a subglacial channel of the Kamb Ice Stream in West Antarctica.
+Communications Earth & Environment. DOI: [10.1038/s43247-026-03508-w](https://doi.org/10.1038/s43247-026-03508-w)
+
 Ogier, C., Werder, M. A., Gagliardini, O., Santin, I., Moser, R., Hugonnet, R.,
 Blanc, A., and Farinotti, D. (2026): Potential glacier contributions to the
 2024 La Bérarde flood. EGUsphere (preprint).
