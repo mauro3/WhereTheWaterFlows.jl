@@ -64,6 +64,4 @@ to be pre-filled (or pre-processed in any other way). Both algorithms are descri
 
 The flow is accumulated by recursively traversing the drainage tree, the algorithm has O(n) complexity where n is the number of cells (Braun & Willett, 2013).
 On large DEMs the recursion depth can exceed the default Julia call-stack size and cause
-a `StackOverflowError`.  See the `stacksize` keyword argument of `waterflows`
-if this occurs.
-
+a `StackOverflowError`.

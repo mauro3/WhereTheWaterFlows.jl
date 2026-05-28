@@ -89,7 +89,6 @@ waterflows(dem, cellarea)
 | `nan_as_sink` | `true` | Cells adjacent to NaN DEM values become sinks |
 | `extra_sinks` | `CartesianIndex{2}[]` | Additional cells that act as sinks |
 | `extra_barriers` | `CartesianIndex{2}[]` | Additional cells that act as barriers and do not conduct flow |
-| `stacksize` | `2^13 * 2^10` | Call-stack size hint used by recursive routing internals |
 | `feedback_fn` | `nothing` | Applied to accumulated area before routing downstream |
 | `flowdir_fn` | `d8dir_feature` | Function used to compute flow directions. The default is `d8dir_feature`        |
 

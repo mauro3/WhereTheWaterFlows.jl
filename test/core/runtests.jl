@@ -403,8 +403,7 @@ end
     dir[ind] = WWF.BARRIER
     # and drain the pits
     WWF.drainpits!(dir, nin, nout, sinks, pits, c, bnds, dem)
-    stacksize = 2^13 * 2^10
-    area, slen, c = WWF.flowrouting_catchments(dir, sinks, pits, ones(size(dem)), nothing, stacksize)
+    area, slen, c = WWF.flowrouting_catchments(dir, sinks, pits, ones(size(dem)), nothing)
     @test sum(c.==0) == 429
     @test sum(dir.==5) == length(pits)
 
@@ -419,7 +418,7 @@ end
 
     area, slen, dir, nout, nin, sinks, pits, c, bnds = WWF.waterflows(dem, drain_pits=false, bnd_as_sink=true);
     WWF.drainpits!(dir, nin, nout, sinks, pits, c, bnds, dem)
-    area, slen, c = WWF.flowrouting_catchments(dir, sinks, pits, fill!(similar(dem),1), nothing, 2^13 * 2^10)
+    area, slen, c = WWF.flowrouting_catchments(dir, sinks, pits, fill!(similar(dem),1), nothing)
     @test sum(dir.==5) == length(pits)
 end
 
@@ -503,7 +502,7 @@ end
 # @testset "stackoverflow" begin
 #     x,y,dem = ramp(10^4,3);
 #     waterflows(dem, drain_pits=false); # no error
-#     @test_throws TaskFailedException waterflows(dem, drain_pits=false, stacksize=1000) # inside it's a StackOverflowError
+#     @test_throws TaskFailedException waterflows(dem, drain_pits=false)
 # end
 
 #################################

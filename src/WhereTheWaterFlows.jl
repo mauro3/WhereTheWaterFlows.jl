@@ -234,7 +234,6 @@ end
                 nan_as_sink=true,
                 extra_sinks=CartesianIndex{2}[],
                 extra_barriers=CartesianIndex{2}[],
-                stacksize=2^13 * 2^10,
                 flowdir_fn=d8dir_feature,
                 feedback_fn=nothing)
 
@@ -260,8 +259,6 @@ kwargs:
                           on the `NaN`-cell itself no routing occurs (i.e. a `BARRIER`-cell).
 - `extra_sinks=CartesianIndex{2}[]` -- additional cells that act as sinks, i.e. outlets where flow leaves the active domain.
 - `extra_barriers=CartesianIndex{2}[]` -- additional cells that act as barriers, i.e. cells that are excluded from routing and do not conduct flow.
-- `stacksize` (2^13 * 2^10) -- size of the call-stack in `_flowrouting_catchments!`, which is prone to
-                 `StackOverflowError`.  Note however, that `OutOfMemory` errors are likely if increased.
 - `flowdir_fn`=`d8dir_feature` -- the routing function.  Defaults to the built-in `d8dir_feature`
                                   function but could be customized
 - `feedback_fn` -- function which is applied to area-value(s) at each cell once all water
@@ -290,8 +287,7 @@ function waterflows(dem, cellarea=fill!(similar(dem),1);
                     bnd_as_sink=true,
                     nan_as_sink=true,
                     extra_sinks=CartesianIndex{2}[],
-                    extra_barriers=CartesianIndex{2}[],
-                    stacksize=2^13 * 2^10)
+                    extra_barriers=CartesianIndex{2}[])
 
     dir, nout, nin, sinks, pits, dem4drainpits, flowdir_extra_output =
         flowdir_fn(dem, bnd_as_sink, nan_as_sink, extra_sinks, extra_barriers)
@@ -302,23 +298,22 @@ function waterflows(dem, cellarea=fill!(similar(dem),1);
         end
     end
 
-    area, slen, c = flowrouting_catchments(dir, sinks, pits, cellarea, feedback_fn, stacksize)
+    area, slen, c = flowrouting_catchments(dir, sinks, pits, cellarea, feedback_fn)
     bnds = make_boundaries(c, eachindex(pits))
     if drain_pits
         bnds = drainpits!(dir, nin, nout, sinks, pits, c, bnds, dem4drainpits)
-        area, slen, c = flowrouting_catchments(dir, sinks, pits, cellarea, feedback_fn, stacksize)
+        area, slen, c = flowrouting_catchments(dir, sinks, pits, cellarea, feedback_fn)
     end
     return (;area, slen, dir, nout, nin, sinks, pits, c, bnds, flowdir_extra_output)
 end
 
 """
-    flowrouting_catchments(dir, pits, cellarea, feedback_fn, stacksize)
+    flowrouting_catchments(dir, pits, cellarea, feedback_fn)
 
 Recursively calculate flow-routing and catchments from
 - `dir` - direction field
 - `pits` - pit coordinates
 - `cellarea` - water input
-- `stacksize` - how large the call-stack is (in bytes)
 
 Returns:
 - `area` -- upslope contributing area
@@ -327,9 +322,9 @@ Returns:
 - `c` -- catchment map (`Matrix{Int}`); `c==0` corresponds to `NaN`/`BARRIER`
   regions where no water flows into.
 
-Note: this function may cause a stackoverflow on very big catchments, see kwarg `stacksize`.
+Note: this function may cause a stackoverflow on very big catchments.
 """
-function flowrouting_catchments(dir, sinks, pits, cellarea, feedback_fn, stacksize) # on linux standard is 2^13 * 2^10
+function flowrouting_catchments(dir, sinks, pits, cellarea, feedback_fn) #TODO: , stacksize) # on linux standard is 2^13 * 2^10
     c = fill!(similar(dir, Int), 0) # catchment color of BARRIER is 0
     slen = fill!(similar(dir, Int), 0)
     np = length(pits)
@@ -349,7 +344,6 @@ function flowrouting_catchments(dir, sinks, pits, cellarea, feedback_fn, stacksi
         sink = sinks[color]
         # This is a dirty trick to increase the call-stack size
         # https://stackoverflow.com/questions/71956946/how-to-increase-stack-size-for-julia-in-windows
-        # Note that stacksize is a undocumented argument of Task!
         #
         # Unfortunately, it decreases performance a lot!
         # wait(schedule( Task(() -> _flowrouting_catchments!(area, slen, c, dir, cellarea_, feedback_fn_, color, sink),
@@ -362,7 +356,6 @@ function flowrouting_catchments(dir, sinks, pits, cellarea, feedback_fn, stacksi
 
         # This is a dirty trick to increase the call-stack size
         # https://stackoverflow.com/questions/71956946/how-to-increase-stack-size-for-julia-in-windows
-        # Note that stacksize is a undocumented argument of Task!
         # wait(schedule( Task(() -> _flowrouting_catchments!(area, slen, c, dir, cellarea_, feedback_fn_, color, pit),
         #                     stacksize) ))
 
