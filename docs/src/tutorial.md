@@ -7,7 +7,7 @@ And seeding the random number generator for deterministic runs.
 
 ```@example tutorial
 using WhereTheWaterFlows, CairoMakie
-using Random; Random.seed!(42) # hide
+using Random; Random.seed!(42);
 ```
 
 ## Build a synthetic DEM
