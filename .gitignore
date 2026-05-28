@@ -11,3 +11,6 @@ Manifest.toml
 /benchmarks/data_raw/
 /benchmarks/outputs/
 /benchmarks/settings.json
+/benchmarks/topotoolbox3
+/examples/theory/deflection.png
+/examples/theory/deflection-D8.png

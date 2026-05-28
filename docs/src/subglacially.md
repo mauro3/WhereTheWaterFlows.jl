@@ -13,7 +13,7 @@ This module is aimed at routing water at the ice-bed interface below glaciers an
 potential (Shreve, 1972).  Optionally, pressure-melting-point effects are accounted for (Röthlisberger, 1972).
 
 Recent applications using this workflow include Malczyk et al. (2023),
-Delaney et al. (2023), Ogier et al. (2025), and Ogier et al. (2026).
+Delaney et al. (2023), Ogier et al. (2025), Horgan et al. (2025), Washam et al. (2026) and Ogier et al. (2026).
 
 ## Hydraulic potential
 
@@ -47,7 +47,7 @@ surfdem = max.(surfdem, beddem .+ 10.0)
 
 out = WWFS.waterflows_subglacial(surfdem, beddem, dx; gamma=WWFS.GAMMA)
 
-plt_area(x,y,out.routing.area.total)
+plt_area(x, y, out.routing.area.total)
 ```
 
 Set `gamma=0` to disable deflection/supercooling effects and recover
