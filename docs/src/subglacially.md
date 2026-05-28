@@ -124,8 +124,8 @@ The robust pattern for partitioning sinks at the routing boundary is a two-step 
 2. Partition `out.routing.sinks` into outlet groups.
 3. Re-run routing (or Monte Carlo) with this partition as `ctch_sinks`.
 
-This examples shows the 
-```@example ctch_sinks
+This examples, continuing from above, shows the workflow:
+```@example ctch_sinks; continued = true
 # Step 1: discover active sinks
 out_first = WWFS.waterflows_subglacial(surfdem, beddem, dx; gamma=WWFS.GAMMA)
 all_sinks = out_first.routing.sinks
@@ -133,7 +133,7 @@ all_sinks = out_first.routing.sinks
 # Step 2: partition sinks by position (simple example)
 nx, ny = size(surfdem)
 south_sinks = filter(ci -> ci[1] <= nx ÷ 2 && ci[2] == 1, all_sinks)
-east_sinks = filter(ci -> ci[1] === 1 && ci[2] >  ny ÷ 2, all_sinks)
+east_sinks = filter(ci -> ci[1] == 1 && ci[2] >  ny ÷ 2, all_sinks)
 ctch_sinks = [south_sinks, east_sinks]
 
 # Optional check for an exhaustive non-overlapping partition (actually not the case here)
@@ -166,23 +166,12 @@ approach: it derives sink-group partitions from outlet polygons.
   stochastic workflow with two-step `ctch_sinks` partitioning and per-outlet
   flux statistics
 
-You can run those from the examples environment, for example:
+You can run those from the examples environment with, e.g.:
 
 ```julia
 include("subglacially/valley-glacier.jl")
 include("subglacially/ice-cap-full-workflow.jl")
 ```
-
-## Next steps
-
-To propagate uncertainty through the subglacial routing model (for example
-uncertain bed topography), use
-`WhereTheWaterFlows.Randomly.make_fns_subglacial`, which wraps
-`waterflows_subglacial` for use with `map_mc`. The `ctch_sinks` groups defined
-for a deterministic run can be passed directly to `make_fns_subglacial`.
-
-See [WhereTheWaterFlows.Randomly (WWFR)](@ref RandomlyGuide) and
-[Worked Example](@ref WorkedExample) for complete deterministic-plus-Monte-Carlo workflows.
 
 ## Physical notes
 
