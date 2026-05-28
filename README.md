@@ -11,6 +11,7 @@
 This package calculates water flow paths and catchments on
 - digital elevation models (DEMs), and
 - underneath glaciers and ice sheets (subglacial drainage)
+
 and can quantify uncertainties using a Monte Carlo approach.
 
 WhereTheWaterFlows has been used in glaciological contexts, see [References](https://mauro3.github.io/WhereTheWaterFlows.jl/dev/references/), but could be useful in other settings as well.
