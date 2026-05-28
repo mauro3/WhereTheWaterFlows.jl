@@ -164,10 +164,10 @@ Set `cellarea` to a physical value (e.g. precipitation in m³/s per cell) to
 accumulate real fluxes rather than cell counts:
 
 ```@example tutorial
-precip = 1e-3 .* ones(size(dem))   # uniform 1 mm/s
+precip = 1e-3 .* ones(size(dem))   # uniform 1e-3 m3/s/cell
 discharge = waterflows(dem, precip).area
 
-plt_area(x, y, discharge)
+plt_area(x, y, discharge; colorbar_label="log10(discharge [m³/s])",)
 ```
 
 Note that because `waterflows` does not know the cell area, `cellarea` has to be set to
