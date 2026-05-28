@@ -1,0 +1,212 @@
+@article{BarnesPriorityfloodOptimalDepressionfilling2014,
+  title = {Priority-Flood: {{An}} Optimal Depression-Filling and Watershed-Labeling Algorithm for Digital Elevation Models},
+  shorttitle = {Priority-Flood},
+  author = {Barnes, Richard and Lehman, Clarence and Mulla, David},
+  date = {2014-01-01},
+  journaltitle = {Computers \& Geosciences},
+  shortjournal = {Computers \& Geosciences},
+  volume = {62},
+  pages = {117--127},
+  issn = {0098-3004},
+  doi = {10.1016/j.cageo.2013.04.024},
+  abstract = {Depressions (or pits) are areas within a digital elevation model that are surrounded by higher terrain, with no outlet to lower areas. Filling them so they are level, as fluid would fill them if the terrain was impermeable, is often necessary in preprocessing DEMs. The depression-filling algorithm presented here – called Priority-Flood – unifies and improves the work of a number of previous authors who have published similar algorithms. The algorithm operates by flooding DEMs inwards from their edges using a priority queue to determine the next cell to be flooded. The resultant DEM has no depressions or digital dams: every cell is guaranteed to drain. The algorithm is optimal for both integer and floating-point data, working in O(n) and O(nlog2n) time, respectively. It is shown that by using a plain queue to fill depressions once they have been found, an O(mlog2m) time-complexity can be achieved, where m does not exceed the number of cells n. This is the lowest time complexity of any known floating-point depression-filling algorithm. In testing, this improved variation of the algorithm performed up to 37\% faster than the original. Additionally, a parallel version of an older, but widely used, depression-filling algorithm required six parallel processors to achieve a run-time on par with what the newer algorithm's improved variation took on a single processor. The Priority-Flood Algorithm is simple to understand and implement: the included pseudocode is only 20 lines and the included C++ reference implementation is under a hundred lines. The algorithm can work on irregular meshes as well as 4-, 6-, 8-, and n-connected grids. It can also be adapted to label watersheds and determine flow directions through either incremental elevation changes or depression carving. In the case of incremental elevation changes, the algorithm includes safety checks not present in prior works.},
+  keywords = {Drainage network,GIS,Hydrology,Modeling,Pit filling,Terrain analysis}
+}
+
+@article{BraunVeryEfficientImplicit2013,
+  title = {A Very Efficient {{O}}(n), Implicit and Parallel Method to Solve the Stream Power Equation Governing Fluvial Incision and Landscape Evolution},
+  author = {Braun, Jean and Willett, Sean D.},
+  date = {2013},
+  journaltitle = {Geomorphology},
+  volume = {180--181},
+  pages = {170--179},
+  issn = {0169-555X},
+  doi = {10.1016/j.geomorph.2012.10.008},
+  abstract = {We present a new algorithm to solve the basic stream power equation, which governs channel incision and landscape evolution in many geomorphic settings. The algorithm is highly efficient because computation time increases linearly with the number of points used to discretize the landscape and is ideally suited to parallelization. It is also unconditionally stable because it uses an implicit scheme for the time integration of the landscape evolution equation, which means that large time steps can be used without sacrificing accuracy. In this paper we describe the algorithm and present results that demonstrate its efficiency and accuracy.},
+  keywords = {Fluvial geomorphology,Implicit scheme,Numerical modeling,Parallel algorithm,Routing algorithm,Stream power equation}
+}
+
+@article{DelaneyModelingSpatiallyDistributed2023,
+  title = {Modeling the Spatially Distributed Nature of Subglacial Sediment Transport and Erosion},
+  author = {Delaney, Ian and Anderson, Leif and Herman, Frédéric},
+  date = {2023-07-21},
+  journaltitle = {Earth Surface Dynamics},
+  volume = {11},
+  number = {4},
+  pages = {663--680},
+  publisher = {Copernicus GmbH},
+  issn = {2196-6311},
+  doi = {10.5194/esurf-11-663-2023},
+  abstract = {Glaciers expel sediment as they melt, in addition to ice and water. As a result, changing glacier dynamics and melt produce changes to glacier erosion and sediment discharge, which can impact the landscape surrounding retreating glaciers, as well as communities and ecosystems downstream. Currently, numerical models that transport subglacial sediment on sub-hourly to decadal scales are one-dimensional, usually along a glacier's flow line. Such models have proven useful in describing the formation of glacial landforms, the impact of sediment transport on glacier dynamics, and the interactions among climate, glacier dynamics, and erosion. However, these models omit the two-dimensional spatial distribution of sediment and its impact on sediment connectivity – the movement of sediment between its detachment in source areas and its deposition in sinks. Here, we present a numerical model that fulfills a need for predictive frameworks that describe subglacial sediment discharge in two spatial dimensions (x and y) over time. SUGSET\_2D evolves a two-dimensional subglacial till layer in response to bedrock erosion and changing sediment transport conditions. Numerical experiments performed using an idealized alpine glacier illustrate the heterogeneity in sediment transport and bedrock erosion below the glacier. An increase in sediment discharge follows increased glacier melt, as has been documented in field observations and other numerical experiments. We also apply the model to a real alpine glacier, Griesgletscher in the Swiss Alps, where we compare outputs with annual measurements of sediment discharge. SUGSET\_2D accurately reproduces the general quantities of sediment discharge and the year-to-year sediment discharge pattern measured at the glacier terminus. The model's ability to match the measured data depends on the tunable sediment grain size parameter, which controls subglacial sediment transport capacity. Smaller grain sizes allow sediment transport to occur in regions of the bed with reduced water flow and channel size, effectively increasing sediment connectivity into the main channels. The model provides the essential components of modeling subglacial sediment discharge on seasonal to decadal timescales and reveals the importance of including spatial heterogeneities in water discharge and sediment transport in both the x and y dimensions in evaluating sediment discharge.},
+  langid = {english}
+}
+
+@software{GRASSDevelopmentTeamGRASS2026,
+  title = {{{GRASS}}},
+  author = {GRASS-Team and Landa, Martin and Neteler, Markus and Metz, Markus and Petrášová, Anna and Petráš, Vaclav and Clements, Glynn and Zigo, Tomáš and Larsson, Nicklas and Kladivová, Linda and Haedrich, Caitlin and Blumentrath, Stefan and Andreo, Veronica and Cho, Huidae and Gebbert, Sören and Nartišs, Māris and Kudrnovsky, Helmut and Delucchi, Luca and Zambelli, Pietro and Lennert, Moritz and Mitášová, Helena and Chemin, Yann and Pešek, Ondřej and Barton, Michael and Tawalika, Carmen and Ovsienko, Denis and Bowman, Hamish},
+  date = {2026-05-08},
+  doi = {10.5281/ZENODO.5176030},
+  abstract = {GRASS, Geographic Resources Analysis Support System, is a powerful computational engine for raster, vector, and geospatial processing. It supports terrain and ecosystem modeling, hydrology, data management, and imagery processing. With a built-in temporal framework and Python API, it enables advanced time series analysis and rapid geospatial programming, optimized for large-scale analysis on various hardware configurations.},
+  organization = {Zenodo},
+  version = {8.5.0},
+  keywords = {data management,free software,geocomputation engine,geoprocessing,geospatial,GIS,open science,open source,spatial analysis,visualization}
+}
+
+@article{HorganWestAntarcticGroundingzone2025,
+  title = {A {{West Antarctic}} Grounding-Zone Environment Shaped by Episodic Water Flow},
+  author = {Horgan, Huw J. and Stewart, Craig and Stevens, Craig and Dunbar, Gavin and Balfoort, Linda and Schmidt, Britney E. and Washam, Peter and Werder, Mauro A. and Mandeno, Darcy and Marschalek, James and Hulbe, Christina and Holschuh, Nicholas and Levy, Richard and Hurwitz, Benjamin and Jendersie, Stefan and Johnson, Katelyn and Lawrence, Justin and Morgenstern, Regine and Mullen, Andrew D. and Quartini, Enrica and Sauthoff, Wilson and Siegfried, Matthew and Still, Holly and Thorpe-Loversuch, Sam and family=Flierdt, given=Tina, prefix=van de, useprefix=true and Venturelli, Ryan and Whiteford, Arran},
+  date = {2025-05-12},
+  journaltitle = {Nature Geoscience},
+  shortjournal = {Nat. Geosci.},
+  pages = {1--7},
+  publisher = {Nature Publishing Group},
+  issn = {1752-0908},
+  doi = {10.1038/s41561-025-01687-3},
+  abstract = {Beneath Antarctica’s ice sheets, a little-observed network of liquid water connects vast landscapes and contributes to the motion of the overriding ice. When this subglacial water reaches the ocean cavity beneath ice shelves, it mixes with seawater, amplifying melt and in places forming deep channels in the base of the ice. Here we present observations from a hot-water-drilled borehole documenting subglacial water entering the ocean cavity at the grounding zone of Kamb Ice Stream and the Ross Ice Shelf. Our observations show that melt has removed approximately a third of the ice thickness, yet measurements reveal low rates of subglacial discharge in a turbid plume. Sediment cored from the channel floor shows larger discharge events occur and episodically deposit material from distinct geological domains. We quantify subglacial discharge and link our observations to the catchment upstream. We conclude that discrete discharge events are likely to dominate channel melt and sediment transport and result in the extensive ice-shelf features downstream of Kamb Ice Stream.},
+  langid = {english},
+  keywords = {Cryospheric science,Hydrology,Physical oceanography}
+}
+
+@article{LindsayWhiteboxGATCase2016,
+  title = {Whitebox {{GAT}}: {{A}} Case Study in Geomorphometric Analysis},
+  shorttitle = {Whitebox {{GAT}}},
+  author = {Lindsay, J. B.},
+  date = {2016-10-01},
+  journaltitle = {Computers \& Geosciences},
+  shortjournal = {Computers \& Geosciences},
+  volume = {95},
+  pages = {75--84},
+  issn = {0098-3004},
+  doi = {10.1016/j.cageo.2016.07.003},
+  abstract = {This paper describes an open-source geographical information system (GIS) called Whitebox Geospatial Analysis Tools (Whitebox GAT). Whitebox GAT was designed to provide a platform for the rapid development and testing of experimental geospatial analysis methods, supported by its extensible design, integrated facilities for custom plug-in tool authoring, and its novel open-access design philosophy. One of the unique characteristics of Whitebox GAT is the ease with which users can inspect and modify the algorithms for individual geoprocessing tools. The open-access software model that Whitebox GAT adopts is designed to lessen the barriers that are often imposed on end-users when attempting to gain deeper understanding of how a specific function operates. While Whitebox GAT has an extensive range of GIS and remote sensing analytical capabilities, making it broadly suited for advanced scientific research applications in the Earth Sciences, this paper focusses on the software's application in the field of geomorphometry. An airborne LiDAR data set for a small headwater catchment of the Missisquoi River in northern Vermont, USA, was filtered to identify ground-points and then interpolated into a 2.0m resolution bare-Earth DEM. The DEM was processed to remove spurious off-ground objects (mainly buildings), to reduce surface roughness under heavy forest cover, and to hydrologically pre-condition the DEM. These data were then used to extract salient hydrological structures, i.e. the stream network and their associated sub-basins.},
+  keywords = {Geographic information system,Geomorphometry,Open-source software,Remote sensing software}
+}
+
+@article{MalczykConstraintsSubglacialMelt2023,
+  title = {Constraints on Subglacial Melt Fluxes from Observations of Active Subglacial Lake Recharge},
+  author = {Malczyk, George and Gourmelen, Noel and Werder, Mauro and Wearing, Martin and Goldberg, Dan},
+  date = {2023-09-26},
+  journaltitle = {Journal of Glaciology},
+  pages = {1--15},
+  publisher = {Cambridge University Press},
+  issn = {0022-1430, 1727-5652},
+  doi = {10.1017/jog.2023.70},
+  abstract = {Active subglacial lakes provide a rare glimpse of the subglacial environment and hydrological processes at play. Several studies contributed to establishing active subglacial lake inventories and document lake drainage and connection, but few focused on the period between lake drainage when the melt production and transport contribute to the refilling of these lakes. In this study, we employ high-resolution CryoSat-2 altimetry data from 2010 to 2021 to compile an inventory of recharging lakes across Antarctica. We extract recharge rates from these lakes, which serve as a lower limit on subglacial melt production. These recharge rates are compared against predictions obtained by routing modelled subglacial meltwater at the ice-sheet's base. Our findings indicate that modelled recharge rates are consistent with observations in all but one of the investigated lakes, providing a lower bound on geothermal heat fluxes. Lake Cook E2 displays recharge rates far exceeding predictions, indicating that processes are taking place that are currently unaccounted for. Considering recharge in hydrologically connected lake networks instead of individually provides a stricter constraint on melt production. Recharge rates extracted from the Thwaites Lake system suggest that subglacial melt production has been underestimated.},
+  langid = {english},
+  keywords = {glacier hydrology,melt – basal,remote sensing,subglacial lakes,subglacial processes}
+}
+
+@software{MauroA.WhereTheWaterFlowsjl2024,
+  title = {{{WhereTheWaterFlows}}.Jl},
+  shorttitle = {Mauro3/{{WhereTheWaterFlows}}.Jl},
+  author = {Mauro A., Werder and Kaus, Boris and TagBot, Julia and Visser, Martijn},
+  date = {2024-12-22},
+  doi = {10.5281/zenodo.14543375},
+  abstract = {Wrapped up Makie Plotting},
+  organization = {Zenodo}
+}
+
+@article{OCallaghanExtractionDrainageNetworks1984,
+  title = {The Extraction of Drainage Networks from Digital Elevation Data},
+  author = {O'Callaghan, John F. and Mark, David M.},
+  date = {1984},
+  journaltitle = {Computer Vision, Graphics, and Image Processing},
+  volume = {28},
+  number = {3},
+  pages = {323--344},
+  issn = {0734-189X},
+  doi = {10.1016/S0734-189X(84)80011-0},
+  abstract = {The extraction of drainage networks from digital elevation data is important for quantitative studies in geomorphology and hydrology. A method is presented for extracting drainage networks from gridded elevation data. The method handles artificial pits introduced by data collection systems and extracts only the major drainage paths. Its performance appears to be consistent with the visual interpretation of drainage patterns from elevation contours.}
+}
+
+@article{OgierDefinitionFormationRupture2025,
+  title = {Definition, Formation and Rupture Mechanisms of Water Pockets in Alpine Glaciers: {{Insights}} from an Updated Inventory for the {{Swiss Alps}}},
+  shorttitle = {Definition, Formation and Rupture Mechanisms of Water Pockets in Alpine Glaciers},
+  author = {Ogier, Christophe and Fischer, Mauro and Werder, Mauro A. and Huss, Matthias and Hupfer, Mauro and Jacquemart, Mylène and Gagliardini, Olivier and Gilbert, Adrien and Hösli, Leo and Thibert, Emmanuel and Vincent, Christian and Farinotti, Daniel},
+  date = {2025-01},
+  journaltitle = {Journal of Glaciology},
+  volume = {71},
+  pages = {e82},
+  issn = {0022-1430, 1727-5652},
+  doi = {10.1017/jog.2025.43},
+  abstract = {The term ‘water pocket’ describes invisible en- and subglacial water reservoirs that can cause sudden glacial outburst floods. However, there is currently no consensus on its definition and the formation and rupture mechanisms of water pockets remain poorly understood. This study aims to understand the mechanisms behind water pocket outburst floods (WPOFs) from alpine glaciers by analyzing their spatial and temporal distribution, pre-event meteorological conditions and the glacio-geomorphic features of the glaciers from which the floods originate. To this end, we updated an inventory of known WPOFs in the Swiss Alps to 91 events from 37 individual glaciers. Most WPOFs occurred between June and September, likely linked to meltwater input. Meteorological data indicate anomalously high temperatures during the days preceding most events and heavy precipitation on 25\% of days for which WPOFs occur, indicating that water pockets typically rupture during periods of high water input. We propose four mechanisms of water pocket formation: temporary subglacial channel blockage (which is the mechanism suggested most often for our inventory), hydraulic barriers, water-filled crevasses and accumulation of liquid water behind barriers of cold ice (thermal barriers). Overall, our analysis highlights the challenge of understanding WPOFs due to the subsurface nature of water pockets, emphasizing the need for field-based research to improve their detection and monitoring.},
+  langid = {english},
+  keywords = {glacial outburst floods,glacial water pocket,glacier hydrology,natural hazards}
+}
+
+@article{OgierPotentialGlacierContributions2026,
+  title = {Potential Glacier Contributions to the 2024 {{La Bérarde}} Flood},
+  author = {Ogier, Christophe and Werder, Mauro A. and Gagliardini, Olivier and Santin, Ilaria and Moser, Raphael and Hugonnet, Romain and Blanc, Antoine and Farinotti, Daniel},
+  date = {2026-02-09},
+  journaltitle = {EGUsphere},
+  pages = {1--26},
+  publisher = {Copernicus GmbH},
+  doi = {10.5194/egusphere-2026-466},
+  abstract = {{$<$}p{$><$}strong class="journal-contentHeaderColor"{$>$}Abstract.{$<$}/strong{$>$} On 20\&ndash;21 June 2024, an unprecedented flood of the Etan\&ccedil;ons river caused important damage to the village of La B\&eacute;rarde (\&Eacute;crins, France). An analysis of the event showed that the flood was partially caused by the combination of an intense rain-on-snow event at high altitude and the drainage of a supraglacial lake from Glacier de Bonne Pierre. In this study, we quantify the water volume that could have also been trapped beneath the glacier in local minima of the hydraulic head, i.e., in locations that could host so-called glacier water pockets impounded by hydraulic barriers. In the absence of direct observations of water pockets, we use a numerical, steady-state approach that computes the subglacial hydraulic head from surface and bedrock topography of Glacier de Bonne Pierre. As of June 2024, hydraulic barriers at Glacier de Bonne Pierre could, in theory, have impounded water volumes on the order of 10\textsuperscript{5} m\textsuperscript{3}, with the largest modeled water pocket beneath a surface depression that temporarily hosted a supraglacial lake. These results provide a first-order estimate of the potential subglacial water storage capacity prior to the June 2024 flood. We propagate uncertainties in surface elevation, bedrock elevation, and flotation fraction (the ratio of basal water pressure to ice overburden pressure) through a stochastic framework and show that spatial variability in the flotation fraction dominates the uncertainty in the resultant water pocket volumes. This highlights the strong sensitivity of subglacial water-routing results to poorly constrained basal water pressure conditions. While acknowledging that the actual presence and contribution of such water pockets cannot be confirmed from available observations, our study highlights the glacial flood potential of debris-covered glaciers with pronounced surface topographic depressions, which can promote both supraglacial and subglacial water storage.{$<$}/p{$>$}},
+  langid = {english}
+}
+
+@article{RassEfficientParallelRandom2019,
+  title = {Efficient Parallel Random Field Generator for Large 3-{{D}} Geophysical Problems},
+  author = {Räss, Ludovic and Kolyukhin, Dmitriy and Minakov, Alexander},
+  date = {2019-10-01},
+  journaltitle = {Computers \& Geosciences},
+  shortjournal = {Computers \& Geosciences},
+  volume = {131},
+  pages = {158--169},
+  issn = {0098-3004},
+  doi = {10.1016/j.cageo.2019.06.007},
+  abstract = {We present an efficient implementation of the method for sampling spatial realisations of a 3-D random fields with given power spectrum. The method allows for a multi-scale resolution and approaches well for parallel implementations, overcoming the physical limitation of computer memory when dealing with large 3-D problems. We implement the random field generator to execute on graphical processing units (GPU) using the CUDA C programming language. We compare the memory footprint and the wall-time of our implementation to FFT-based solutions. We illustrate the efficiency of the proposed numerical method using examples of an acoustic scattering problem which can be encountered both in controlled-source and earthquake seismology. In particular, we apply our method to study the scattering of seismic waves in 3-D anisotropic random media with a particular focus on P-wave coda observations and seismic monitoring of hydrocarbon reservoirs.},
+  keywords = {Computational methods,Geophysics,Geostatistics,Parallel and high-performance computing,Seismology}
+}
+
+@article{SchwanghartShortCommunicationTopoToolbox2014,
+  title = {{{TopoToolbox}} 2 – {{MATLAB-based}} Software for Topographic Analysis and Modeling in {{Earth}} Surface Sciences},
+  author = {Schwanghart, W. and Scherler, D.},
+  date = {2014},
+  journaltitle = {Earth Surface Dynamics},
+  volume = {2},
+  number = {1},
+  pages = {1--7},
+  doi = {10.5194/esurf-2-1-2014}
+}
+
+@article{ShreveMovementWaterGlaciers1972,
+  title = {Movement of Water in Glaciers},
+  author = {Shreve, R. L.},
+  date = {1972},
+  journaltitle = {Journal of Glaciology},
+  volume = {11},
+  number = {62},
+  pages = {205--214},
+  doi = {10.3189/S002214300002219X}
+}
+
+@article{TesfaExtractionHydrologicalProximity2011,
+  title = {Extraction of Hydrological Proximity Measures from {{DEMs}} Using Parallel Processing},
+  author = {Tesfa, Teklu K. and Tarboton, David G. and Watson, Daniel W. and Schreuders, Kimberly A. T. and Baker, Matthew E. and Wallace, Robert M.},
+  date = {2011-12-01},
+  journaltitle = {Environmental Modelling \& Software},
+  shortjournal = {Environmental Modelling \& Software},
+  volume = {26},
+  number = {12},
+  pages = {1696--1709},
+  issn = {1364-8152},
+  doi = {10.1016/j.envsoft.2011.07.018},
+  abstract = {Land surface topography is one of the most important terrain properties which impact hydrological, geomorphological, and ecological processes active on a landscape. In our previous efforts to develop a soil depth model based upon topographic and land cover variables, we derived a set of hydrological proximity measures (HPMs) from a Digital Elevation Model (DEM) as potential explanatory variables for soil depth. These HPMs are variations of the distance up to ridge points (cells with no incoming flow) and variations of the distance down to stream points (cells with a contributing area greater than a threshold), following the flow path. The HPMs were computed using the D-infinity flow model that apportions flow between adjacent neighbors based on the direction of steepest downward slope on the eight triangular facets constructed in a 3~×~3 grid cell window using the center cell and each pair of adjacent neighboring grid cells in turn. The D-infinity model typically results in multiple flow paths between 2 points on the topography, with the result that distances may be computed as the minimum, maximum or average of the individual flow paths. In addition, each of the HPMs, are calculated vertically, horizontally, and along the land surface. Previously, these HPMs were calculated using recursive serial algorithms which suffered from stack overflow problems when used to process large datasets, limiting the size of DEMs that could be analyzed. To overcome this limitation, we developed a message passing interface (MPI) parallel approach designed to both increase the size and speed with which these HPMs are computed. The parallel HPM algorithms spatially partition the input grid into stripes which are each assigned to separate processes for computation. Each of those processes then uses a queue data structure to order the processing of cells so that each cell is visited only once and the cross-process communications that are a standard part of MPI are handled in an efficient manner. This parallel approach allows efficient analysis of much larger DEMs than were possible using the serial recursive algorithms. The HPMs given here may also have other, more general modeling applicability in hydrology, geomorphology and ecology, and so are described here from a general perspective. In this paper, we present the definitions of the HPMs, the serial and parallel algorithms used in their computation and their potential applications.},
+  keywords = {Digital elevation model analysis,Flow distance,Hydrological proximity measures,Message passing interface,Parallel computation,Topographic attributes}
+}
+
+@article{WashamOceanicVolcanicHeat2026,
+  title = {Oceanic and Volcanic Heat Converge in a Subglacial Channel of the {{Kamb Ice Stream}} in {{West Antarctica}}},
+  author = {Washam, Peter and Schmidt, Britney E. and Loose, Brice and Horgan, Huw J. and Stewart, Craig L. and Stevens, Craig L. and Lawrence, Justin D. and Hulbe, Christina L. and Mullen, Andrew D. and Quartini, Enrica S. and Hurwitz, Benjamin},
+  date = {2026-04-17},
+  journaltitle = {Communications Earth \& Environment},
+  shortjournal = {Commun Earth Environ},
+  publisher = {Nature Publishing Group},
+  issn = {2662-4435},
+  doi = {10.1038/s43247-026-03508-w},
+  abstract = {Melting from oceanic heat and basal lubrication from subglacial freshwater are fundamental elements of the West Antarctic Ice Sheet mass balance that are poorly constrained. The ice streams feeding the Ross Ice Shelf grounding line periodically start and stall over decadal to century timescales due to shifts in these forcings. Here, we present in situ hydrographic measurements, noble gas abundances, and helium isotope ratios from a large subglacial channel melted into the base of the stagnant Kamb Ice Stream. These data identify an outflowing plume containing Subglacial Freshwater admixture from upstream volcanic activity and anomalously warm inflowing seawater containing Circumpolar Deep Water from the Ross Sea, with oceanic heat delivery outpacing that from volcanism. Our results directly quantify both variables that affect the mass balance of the Ross Ice Shelf’s sensitive interconnected ice streams and highlight the vulnerability of this region of West Antarctica to increased forcing from a warming climate.},
+  langid = {english},
+  keywords = {Cryospheric science,Physical oceanography}
+}
