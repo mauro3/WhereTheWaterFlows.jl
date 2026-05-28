@@ -20,11 +20,11 @@ Delaney et al. (2023), Ogier et al. (2025), Horgan et al. (2025), Washam et al. 
 The Shreve hydraulic potential φ used for routing is
 
 ```
-φ = f · H · (ρᵢ/ρ_w) + (z_s − H)
+φ = f · H · (ρ_w/ρ_w) + (z_s − H)
 ```
 
 where *H* is ice thickness, *z_s* is surface elevation, *f* is the flotation
-fraction, and *ρᵢ*, *ρ_w* are ice and water density (units in m water level).
+fraction, and *ρ_i*, *ρ_w* are ice and water density (units in m water level).
 At full flotation (*f* = 1) this is the standard Shreve potential.  The bed elevation is z_b = z_s − H.
 
 Water flows down the gradient of φ, not down the gradient of the bed.
@@ -100,7 +100,7 @@ Only populated when `ctch_sinks` is non-empty:
 | `surfdem`, `beddem` | — | Surface and bed elevation arrays (same size) |
 | `dx` | — | Grid spacing in metres (must be equal in x and y) |
 | `floatfrac` | `1` | Flotation fraction (scalar or array); `1` = full flotation |
-| `source` | `ones(size(surfdem))` | Meltwater input per unit area [m/s]; multiply by `dx²` to get m³/s per cell |
+| `source` | `ones(size(surfdem))` | Meltwater input per unit area [m/s] |
 | `mask` | all `true` | Active routing mask; `false` cells are set to NaN in φ |
 | `gamma` | `GAMMA` (≈−0.31) | Röthlisberger constant controlling deflection strength; set to `0` to disable |
 | `avoid_sc` | `false` | If `true`, supercooled cells become barriers (mass is lost there) |
@@ -112,7 +112,8 @@ Only populated when `ctch_sinks` is non-empty:
 
 `ctch_sinks` groups routing sinks for per-outlet masks and flux aggregation.
 Each group must contain only *actual routing cells*. Typically these would be cells from
-`out.routing.sinks` but also interior cells can be used. Using arbitrary boundary indices can silently include
+`out.routing.sinks` but also interior cells can be used (e.g. for the catchment of a subglacial lake).
+Using arbitrary boundary indices can silently include
 inactive cells (for example off-glacier boundary cells that are barriers), which
 can produce zero-flux groups and misleading accounting.
 
@@ -123,23 +124,31 @@ The robust pattern for partitioning sinks at the routing boundary is a two-step 
 2. Partition `out.routing.sinks` into outlet groups.
 3. Re-run routing (or Monte Carlo) with this partition as `ctch_sinks`.
 
-```julia
+This examples shows the 
+```@example ctch_sinks
 # Step 1: discover active sinks
 out_first = WWFS.waterflows_subglacial(surfdem, beddem, dx; gamma=WWFS.GAMMA)
 all_sinks = out_first.routing.sinks
 
 # Step 2: partition sinks by position (simple example)
-sw_sinks = filter(ci -> ci[1] <= nx ÷ 2 && ci[2] <= ny ÷ 2, all_sinks)
-ne_sinks = filter(ci -> ci[1] >  nx ÷ 2 && ci[2] >  ny ÷ 2, all_sinks)
-ctch_sinks = [sw_sinks, ne_sinks]
+nx, ny = size(surfdem)
+south_sinks = filter(ci -> ci[1] <= nx ÷ 2 && ci[2] == 1, all_sinks)
+east_sinks = filter(ci -> ci[1] === 1 && ci[2] >  ny ÷ 2, all_sinks)
+ctch_sinks = [south_sinks, east_sinks]
 
-# Optional check for an exhaustive non-overlapping partition
-@assert length(all_sinks) == sum(length.(ctch_sinks))
+# Optional check for an exhaustive non-overlapping partition (actually not the case here)
+#@assert length(all_sinks) == sum(length.(ctch_sinks))
 
 # Step 3: run again with outlet groups
 out = WWFS.waterflows_subglacial(surfdem, beddem, dx;
                                  gamma=WWFS.GAMMA,
                                  ctch_sinks=ctch_sinks)
+
+# plot the two catchments with main drainage pathways overlain
+c = out.sink_catchments.masks[2].*2.0 .+ out.sink_catchments.masks[1]; c[c.==0].=NaN
+f = heatmap(x, y, c)
+heatmap!(x, y, out.routing.area.total.>1e6, alpha=0.3, transparency=true)
+f
 ```
 
 For exhaustive outlet partitions, groups are typically non-overlapping. The API
@@ -182,7 +191,7 @@ See [WhereTheWaterFlows.Randomly (WWFR)](@ref RandomlyGuide) and
 - Supercooling diagnostics (`sc_locs`) are a model approximation and should be
   interpreted with care.
 - Negative `dissipation_melt_rate` can occur where the breach algorithm routes
-  water slightly uphill out of a filled depression; the corresponding freeze
-  upstream balances this.
+  water uphill out of a filled depression; the corresponding melt
+  going into the depression balances this.
 
 See also: [Tutorial](@ref), [Examples](@ref ExamplesPage), and [API Reference](@ref APIReference).

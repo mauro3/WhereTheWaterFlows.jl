@@ -55,7 +55,7 @@ end
 
 """
     plt_area(x, y, area; prefn=log10, sinks=[], threshold=Inf, colorbar=true,
-             colorbar_label="log10(upstream_area)", colorbar_kwargs=(;))
+             colorbar_label="log₁₀(upstream_area)", colorbar_kwargs=(;))
 
 Plot uparea, or another variable.
 
@@ -73,7 +73,7 @@ Kwargs:
         sinks = CartesianIndex{2}[],
         threshold = Inf,
         colorbar = true,
-        colorbar_label = "log10(Upstream area)",
+        colorbar_label = "log₁₀(Upstream area)",
         colorbar_kwargs = (;)
     )
 end
