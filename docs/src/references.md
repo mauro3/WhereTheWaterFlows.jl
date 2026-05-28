@@ -1,4 +1,4 @@
-# References
+# [References](@id refs)
 
 ## Core methods
 

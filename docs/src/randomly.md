@@ -257,7 +257,7 @@ For subaerial runs, aggregated outputs:
 - `catchments`: per-sink occurrence frequency map (0-1)
 - `catchment_fluxes`: per-sink vectors of sample fluxes
 
-### subglacial aggregate outputs (`make_fns_subglacial`)
+### [Subglacial aggregate outputs (`make_fns_subglacial`)](@id SubglAggr)
 
 The table below consolidates all fields produced by `aggr = map_mc(...)` when
 using `make_fns_subglacial`.

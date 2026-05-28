@@ -9,21 +9,19 @@ the package.  It demonstrates the full WWFS → WWFR workflow:
    `WhereTheWaterFlows.Randomly`.
 
 **Data source:** Grab (2020), incorporating SwissTopo SwissALTI3D surface
-data (OGD).
-Files are stored under `examples/data/` in the package (CC BY 4.0).
+data (see [References](@ref refs)). Files are stored under `examples/data/`.
 
 ## Loading the data
 
 Unteraar glacier lies in the Bernese Oberland, Switzerland.  The DEM covers a
-539 × 459 grid of cells at 20 m spacing in the Swiss LV95 coordinate system.  The
-western edge (low x-index, low easting) is the glacier terminus.
+539 × 459 grid of cells at 20 m spacing in the Swiss LV95 coordinate system.
 
 ```@example unteraar
-using WhereTheWaterFlows, Statistics
+using WhereTheWaterFlows, Statistics, CairoMakie
 using Random; Random.seed!(42)
 
-WWFS = WhereTheWaterFlows.Subglacially
-WWFR = WhereTheWaterFlows.Randomly
+const WWFS = WhereTheWaterFlows.Subglacially
+const WWFR = WhereTheWaterFlows.Randomly
 
 datadir = joinpath(Base.pkgdir(WhereTheWaterFlows), "examples", "data")
 
@@ -42,20 +40,25 @@ dx = x[2] - x[1]   # ≈ 20 m (LV95 easting spacing)
 println("Grid: $(nx)×$(ny), dx = $(dx) m")
 ```
 
-The bed DEM has `NaN` everywhere outside the glacier (rock / no-data):
+The bed DEM has `NaN` everywhere outside the glacier (plotted white):
 
 ```@example unteraar
-nan_frac = sum(isnan.(beddem)) / length(beddem)
-println("Fraction of NaN bed cells: $(round(nan_frac, digits=3))")
+fig = Figure(size=(900, 340))
+ax1 = Axis(fig[1,1]; aspect=1, xlabel="Easting (m)", ylabel="Northing (m)")
+ax2 = Axis(fig[1,3]; aspect=1, xlabel="Easting (m)")
+pl = heatmap!(ax1, x, y, surfdem; colormap=:viridis)
+Colorbar(fig[1,2], pl, label="Surface elevation (m a.s.l.)")
+pl = heatmap!(ax2, x, y, surfdem.-beddem;  colormap=:inferno)
+Colorbar(fig[1,4], pl, label="Ice thickness (m)")
+fig
 ```
 
 ## Preparing inputs
 
 `NaN` bed values would propagate into the Shreve hydraulic potential
-φ = fH(ρᵢ/ρ_w) + z_b, where H = z_s − z_b is ice thickness.
-We replace off-glacier bed values with the surface elevation (zero ice
-thickness) so that φ stays finite everywhere; the routing `mask` then restricts
-actual routing to glacier cells only.
+φ = fH(ρᵢ/ρ_w) + z_b, where H = z_s − z_b is ice thickness. We set the
+source to zero outside the glacier but route the water on the full DEM, i.e.
+it can leave the glacier.
 
 ```@example unteraar
 # Replace NaN-bed cells with surface elevation (zero thickness → φ stays finite)
@@ -63,11 +66,9 @@ beddem_clean = copy(beddem)
 glacier      = .!isnan.(beddem)
 beddem_clean[.!glacier] .= surfdem[.!glacier]
 
-# Routing mask: only route under ice
-mask = glacier
-
-# Uniform 1 mm/day basal melt source, converted to m/s
-source = fill(Float32(1e-3 / 86400), nx, ny)
+# Uniform 1 cm/day melt source on glacier only, converted to m/s
+source = fill(Float32(1e-2 / 86400), nx, ny)
+source[.!glacier] .= 0
 
 println("Ice-covered cells: $(sum(glacier)) / $(length(glacier)) ",
         "($(round(100*mean(glacier), digits=1)) %)")
@@ -77,15 +78,15 @@ println("Ice-covered cells: $(sum(glacier)) / $(length(glacier)) ",
 
 `waterflows_subglacial` routes water according to the Shreve hydraulic
 potential, with optional Röthlisberger pressure-melting-point deflection
-controlled by `gamma`.  Setting `gamma = WWFS.GAMMA` (≈ −0.31) enables the
-full deflection model.
+controlled by `gamma`.  Setting `gamma = WWFS.GAMMA` (≈ −0.31, the physical
+value) enables the full deflection model.
 
 ```@example unteraar
 out = WWFS.waterflows_subglacial(
     surfdem, beddem_clean, dx,
     1.0,      # floatfrac: full flotation
-    source,   # basal melt source [m/s]
-    mask;
+    source   # basal melt source [m/s]
+    ;
     gamma       = WWFS.GAMMA,
     drain_pits  = true,
     bnd_as_sink = true,
@@ -105,20 +106,22 @@ println("Max lake depth (free surface) [m]:   ",
         round(maximum(out.lakes.depth_free_surface[glacier]), digits=1))
 ```
 
+The flux can be visualised with the provided plotting function
+```@example unteraar
+plt_area(x, y, area.total; colorbar_label="log10(discharge (m3/s))")
+```
+
 **Interpreting the output:**
 
-- **Sinks** are located both at the terminus (western domain boundary, where
-  `bnd_as_sink=true` creates outlets) and along the glacier margins (where
-  `nan_as_sink=true` turns cells adjacent to the ice edge into outlets).  The
-  spread across x-indices reflects the irregular glacier geometry.
+- **Sinks** are located on the domain boundary, thus streams leave the
+  glacier area and flow through the periglacial region until they reach
+  the domain boundary. There are no *pits* as they are all filled.
 - **Supercooled cells** arise where the bed slope opposing ice flow is steep
   enough for the Röthlisberger criterion to be met.  With `avoid_sc=false`
   (default), water still routes through these cells; the physical interpretation
   is that R-channel flow is suppressed there but distributed flow continues.
-- **Lake depths** identify where subglacial water would pond if it could not
-  escape.  `drain_pits=true` routes water out of all closed depressions, so no
-  water actually accumulates, but the depth diagnostic reveals potential
-  ponding sites.
+- **Lake depths** identify where subglacial water would pond before it can continue
+  to flow downstream. But here less than 1% of the cells experience ponding.
 - **Discharge units:** `area.total` accumulates `source × dx²` (m³/s) plus
   dissipation- and pressure-melt contributions along each flow path.
 
@@ -126,7 +129,7 @@ println("Max lake depth (free surface) [m]:   ",
 
 Bed topography beneath a glacier is derived from geophysical surveys and
 carries significant uncertainty.  Here we propagate a 10 % relative bed
-uncertainty with a 500 m spatial correlation length through the routing model
+uncertainty with a 100 m spatial correlation length through the routing model
 using the WWFR workflow:
 
 1. Describe each uncertain field with `WWFR.Uncertainty`.
@@ -134,9 +137,12 @@ using the WWFR workflow:
 3. Run the Monte Carlo loop with `WWFR.map_mc`.
 
 ```@example unteraar
-# Surface treated as exact; bed carries 10 % relative uncertainty, 500 m corr. length
+# Surface treated as exact; bed carries 10 % relative uncertainty, 100 m corr. length,
+# but only within the glacier boundary
 surfdem_uc   = WWFR.Uncertainty()
-beddem_uc    = WWFR.Uncertainty(reluc=0.1, correlation_length=500.0)
+beddem_uc    = WWFR.Uncertainty(reluc=0.1.*glacier,
+                                correlation_length=100.0,
+                                covariance_fn=WWFR.exponential_kernel)
 floatfrac_uc = WWFR.Uncertainty()
 source_uc    = WWFR.Uncertainty()
 
@@ -149,11 +155,10 @@ model, sample, reduce! = WWFR.make_fns_subglacial(
     floatfrac_arr, floatfrac_uc,
     source,       source_uc,
     [];                        # no explicit catchment-sink tracking here
-    mask  = mask,
     gamma = WWFS.GAMMA,
 )
 
-aggr = WWFR.map_mc(model, sample, reduce!, 5; progressmeter=false)
+aggr = WWFR.map_mc(model, sample, reduce!, 10; progressmeter=false)
 
 println("MC samples completed:        ", aggr.n_samples[])
 println("Mean max discharge [m³/s]:   ",
@@ -165,8 +170,14 @@ println("Max lake-occurrence fraction:",
 ```
 
 !!! note
-    Five samples is intentionally small for documentation build speed.
+    Ten samples is intentionally small for documentation build speed.
     For production use, 50–200 samples gives more stable statistics.
+
+
+The mean flux can be visualised with the provided plotting function
+```@example unteraar
+plt_area(x, y, aggr.areas_total)
+```
 
 ## Interpreting the MC output
 
@@ -174,8 +185,7 @@ println("Max lake-occurrence fraction:",
 
 For the full subglacial aggregate-output API (including shapes/types and
 reduction semantics), see the consolidated table in
-[WhereTheWaterFlows.Randomly (WWFR)](@ref RandomlyGuide), section
-"Consolidated subglacial aggregate outputs (`make_fns_subglacial`)".
+[Randomly: Subglacial aggregate outputs](@ref SubglAggr).
 
 | Field | Contents |
 |-------|----------|
@@ -194,18 +204,11 @@ println("Mean supercooling frequency (glacier cells): $(round(sc_frac,   sigdigi
 println("Mean lake-occurrence fraction (glacier cells): $(round(lake_frac, sigdigits=3))")
 ```
 
-Areas where `sc_locs` approaches 1 are structurally supercooled — the
-pressure-melting effect is robust to bed uncertainty.  Areas where it is near 0
-are supercooled only in some realizations, indicating that the effect is
-sensitive to bed geometry there.
-
 ## Visualising results
 
 Add `CairoMakie` to plot the spatial fields:
 
 ```@example unteraar
-using CairoMakie
-
 fig = Figure(size=(1100, 340))
 ax1 = Axis(fig[1,1]; title="Mean discharge [m³/s]",
            xlabel="Easting (m)", ylabel="Northing (m)")
@@ -214,21 +217,11 @@ ax2 = Axis(fig[1,2]; title="Supercooling frequency",
 ax3 = Axis(fig[1,3]; title="Lake-occurrence frequency",
            xlabel="Easting (m)")
 
-heatmap!(ax1, x, y, log10.(max.(aggr.areas_total,        1e-10)); colormap=:viridis)
-heatmap!(ax2, x, y, aggr.sc_locs;                                 colormap=:inferno, colorrange=(0,1))
-heatmap!(ax3, x, y, aggr.lake_mask_fixed_surface;                 colormap=:Blues,   colorrange=(0,1))
+heatmap!(ax1, x, y, log10.(aggr.areas_total);     colormap=:viridis)
+heatmap!(ax2, x, y, aggr.sc_locs;                 colormap=:rain)
+heatmap!(ax3, x, y, aggr.lake_mask_fixed_surface; colormap=:Blues)
 
 fig
 ```
 
-To visualize the single deterministic run instead, use `out.routing.area.total`,
-`out.pressmelt.sc_locs`, and `out.lakes.depth_fixed_surface` in place of the
-MC aggregates.
-
-## Data attribution
-
-- This example uses the Grab (2020) Swiss Glacier Thickness dataset and
-  SwissTopo SwissALTI3D data under OGD terms; see [References](@ref).
-
-See also: [Subglacially](@ref SubglaciallyGuide), [Randomly](@ref RandomlyGuide),
-[Tutorial](@ref), and [API Reference](@ref APIReference).
+More examples can be found in the `examples/` directory, see [Example scripts](@ref ExamplesPage).
