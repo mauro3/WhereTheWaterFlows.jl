@@ -56,12 +56,16 @@ See the [Tutorial](@ref) for a full walkthrough of the core API.
 
 ## Algorithm
 
+![D8 algorithm illustration](./d8-algo.png)
+
 The core routing uses the D8 algorithm: each cell drains to whichever of its
-eight neighbours has the steepest downward gradient.  Local minima (pits) are
+eight neighbours has the steepest downward gradient. The illustration above shows cells of a DEM overlain on a "real" topography
+and the direction of routing.
+
+Local minima (pits) are
 handled by default via a breach-type algorithm that finds the lowest spillway
 for each pit and reverses flow along that path, so the input DEM does not need
 to be pre-filled (or pre-processed in any other way). Both algorithms are described by O’Callaghan & Mark (1984).
-
 The flow is accumulated by recursively traversing the drainage tree, the algorithm has O(n) complexity where n is the number of cells (Braun & Willett, 2013).
 On large DEMs the recursion depth can exceed the default Julia call-stack size and cause
 a `StackOverflowError`.
