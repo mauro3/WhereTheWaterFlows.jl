@@ -52,7 +52,13 @@ out = waterflows(dem)
 maximum(out.area), length(out.sinks)
 ```
 
-See the [Tutorial](@ref) for a full walkthrough of the core API.
+See the [Tutorial](@ref) for a full walk-through of the core API.
+
+## Where to ask questions and how to contribute
+
+Questions and general discussions can be posted on [https://github.com/mauro3/WhereTheWaterFlows.jl/discussions](https://github.com/mauro3/WhereTheWaterFlows.jl/discussions).
+
+You are welcome to contribute to WWF by filing issues and making pull-requests; please first have a look at [https://github.com/mauro3/WhereTheWaterFlows.jl/blob/master/CONTRIBUTING.md](https://github.com/mauro3/WhereTheWaterFlows.jl/blob/master/CONTRIBUTING.md).
 
 ## Algorithm
 
@@ -69,3 +75,5 @@ to be pre-filled (or pre-processed in any other way). Both algorithms are descri
 The flow is accumulated by recursively traversing the drainage tree, the algorithm has O(n) complexity where n is the number of cells (Braun & Willett, 2013).
 On large DEMs the recursion depth can exceed the default Julia call-stack size and cause
 a `StackOverflowError`.
+
+
