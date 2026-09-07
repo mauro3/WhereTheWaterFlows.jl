@@ -17,7 +17,7 @@ and can quantify uncertainties using a Monte Carlo approach.
 WhereTheWaterFlows has been used in glaciological contexts, see [References](https://mauro3.github.io/WhereTheWaterFlows.jl/dev/references/), but could be useful in other settings as well.
 
 It implements the D8 flow routing algorithm combined with a
-breach-type basin-filling algorithm as descibed by [1].  Its implementation uses a
+breach-type basin-filling algorithm as described by [1].  Its implementation uses a
 O(n), recursive algorithm [2].
 The model's preformace is on par or better than other routing tools according to our
 take-them-with-a-grain-of-salt [benchmarks](benchmarks/README.md).
