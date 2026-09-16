@@ -73,7 +73,7 @@ large and thus warrant quantification.
 
 Several mature tools exist for hydrological flow routing on DEMs, examples include:
 
-- **Geomorphemetry.jl** is a Julia package providing many geomorphic analysis tools, among them flow rouing. [@PronkGeomorphometryjlAnalyzingVisualizing2026]
+- **Geomorphometry.jl** is a Julia package providing many geomorphic analysis tools, among them flow routing. [@PronkGeomorphometryjlAnalyzingVisualizing2026]
 - **GRASS GIS** (command line/C/Python/QGIS), the component `r.watershed` implements
   several water routing and related algorithms. [@GRASSDevelopmentTeamGRASS2026]
 - **TauDEM** (command line/ArcGIS) provides command-line tools designed for large-scale catchment
@@ -109,7 +109,7 @@ there is `map_mc(model, sample, reduce!, n)` which runs the `model` function (i.
 on `n` samples of surface, bed and flotation fractions fields and reduces the results with `reduce!`
 (to avoid huge data volumes). The uncertainty in the input fields is modelled using Gaussian Random Fields,
 which provide spatially correlated random noise. The random fields are generated using a FFT-based method [@RassEfficientParallelRandom2019]. However, the software design allows to couple
-more sopisticated, external geostatistical models to generete the uncertainty fields.
+more sophisticated, external geostatistical models to generate the uncertainty fields.
 
 From the outset, WWF has been developed with subglacial applications in mind where uncertainties in inputs are large and would likely dominate over routing algorithm choices.
 Therefore, the simplest routing algorithm, D8, was deemed sufficient and implemented.
@@ -176,6 +176,6 @@ heavily edited and rewritten by the two authors.
 Development of WWF was partly funded by the European Space Agency's project 4DAntarctica (ESA: Grant 4000128611/19/I-DT)
 and by the Swiss National Science Foundation's project DIWING (grant nr. 212061).
 
-We thank the reviewers, Xin Kai Lee [@xkykai](https://github.com/xkykai) and Maarten Pronk [@evetion](https://github.com/evetion), and the editor Jayaram Hariharan [@elbeejay](https://github.com/elbeejay) for their inputs and for their time.
+We thank the reviewers, Xin Kai Lee [@xkykai](https://github.com/xkykai) and Maarten Pronk [@evetion](https://github.com/evetion), and the editor Jayaram Hariharan [@elbeejay](https://github.com/elbeejay) for their suggestions, inputs and for their time.
 
 # References
