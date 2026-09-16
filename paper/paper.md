@@ -57,8 +57,8 @@ our [benchmarks](https://github.com/mauro3/WhereTheWaterFlows.jl/blob/master/ben
 Hydrological flow routing on DEMs is a fundamental operation in geosciences:
 it underpins catchment delineation, runoff modelling, subglacial hydrology,
 and landscape-evolution studies. Software implementations of flow routing date
-back to @OCallaghanExtractionDrainageNetworks1984 and, nowadays, many implementations exist. However,
-`WWF` is the first, and to our knowledge, only native Julia package for this task.
+back to @OCallaghanExtractionDrainageNetworks1984 and, nowadays, many implementations exist.
+`WWF` is the first native Julia package for this task.
 
 WWF is suitable for any domain where DEM-based flow analysis is required.
 However, the package has been designed with glaciological applications in mind where it
@@ -73,6 +73,7 @@ large and thus warrant quantification.
 
 Several mature tools exist for hydrological flow routing on DEMs, examples include:
 
+- **Geomorphemetry.jl** is a Julia package providing many geomorphic analysis tools, among them flow rouing. [@PronkGeomorphometryjlAnalyzingVisualizing2026]
 - **GRASS GIS** (command line/C/Python/QGIS), the component `r.watershed` implements
   several water routing and related algorithms. [@GRASSDevelopmentTeamGRASS2026]
 - **TauDEM** (command line/ArcGIS) provides command-line tools designed for large-scale catchment
@@ -113,7 +114,8 @@ more sopisticated, external geostatistical models to generete the uncertainty fi
 From the outset, WWF has been developed with subglacial applications in mind where uncertainties in inputs are large and would likely dominate over routing algorithm choices.
 Therefore, the simplest routing algorithm, D8, was deemed sufficient and implemented.
 Incidentally, the ensemble of flow paths resulting from stochastic routing exhibits an effectively diffusive flow (which is what more sophisticated routing schemes, such as D-inf provide).
-Even though subglacial routing was the motivation to develop WWF, the main WWF module and the `Randomly` submodule were designed to be usable and useful in general settings.
+Although subglacial routing was the motivation to develop WWF, the main WWF module and the `Randomly` submodule were designed, again from the outset, to be usable and useful for general settings.
+Making WWF useful for general settings also motivated our choice to keep the subglacial and stochastic functionality tucked away in submodules, which makes it clear that these are optional features and that WWF can be used without them.
 The API of WWF is intentionally kept simple and is based around using generic vectors and arrays as inputs and no custom datatypes are defined (with the exception of the `Uncertainty` struct).
 This makes WWF interoperable with many grid based Julia packages, in particular georeferenced raster data of the standard package [`Rasters.jl`](https://github.com/rafaqz/Rasters.jl) can be used and leads to georeferenced WWF outputs.
 
