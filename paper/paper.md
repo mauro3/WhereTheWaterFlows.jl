@@ -176,4 +176,6 @@ heavily edited and rewritten by the two authors.
 Development of WWF was partly funded by the European Space Agency's project 4DAntarctica (ESA: Grant 4000128611/19/I-DT)
 and by the Swiss National Science Foundation's project DIWING (grant nr. 212061).
 
+We thank the reviewers, Xin Kai Lee [@xkykai](https://github.com/xkykai) and Maarten Pronk [@evetion](https://github.com/evetion), and the editor Jayaram Hariharan [@elbeejay](https://github.com/elbeejay) for their inputs and for their time.
+
 # References
