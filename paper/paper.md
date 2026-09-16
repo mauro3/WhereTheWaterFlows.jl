@@ -117,7 +117,7 @@ Incidentally, the ensemble of flow paths resulting from stochastic routing exhib
 Although subglacial routing was the motivation to develop WWF, the main WWF module and the `Randomly` submodule were designed, again from the outset, to be usable and useful for general settings.
 Making WWF useful for general settings also motivated our choice to keep the subglacial and stochastic functionality tucked away in submodules, which makes it clear that these are optional features and that WWF can be used without them.
 The API of WWF is intentionally kept simple and is based around using generic vectors and arrays as inputs and no custom datatypes are defined (with the exception of the `Uncertainty` struct).
-This makes WWF interoperable with many grid based Julia packages, in particular georeferenced raster data of the standard package [`Rasters.jl`](https://github.com/rafaqz/Rasters.jl) can be used and leads to georeferenced WWF outputs.
+This makes WWF interoperable with many grid based Julia packages, in particular georeferenced raster data of the standard packages [`Rasters.jl`](https://github.com/rafaqz/Rasters.jl) and [GeoArrays.jl](https://github.com/evetion/GeoArrays.jl) can be used and leads to georeferenced WWF outputs (except for `Randomly` workflows which currently return normal arrays).
 
 # Example
 
