@@ -103,13 +103,19 @@ on sediment transport and subglacial melt calculations.
 For subglacial routing, the main function is `waterflows_subglacial(surfdem, beddem, dx, f)`
 with surface and bed DEMs, grid spacing and water pressure as flotation fraction as inputs.
 In the subglacial setting, the `beddem` and `f` input fields have large uncertainties associated with them.
-This spurred the development of the Monte Carlo based uncertainty quantification in WWF. The main function
+This spurred the development of the Monte Carlo based uncertainty quantification in WWF (which can be used independently of subglacial routing). The main function
 there is `map_mc(model, sample, reduce!, n)` which runs the `model` function (i.e. the water routing)
 on `n` samples of surface, bed and flotation fractions fields and reduces the results with `reduce!`
 (to avoid huge data volumes). The uncertainty in the input fields is modelled using Gaussian Random Fields,
 which provide spatially correlated random noise. The random fields are generated using a FFT-based method [@RassEfficientParallelRandom2019]. However, the software design allows to couple
 more sopisticated, external geostatistical models to generete the uncertainty fields.
 
+From the outset, WWF has been developed with subglacial applications in mind where uncertainties in inputs are large and would likely dominate over routing algorithm choices.
+Therefore, the simplest routing algorithm, D8, was deemed sufficient and implemented.
+Incidentally, the ensemble of flow paths resulting from stochastic routing exhibits an effectively diffusive flow (which is what more sophisticated routing schemes, such as D-inf provide).
+Even though subglacial routing was the motivation to develop WWF, the main WWF module and the `Randomly` submodule were designed to be usable and useful in general settings.
+The API of WWF is intentionally kept simple and is based around using generic vectors and arrays as inputs and no custom datatypes are defined (with the exception of the `Uncertainty` struct).
+This makes WWF interoperable with many grid based Julia packages, in particular georeferenced raster data of the standard package [`Rasters.jl`](https://github.com/rafaqz/Rasters.jl) can be used and leads to georeferenced WWF outputs.
 
 # Example
 
@@ -139,7 +145,7 @@ synthetic topography.\label{fig:area}](upslope_area.png)
 @HorganWestAntarcticGroundingzone2025 used flow routing to delineate the subglacial catchment of the Kamb Ice Stream.
 @WashamOceanicVolcanicHeat2026 demonstrated that volcanic heat sources within the Kamb catchment likely
 contribute to enhanced subglacial melt.
-@OgierPotentialGlacierContributions2026 (in review) used the package to assess the potential contribution of subglacial water reservoirs to the catastrophic 2024 La Bérarde flood.
+@OgierPotentialGlacierContributions2026 used the package to assess the potential contribution of subglacial water reservoirs to the catastrophic 2024 La Bérarde flood.
 
 WWF is used for teaching in the lecture courses "Physics of Glaciers" at ETH Zurich (Switzerland) and
 "Introduction to geoscientific programming" at Uni Mainz (Germany).
