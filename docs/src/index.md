@@ -17,6 +17,19 @@ The package currently has three modules:
 
 The two submodules can be used independently of each other or combined.
 
+## When to use WWF
+
+Hydrological flow routing on DEMs is a fundamental operation in geosciences:
+it underpins catchment delineation, runoff modelling, subglacial hydrology,
+and landscape-evolution studies.
+
+WWF is suitable for any domain where DEM-based flow analysis is required.
+However, the package has been designed with glaciological applications in mind (see [References](@ref refs)), and thus also has non-traditional features:
+
+- Shreve potential routing at the glacier bed
+- uncertainty quantification as glacier bed DEMs and Shreve-potential are not well known
+
+
 ## Installation
 
 ```julia
