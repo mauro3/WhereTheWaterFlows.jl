@@ -15,6 +15,7 @@ The package currently has three modules:
 - `WhereTheWaterFlows.Subglacially`: subglacial hydraulic-potential routing (WWFS)
 - `WhereTheWaterFlows.Randomly`: Monte Carlo wrappers for uncertainty studies (WWFR)
 
+The two submodules can be used independently of each other or combined.
 
 ## Installation
 

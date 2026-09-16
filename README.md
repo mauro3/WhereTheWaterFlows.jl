@@ -41,6 +41,10 @@ plt_area(x, y, out.area)
 
 For details, see the [documentation](https://mauro3.github.io/WhereTheWaterFlows.jl).
 
+# Other Julia packages
+
+[Geomorphometry.jl](https://github.com/Deltares/Geomorphometry.jl) includes flow routing (among other functionality) using the FD8 algorithm which includes D8. 
+
 # References
 [1] O’Callaghan, J. and Mark, D.: The extraction of drainage networks
     from digital elevation data, Comput. Vision Graph., 28, 323–344,
