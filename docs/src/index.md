@@ -32,6 +32,8 @@ However, the package has been designed with glaciological applications in mind (
 
 ## Installation
 
+Using Julia v1.12 or later:
+
 ```julia
 using Pkg
 Pkg.add("WhereTheWaterFlows")
