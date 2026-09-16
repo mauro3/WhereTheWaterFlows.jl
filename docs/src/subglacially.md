@@ -20,12 +20,12 @@ Delaney et al. (2023), Ogier et al. (2025), Horgan et al. (2025), Washam et al. 
 The Shreve hydraulic potential φ used for routing is
 
 ```
-φ = f · H · (ρ_w/ρ_w) + (z_s − H)
+φ = f · H · (ρ_i/ρ_w) + (z_s − H)
 ```
 
 where *H* is ice thickness, *z_s* is surface elevation, *f* is the flotation
 fraction, and *ρ_i*, *ρ_w* are ice and water density (units in m water level).
-At full flotation (*f* = 1) this is the standard Shreve potential.  The bed elevation is z_b = z_s − H.
+At full flotation (*f* = 1) this is the standard Shreve potential where subglacial water pressure equals ice overburden pressure.  The bed elevation is z_b = z_s − H.
 
 Water flows down the gradient of φ, not down the gradient of the bed.
 
