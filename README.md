@@ -1,3 +1,6 @@
+**This is the branch containing the JOSS paper. It's in the directory `paper/`. Use the `master` branch for code!**
+
+
 # WhereTheWaterFlows
 
 [![](https://img.shields.io/badge/docs-stable-blue.svg)](https://mauro3.github.io/WhereTheWaterFlows.jl/stable)
