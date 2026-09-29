@@ -10,6 +10,7 @@ Filters over ±window.
 """
 function boxcar(A::AbstractArray{T,N}, window::AbstractArray{<:Integer,N},
                 weights::AbstractArray{<:Number,N}=ones(size(A)...)) where {T,N}
+    Base.require_one_based_indexing(A, window, weights)
     out = similar(A)
     R = CartesianIndices(size(A))
     I1, Iend = first(R), last(R)

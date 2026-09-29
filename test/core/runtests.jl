@@ -505,5 +505,20 @@ end
 #     @test_throws TaskFailedException waterflows(dem, drain_pits=false)
 # end
 
+@testset "One-based input grids" begin
+    WWF = WhereTheWaterFlows
+    dem = [3.0 2 1; 4 5 2; 6 7 3]
+    shifted = WWF.Origin(0, 0)(copy(dem))
+    source = ones(3, 3)
+    @test_throws ArgumentError waterflows(shifted)
+    @test_throws ArgumentError waterflows(dem, shifted)
+    @test_throws ArgumentError waterflows(dem, (source, shifted))
+    @test_throws ArgumentError waterflows((dem, shifted), source)
+    # Internal offset-indexed pit bookkeeping remains supported.
+    out = waterflows(dem; drain_pits=false)
+    @test firstindex(out.pits) == length(out.sinks) + 1
+    @test sum(out.area[out.sinks]) + sum(out.area[out.pits]) == length(dem)
+end
+
 #################################
 include(joinpath(@__DIR__, "postproc.jl"))
