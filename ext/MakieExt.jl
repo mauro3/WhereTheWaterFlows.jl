@@ -17,8 +17,7 @@ end
 const WWF=WhereTheWaterFlows
 using Makie
 
-function _tight_axis_margins!()
-    ax = Makie.current_axis()
+function _tight_axis_margins!(ax=Makie.current_axis())
     if ax !== nothing
         ax.xautolimitmargin = (0.01, 0.01)
         ax.yautolimitmargin = (0.01, 0.01)
@@ -63,7 +62,7 @@ Kwargs:
 - pre-proc with `prefun`, typically and by default this is `log10`
 - if sinks (or pits) are passed, plot as points
 - threshold the area: do not plot pixels with area below threshold
-- add a colorbar with `colorbar=true`
+- add a colorbar on the right with `colorbar=true`
 - set colorbar label with `colorbar_label`
 - pass additional kwargs to `Colorbar` via `colorbar_kwargs`
 """
@@ -78,30 +77,35 @@ Kwargs:
     )
 end
 function Makie.plot!(plot::Plt_Area)
-    (;x, y, area, sinks, threshold, prefn, colorbar, colorbar_label, colorbar_kwargs) = plot
+    (;x, y, area, sinks, threshold, prefn) = plot
     pl = lift(a -> prefn[].(a), area)
     if threshold[]<Inf
         pl[][area[].<threshold[]] .= NaN
     end
     plt_sinks!(plot, x, y, sinks)
-    hm = heatmap!(plot, x, y, pl)
-    ax = Makie.current_axis()
-    if ax !== nothing
-        ax.xlabel = "x"
-        ax.ylabel = "y"
-    end
-    if colorbar[]
-        fig = Makie.current_figure()
-        if fig !== nothing
-            cbkw = colorbar_kwargs[]
-            if haskey(cbkw, :label)
-                Colorbar(fig[:, end+1], hm; cbkw...)
-            else
-                Colorbar(fig[:, end+1], hm; label=colorbar_label[], cbkw...)
-            end
+    heatmap!(plot, x, y, pl)
+    return plot
+end
+
+# At this stage Makie has resolved the target axis for both plt_area and plt_area!.
+function Makie.plot!(ax::Makie.Axis, plot::Plt_Area)
+    invoke(Makie.plot!, Tuple{Makie.AbstractAxis, Makie.AbstractPlot}, ax, plot)
+    ax.xlabel = "x"
+    ax.ylabel = "y"
+    _tight_axis_margins!(ax)
+    if plot.colorbar[]
+        gc = Makie.GridLayoutBase.gridcontent(ax)
+        if gc !== nothing && gc.parent !== nothing
+            layout, span, side = gc.parent, gc.span, gc.side
+            panel = GridLayout()
+            panel[1, 1] = ax
+            layout[span.rows, span.cols, side] = panel
+            cbkw = plot.colorbar_kwargs[]
+            hm = only(filter(p -> p isa Makie.Heatmap, plot.plots))
+            Colorbar(panel[1, 2], hm;
+                     label=plot.colorbar_label[], cbkw...)
         end
     end
-    _tight_axis_margins!()
     return plot
 end
 
