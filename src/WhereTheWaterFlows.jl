@@ -241,8 +241,9 @@ Water flow routing according to the D8 algorithm. Local minima are filled, by de
 a breach-type algorithm, this means that the input DEM does not need to be pre-filled.
 
 args:
-- `dem` -- the DEM (or hydro-potential); array
+- `dem` -- the DEM (or hydro-potential); array with one-based indices
 - `cellarea=fill!(similar(dem),1)` -- the source per cell, defaults to 1.
+     - input grids must have one-based indices; offset-indexed grids are not supported.
      - if `cellarea` is negative in places, flux may go to zero but not below.
      - in areas where no routing takes place, typically NaNs in the dem, `cellarea`
        is ignored.  This may affect mass-conservation.
@@ -288,6 +289,9 @@ function waterflows(dem, cellarea=fill!(similar(dem),1);
                     nan_as_sink=true,
                     extra_sinks=CartesianIndex{2}[],
                     extra_barriers=CartesianIndex{2}[])
+
+    Base.require_one_based_indexing((dem isa Tuple ? dem : (dem,))...)
+    Base.require_one_based_indexing((cellarea isa Tuple ? cellarea : (cellarea,))...)
 
     dir, nout, nin, sinks, pits, dem4drainpits, flowdir_extra_output =
         flowdir_fn(dem, bnd_as_sink, nan_as_sink, extra_sinks, extra_barriers)

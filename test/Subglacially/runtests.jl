@@ -105,4 +105,18 @@ end
         end
     end
 end
+
+@testset "One-based input grids" begin
+    WWFS = WWF.Subglacially
+    dem = [3.0 2 1; 4 5 2; 6 7 3]
+    shifted = WWF.Origin(0, 0)(copy(dem))
+    source = ones(3, 3)
+    for args in ((shifted, dem, 1.0), (dem, shifted, 1.0),
+                 (dem, dem, 1.0, shifted), (dem, dem, 1.0, 1, shifted),
+                 (dem, dem, 1.0, 1, source, shifted .> 0))
+        @test_throws ArgumentError WWFS.waterflows_subglacial(args...)
+    end
+    @test_throws ArgumentError WWFS.boxcar(shifted, ones(Int, 3, 3))
+end
+
 end

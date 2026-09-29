@@ -355,6 +355,8 @@ kwargs:
                 a vector of `CartesianIndex` or as `CartesianIndices`.  Note, sink-areas and catchments can be
                 overlapping, if desired.
 
+All input grids must have one-based indices; offset-indexed grids are not supported.
+
 Returns one nested NamedTuple with keys:
 - `routing`: fields `area, slen, dir, nout, nin, sinks, pits, c, bnds, phi`
   - `routing.area`: named tuple with `total`, `extra`, `dissipation_melt_rate`, `pressure_melt_rate`
@@ -375,6 +377,8 @@ function waterflows_subglacial(surfdem::AbstractMatrix, beddem::AbstractMatrix, 
                                drain_pits=true,
                                bnd_as_sink=true,
                                nan_as_sink=true)
+    Base.require_one_based_indexing(surfdem, beddem, source, mask)
+    floatfrac isa AbstractArray && Base.require_one_based_indexing(floatfrac)
     @assert size(surfdem)==size(beddem)==size(source) "Input arrays not of same size"
     @assert size(floatfrac)==() || size(floatfrac)==size(surfdem)  "Input arrays not of same size"
 
