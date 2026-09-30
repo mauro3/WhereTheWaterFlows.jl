@@ -1,5 +1,6 @@
 module Randomly
 using Test
+using Random
 using WhereTheWaterFlows
 
 const WWFR = WhereTheWaterFlows.Randomly
@@ -56,6 +57,47 @@ end
         sa_exponential = WWFR.make_grf_sampler(128, 128, WWFR.exponential_kernel, 10.0)
         @test size(sa_gaussian()) == (128, 128)
         @test size(sa_exponential()) == (128, 128)
+    end
+end
+
+@testset "Zero-uncertainty sampling" begin
+    field = Float32[1 2; NaN -3]
+    original = copy(field)
+    unused_kernel(args...) = error("Zero uncertainty must not build a GRF kernel")
+    for (absuc, reluc) in ((0, 0), (zeros(Float32, 2, 2), 0),
+                           (0, zeros(Float32, 2, 2)),
+                           (zeros(Float32, 2, 2), zeros(Float32, 2, 2)))
+        for bounds in ((-Inf, Inf), (2.0, 3.0), (-3.0, -2.0))
+            uc = WWFR.Uncertainty(; absuc, reluc, abs_bounds=bounds,
+                                   covariance_fn=unused_kernel)
+            sampler = WWFR.make_sampler(1.0, field, uc)
+            @test iszero(sampler())
+            result = WWFR.make_field_realization(field, sampler, uc)
+            @test isequal(result, field .+ Float32(clamp(0.0, bounds...)))
+            @test eltype(result) == Float32
+            @test result !== field
+            result[1, 1] = 100
+            @test isequal(field, original)
+            @test isequal(WWFR.make_field_realization(field, sampler, uc),
+                          field .+ Float32(clamp(0.0, bounds...)))
+        end
+    end
+
+    # Neither constructing nor invoking a zero-uncertainty sampler consumes RNG draws.
+    Random.seed!(42)
+    expected_draw = rand()
+    Random.seed!(42)
+    uc = WWFR.Uncertainty()
+    sampler = WWFR.make_sampler(1.0, field, uc)
+    WWFR.make_field_realization(field, sampler, uc)
+    @test rand() == expected_draw
+
+    # A nonzero entry in either uncertainty field still takes the GRF path.
+    nonzero = Float32[0 0; 0 1]
+    for (absuc, reluc) in ((nonzero, 0), (0, nonzero))
+        uc = WWFR.Uncertainty(; absuc, reluc, correlation_length=0.1,
+                               covariance_fn=unused_kernel)
+        @test_throws ErrorException WWFR.make_sampler(1.0, field, uc)
     end
 end
 

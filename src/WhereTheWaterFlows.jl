@@ -76,7 +76,7 @@ function dir2ind(dir, map_special_to_PIT=false)
 end
 
 "Translate a D8 direction number into a 2D vector."
-dir2vec(dir, map_special_to_PIT=false) = [dir2ind(dir, map_special_to_PIT).I...]
+dir2vec(dir, map_special_to_PIT=false) = SVector(dir2ind(dir, map_special_to_PIT).I)
 
 """
 Tests whether a cell `J` with flowdir `dirJ` flows into cell `I`.

@@ -17,7 +17,10 @@ Type to hold the uncertainty information for a field.
 - reluc=0 -- relative (to local field value) uncertainty as std (array or scalar)
 - correlation_length=1 -- ditto (scalar)
 - abs_bounds=(-Inf,Inf) -- values of the GRF are constrained to lie within these bounds (simple crop,
-                           after being scaled with absuc and reluc)
+                            after being scaled with absuc and reluc)
+
+When both uncertainties are zero (including all-zero arrays), sampling skips
+GRF setup and FFTs and consumes no random draws. Perturbation bounds still apply.
 """
 struct Uncertainty{A,R,C}
     absuc::A
@@ -37,6 +40,10 @@ function Uncertainty(; absuc=0,
 end
 
 function make_sampler(dx, field, uncert)
+    if iszero(uncert.absuc) && iszero(uncert.reluc)
+        # Keep the usual scaling/bounds path, but avoid kernel setup and FFTs.
+        return () -> fill!(similar(field), zero(eltype(field)))
+    end
     (;correlation_length, covariance_fn) = uncert
     len = correlation_length/dx
     nx, ny = size(field)
