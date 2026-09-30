@@ -298,10 +298,8 @@ function waterflows(dem, cellarea=fill!(similar(dem),1);
     dir, nout, nin, sinks, pits, dem4drainpits, flowdir_extra_output =
         flowdir_fn(dem, bnd_as_sink, nan_as_sink, extra_sinks, extra_barriers)
 
-    if drain_pits && !bnd_as_sink
-        if !nan_as_sink || (nan_as_sink && sum(isnan.(dem4drainpits))==0)
-            error("No sinks in the domain.  Consider setting `bnd_as_sink` and/or `nan_as_sink` and add NaNs to the `dem`.")
-        end
+    if drain_pits && isempty(sinks)
+        error("No sinks found (as returned by the flowdir_fn). Consider providing `extra_sinks`, enabling `bnd_as_sink`, or enabling `nan_as_sink` with NaNs in the DEM.")
     end
 
     area, slen, c = flowrouting_catchments(dir, sinks, pits, cellarea, feedback_fn)
