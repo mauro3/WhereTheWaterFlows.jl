@@ -13,8 +13,8 @@ function run_case(absuc, reluc, ondem; n_samples=24, n=100, dx=100.0)
     dem = build_dem(n)
     source = fill(1.0 / dx^2, size(dem))
     dem_uc = WWFR.Uncertainty(absuc=absuc*ondem, reluc=reluc*ondem, correlation_length=10dx)
-    source_uc = WWFR.Uncertainty(absuc=ondem * absuc / dx^2,
-                                 reluc=ondem * reluc,
+    source_uc = WWFR.Uncertainty(absuc=(!ondem) * absuc / dx^2,
+                                 reluc=(!ondem) * reluc,
                                  correlation_length=10dx)
 
     ctch_sinks = [CartesianIndices((2:2, 2:n-1))[:]]
