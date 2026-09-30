@@ -470,6 +470,16 @@ end
     @test area == [11.0 11.0 44.0 22.0; 11.0 11.0 11.0 11.0; 55.0 33.0 22.0 11.0]
 end
 
+@testset "feedback preserves values before output conversion" begin
+    n = 1_000
+    dem = reshape(Float32.(1:n), 1, n)
+    sink = CartesianIndex(1, 1)
+    out = waterflows(dem, zeros(Float32, size(dem)); drain_pits=false,
+                     bnd_as_sink=false, extra_sinks=[sink],
+                     feedback_fn=(uparea, _, _) -> Float64(uparea) + 1e-8)
+    @test out.area[sink] == Float32(n * 1e-8)
+end
+
 
 @testset "feedback_fn & multiflow" begin
     dx = 0.9

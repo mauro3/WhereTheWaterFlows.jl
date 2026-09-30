@@ -383,32 +383,25 @@ init_area(dir, cellarea::Tuple) = map(x -> init_area(dir,x)[1], cellarea)
 # Explicit depth-first frames keep the recursive visit and addition order, including
 # the order in which feedback_fn is called, without consuming the call stack.
 function _flowrouting_catchments!(area, len, c, dir, cellarea, feedback_fn, color, ij)
-    stack = CartesianIndex{2}[ij]
-    next_neighbor = Int[1]
+    source_at(ij) = map((a, ca) -> convert(eltype(a), ca[ij]), area, cellarea)
+    initial = source_at(ij)
+    # A feedback function may return a different numeric type from the source.
+    # Preserve that value until it has been passed to the parent (before storage
+    # in the output arrays converts it), just as the recursive version did.
+    A = feedback_fn === nothing ? typeof(initial) : Any
+    stack = Tuple{CartesianIndex{2},Int,A,Int}[(ij, 1, initial, 1)]
     c[ij] = color
     while !isempty(stack)
-        current = stack[end]
+        current, k, uparea, slen = stack[end]
         neighbors = iterate_D9(current, c)
-        k = next_neighbor[end]
         if k <= length(neighbors)
-            next_neighbor[end] = k + 1
+            stack[end] = (current, k + 1, uparea, slen)
             upstream = neighbors[k]
             if upstream != current && flowsinto(upstream, dir[upstream], current)
                 c[upstream] = color
-                push!(stack, upstream)
-                push!(next_neighbor, 1)
+                push!(stack, (upstream, 1, source_at(upstream), 1))
             end
             continue
-        end
-        # All children are now complete. Add their areas in the original D9 order.
-        # Convert before accumulation so integer sources cannot overflow.
-        uparea = map((a, ca) -> convert(eltype(a), ca[current]), area, cellarea)
-        slen = 1
-        for upstream in neighbors
-            if upstream != current && flowsinto(upstream, dir[upstream], current)
-                uparea = uparea .+ getindex.(area, Ref(upstream))
-                slen = max(slen, len[upstream]+1) # TODO take diagonal into account
-            end
         end
         if feedback_fn!==nothing
             uparea = feedback_fn(uparea, current, dir)
@@ -416,7 +409,11 @@ function _flowrouting_catchments!(area, len, c, dir, cellarea, feedback_fn, colo
         setindex!.(area, uparea, Ref(current))
         len[current] = slen
         pop!(stack)
-        pop!(next_neighbor)
+        if !isempty(stack)
+            parent, next, parent_area, parent_len = stack[end]
+            stack[end] = (parent, next, parent_area .+ uparea,
+                          max(parent_len, slen + 1)) # TODO take diagonal into account
+        end
     end
     return nothing
 end
