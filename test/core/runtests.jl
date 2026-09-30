@@ -520,5 +520,36 @@ end
     @test sum(out.area[out.sinks]) + sum(out.area[out.pits]) == length(dem)
 end
 
+@testset "Integer DEMs and sources" begin
+    dem = [3 2 1; 4 5 2; 6 7 3]
+    reference = waterflows(Float64.(dem))
+    for T in (Int16, Int32, Int64)
+        out = waterflows(T.(dem))
+        @test eltype(out.area) == Float64
+        @test out.area == reference.area
+        @test out.dir == reference.dir
+        @test out.c == reference.c
+    end
+
+    # Accumulation must promote before summing, not just when storing the result.
+    source = fill(typemax(Int16), size(dem))
+    out = waterflows(dem, source)
+    expected = waterflows(dem, Float64.(source))
+    @test out.area == expected.area
+    @test maximum(out.area) > typemax(Int16)
+    @test sum(out.area[out.sinks]) == sum(Float64.(source))
+
+    mixed = waterflows(dem, (source, ones(Float32, size(dem))))
+    @test mixed.area[1] == expected.area
+    @test mixed.area[2] == reference.area
+    @test eltype(mixed.area[1]) == Float64
+    @test eltype(mixed.area[2]) == Float32
+
+    masked = Float64.(dem)
+    masked[2, 2] = NaN
+    @test isequal(waterflows(masked, source).area,
+                  waterflows(masked, Float64.(source)).area)
+end
+
 #################################
 include(joinpath(@__DIR__, "postproc.jl"))

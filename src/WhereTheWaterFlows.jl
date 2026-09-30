@@ -243,6 +243,8 @@ a breach-type algorithm, this means that the input DEM does not need to be pre-f
 args:
 - `dem` -- the DEM (or hydro-potential); array with one-based indices
 - `cellarea=fill!(similar(dem),1)` -- the source per cell, defaults to 1.
+     - accumulation uses the floating-point counterpart of the source element type,
+       allowing integer DEMs and sources while preserving floating-point source types.
      - input grids must have one-based indices; offset-indexed grids are not supported.
      - if `cellarea` is negative in places, flux may go to zero but not below.
      - in areas where no routing takes place, typically NaNs in the dem, `cellarea`
@@ -374,7 +376,7 @@ end
 # initialize output cellarea:
 # - as tuple or one array
 # - as tuple, if cellarea is a tuple
-init_area(dir, cellarea) = (fill!(similar(dir, eltype(cellarea)), NaN), )
+init_area(dir, cellarea) = (fill!(similar(dir, float(eltype(cellarea))), NaN), )
 init_area(dir, cellarea::Tuple) = map(x -> init_area(dir,x)[1], cellarea)
 
 # modifies c and area
@@ -385,7 +387,8 @@ function _flowrouting_catchments!(area, len, c, dir, cellarea, feedback_fn, colo
 
     # proc upstream points
     slen = 0 # note: solely dependent on `dir`
-    uparea = getindex.(cellarea, Ref(ij))
+    # Convert before accumulation so integer sources cannot overflow in integer arithmetic.
+    uparea = map((a, ca) -> convert(eltype(a), ca[ij]), area, cellarea)
     slen = max(slen, 1)
     @inbounds for IJ in iterate_D9(ij, c)
         if ij==IJ
