@@ -11,17 +11,23 @@ Catchments with number <1 are ignored.
 Retained catchments receive consecutive positive labels.
 Note that, as the catchments are re-numbered, the number will not correspond
 to the sinks and pits anymore.
+
+Counting and relabelling take O(ncells + maxlabel) time, with O(maxlabel)
+auxiliary storage in addition to the output array.
 """
 function prune_catchments(catchments, minsize)
     c = copy(catchments)
-    n1 = 1
-    n2 = maximum(catchments)
-    colormap = collect(n1:n2)
+    n2 = max(0, maximum(catchments; init=0))
+    counts = zeros(Int, n2)
+    for label in catchments
+        if label > 0
+            counts[label] += 1
+        end
+    end
+    colormap = zeros(Int, n2)
     nextcolor = 1
-    for i=n1:n2
-        if sum(x->x==i, catchments) < minsize
-            colormap[i] = 0
-        else
+    for i=eachindex(counts)
+        if counts[i] > 0 && counts[i] >= minsize
             colormap[i] = nextcolor
             nextcolor += 1
         end
