@@ -119,8 +119,8 @@ Plot sinks or another vector of CartesianIndices
 end
 function Makie.plot!(plot::Plt_Sinks)
     pp = lift((x,y,sinks) -> sinks2vecs(x, y, sinks), plot.x, plot.y, plot.sinks)
-    px, py = lift(x->x, pp[])
-    scatter!(plot, px, py, color=:red, markersize=12)
+    points = lift(p -> Point2f.(p[1], p[2]), pp)
+    scatter!(plot, points, color=:red, markersize=12)
 end
 
 """
@@ -133,8 +133,9 @@ Plot boundary points.
 end
 function Makie.plot!(plot::Plt_Bnds)
     (;x, y, bnds) = plot
-    px, py = lift((x,y,b) -> sinks2vecs(x, y, b), x, y, bnds)
-    scatter!(px, py, color=:green)
+    pp = lift((x,y,b) -> sinks2vecs(x, y, b), x, y, bnds)
+    points = lift(p -> Point2f.(p[1], p[2]), pp)
+    scatter!(plot, points, color=:green)
 end
 
 """
