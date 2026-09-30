@@ -113,7 +113,8 @@ plt_area(x, y, area; sinks)
 plt_catchments(x, y, c; minsize=50)
 ```
 
-Note that setting `minsize=0` (the default) may run a lot faster on large DEMs.
+Filtering counts catchment sizes in one pass over the grid, then relabels retained
+catchments. The default `minsize=0` skips filtering and preserves the original labels.
 
 ## Delineate a single catchment
 

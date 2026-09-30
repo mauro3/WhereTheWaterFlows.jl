@@ -144,7 +144,7 @@ end
 Plot catchments.  Catchments below `minsize` size are not plotted. With
 the default `minsize=0` all catchments are plotted.
 
-Note, `minsize>0` can be quite slow to compute.
+Filtering counts catchment sizes in one pass over the grid.
 """ 
 @recipe(Plt_Catchments, x, y, c) do scene
     Attributes(
@@ -154,22 +154,11 @@ Note, `minsize>0` can be quite slow to compute.
 end
 function Makie.plot!(plot::Plt_Catchments)
     (;x, y, c, minsize, colormap) = plot
-    c = lift(copy, c)
-    tokeep = BitMatrix[]
-    if minsize[]>0
-        for cc = 1:maximum(c[])
-            inds = c[].==cc
-            if sum(inds)<minsize[]
-                c[][inds] .= 0
-            else
-                push!(tokeep, inds)
-            end
-        end
-        for (i,inds) in enumerate(tokeep)
-            c[][inds] .= i
-        end
+    c = lift(c, minsize) do labels, threshold
+        threshold > 0 ? WWF.prune_catchments(labels, threshold) : copy(labels)
     end
-    heatmap!(plot, x, y, c; colorrange=(1,maximum(c[])), lowclip=(:red, 0), colormap)
+    colorrange = lift(labels -> (1, max(2, maximum(labels; init=0))), c)
+    heatmap!(plot, x, y, c; colorrange, lowclip=(:red, 0), colormap)
     ax = Makie.current_axis()
     if ax !== nothing
         ax.xlabel = "x"

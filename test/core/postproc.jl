@@ -58,4 +58,9 @@ end
     @test prune_catchments(c, 1) == c
     @test prune_catchments([0 -1 2; 4 4 2], 2) == [0 -1 1; 2 2 1]
     @test c == original
+    @test prune_catchments([0 2 2; 7 7 7], 0) == [0 1 1; 2 2 2]
+    @test prune_catchments([0 2 2; 7 7 7], 3) == [0 0 0; 1 1 1]
+    @test prune_catchments(zeros(Int, 2, 3), 2) == zeros(Int, 2, 3)
+    @test prune_catchments(fill(-1, 2, 3), 2) == fill(-1, 2, 3)
+    @test size(prune_catchments(zeros(Int, 0, 0), 2)) == (0, 0)
 end

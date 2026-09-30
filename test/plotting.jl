@@ -1,6 +1,32 @@
 using Test, WhereTheWaterFlows
 using CairoMakie
 
+@testset "Reactive catchment filtering" begin
+    original = [1 1 2; 1 1 3; 4 4 3]
+    labels = Observable(copy(original))
+    minsize = Observable(2)
+    fp = plt_catchments(1:3, 1:3, labels; minsize)
+    hm = only(fp.plot.plots)
+    @test hm[3][] == [1 1 0; 1 1 2; 3 3 2]
+    @test Tuple(hm.colorrange[]) == (1, 3)
+    @test labels[] == original
+
+    minsize[] = 3
+    @test hm[3][] == [1 1 0; 1 1 0; 0 0 0]
+    @test Tuple(hm.colorrange[]) == (1, 2)
+    replacement = [0 5 5; 8 8 8; 8 0 5]
+    labels[] = replacement
+    @test hm[3][] == [0 1 1; 2 2 2; 2 0 1]
+    @test labels[] == replacement
+
+    minsize[] = 0
+    @test hm[3][] == replacement
+    @test Tuple(hm.colorrange[]) == (1, 8)
+    minsize[] = 10
+    @test hm[3][] == zeros(Int, 3, 3)
+    @test Tuple(hm.colorrange[]) == (1, 2)
+end
+
 @testset "Boundary and sink point recipes" begin
     for (standalone, overlay) in ((plt_bnds, plt_bnds!), (plt_sinks, plt_sinks!))
         x = Observable([10.0, 20.0, 30.0])
