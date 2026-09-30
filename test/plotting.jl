@@ -1,6 +1,37 @@
 using Test, WhereTheWaterFlows
 using CairoMakie
 
+@testset "Boundary and sink point recipes" begin
+    for (standalone, overlay) in ((plt_bnds, plt_bnds!), (plt_sinks, plt_sinks!))
+        x = Observable([10.0, 20.0, 30.0])
+        y = [40.0, 50.0, 60.0]
+        indices = Observable([CartesianIndex(1, 2)])
+        fp = standalone(x, y, indices)
+        child = only(fp.plot.plots)
+        @test child isa Makie.Scatter
+        @test child[1][] == [Point2f(10, 50)]
+
+        fig = Figure()
+        ax = Axis(fig[1, 1])
+        other = Figure()
+        otherax = Axis(other[1, 1])
+        p = overlay(ax, x, y, indices)
+        @test p in ax.scene.plots
+        @test isempty(otherax.scene.plots)
+        overlay_child = only(p.plots)
+        @test overlay_child[1][] == child[1][]
+
+        # Change both coordinates and point count, including an empty list.
+        indices[] = [CartesianIndex(2, 1), CartesianIndex(3, 3)]
+        @test child[1][] == overlay_child[1][] == [Point2f(20, 40), Point2f(30, 60)]
+        x[] = [11.0, 21.0, 31.0]
+        @test child[1][] == overlay_child[1][] == [Point2f(21, 40), Point2f(31, 60)]
+        indices[] = CartesianIndex{2}[]
+        @test isempty(child[1][])
+        @test isempty(overlay_child[1][])
+    end
+end
+
 @testset "Area colorbar placement" begin
     glb = Makie.GridLayoutBase
     x = y = 1:3
