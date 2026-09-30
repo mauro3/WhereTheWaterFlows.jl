@@ -313,14 +313,15 @@ function make_fns_subaerial(dx,
                     n_samples = Ref(0))
         end
 
-        (_, output) = res
+        (input, output) = res
         aggr.areas_total .+= output.area
         aggr.stream_length .+= output.slen
 
         for i=1:length(ctch_sinks)
             c = WhereTheWaterFlows.catchment(output.dir, ctch_sinks[i])
             aggr.catchments[:, :, i] .+= c
-            push!(aggr.catchment_fluxes[i], WhereTheWaterFlows.catchment_flux(output.area, c))
+            flux = WhereTheWaterFlows.catchment_flux(input.source, c) * input.dx^2
+            push!(aggr.catchment_fluxes[i], flux)
         end
 
         aggr.n_samples[] += 1
