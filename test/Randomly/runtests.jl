@@ -108,6 +108,30 @@ end
     @test aggr.n_samples[] == 3
 end
 
+@testset "Subaerial catchment flux mass balance" begin
+    dem = [Float64(i + j) for i in 1:5, j in 1:5]
+    dx = 3.0
+    baseline = ones(size(dem))
+    sinks = WWF.waterflows(dem).sinks
+    # Including an upstream point in the all-outlets group must not count it twice.
+    groups = [sinks, [sinks; CartesianIndex(3, 3)], [CartesianIndex(3, 3)]]
+    model, _, reduce! = WWFR.make_fns_subaerial(
+        dx, dem, WWFR.Uncertainty(), baseline, WWFR.Uncertainty(), groups)
+    aggr = reduce!()
+    for scale in (1.0, 2.0)
+        source = scale .* reshape(collect(1.0:25.0), size(dem))
+        res = model(dem, source)
+        reduce!(aggr, res)
+        out = res[2]
+        total = sum(source) * dx^2
+        @test aggr.catchment_fluxes[1][end] ≈ total
+        @test aggr.catchment_fluxes[2][end] ≈ total
+        @test aggr.catchment_fluxes[1][end] ≈ sum(out.area[sinks])
+        @test aggr.catchment_fluxes[3][end] ≈ out.area[3, 3]
+    end
+    @test aggr.catchment_fluxes[1][2] ≈ 2 * aggr.catchment_fluxes[1][1]
+end
+
 @testset "Stochastic Subaerial" begin
     n = 60
     _, dem = peaks2_nan_edge(n)
