@@ -127,7 +127,7 @@ function catchments(dir, sinks::Union{Vector{Vector{CartesianIndex{2}}}, Vector{
     out = fill!(similar(dir, UInt8), 0)
     for (i,s) in enumerate(sinks)
         c = catchment(dir, s)
-        out += c*i
+        out .+= c*i
     end
     return out
 end
