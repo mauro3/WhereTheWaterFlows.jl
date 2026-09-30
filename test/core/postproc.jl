@@ -45,6 +45,17 @@ end
         ss = [collect(sinks[1])[:]; collect(sinks[2])[:]]
         @test (catchments(dir, sinks) .> 0) == catchment(dir, ss)
 
-        @test length(unique(prune_catchments(c, 10; val=0))) < length(unique(c))
+        @test length(unique(prune_catchments(c, 10))) < length(unique(c))
     end
+end
+@testset "prune_catchments assigns zero to small catchments" begin
+    c = [1 1 2; 1 1 3; 4 4 3]
+    original = copy(c)
+    @test prune_catchments(c, 2) == [1 1 0; 1 1 2; 3 3 2]
+    @test prune_catchments(c, 3) == [1 1 0; 1 1 0; 0 0 0]
+    @test prune_catchments(c, 5) == zeros(Int, size(c))
+    @test prune_catchments(c, 4) == [1 1 0; 1 1 0; 0 0 0]
+    @test prune_catchments(c, 1) == c
+    @test prune_catchments([0 -1 2; 4 4 2], 2) == [0 -1 1; 2 2 1]
+    @test c == original
 end
