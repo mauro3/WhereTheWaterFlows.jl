@@ -120,7 +120,7 @@ end
                           floatfrac, floatfrac_uc,
                           source, source_uc,
                           ctch_sinks;
-                          mask=mask::AbstractMatrix=fill!(similar(surfdem, Bool), true),
+                          mask::AbstractMatrix=fill!(similar(surfdem, Bool), true),
                           gamma=0.0,
                           min_lake_depth=10.0, # default min lake depth under which value are not aggregated
                           rhow=RHOW, rhoi=RHOI)
@@ -151,15 +151,18 @@ Return:
 - reduce! -> three-method reduction function (`reduce!()`, `reduce!(aggr, out)`, `reduce!(aggr)`).
 """
 function make_fns_subglacial(dx,
-                              surfdem, surfdem_uc,
-                              beddem, beddem_uc,
-                              floatfrac, floatfrac_uc,
-                              source, source_uc,
+                              surfdem::AbstractMatrix, surfdem_uc,
+                              beddem::AbstractMatrix, beddem_uc,
+                              floatfrac::AbstractMatrix, floatfrac_uc,
+                              source::AbstractMatrix, source_uc,
                               ctch_sinks;
-                              mask=mask::AbstractMatrix=fill!(similar(surfdem, Bool), true),
+                              mask::AbstractMatrix=fill!(similar(surfdem, Bool), true),
                               gamma=0.0,
                               min_lake_depth=10.0, # default min lake depth under which value are not aggregated
                               rhow=Subglacially.RHOW, rhoi=Subglacially.RHOI)
+
+    size(floatfrac) == size(surfdem) || throw(DimensionMismatch(
+        "floatfrac must have the same size as surfdem"))
 
     model(surf, bed, floatfrac, source) = ((;surf, bed, dx, floatfrac, source),
                                              Subglacially.waterflows_subglacial(surf, bed, dx, floatfrac, source, mask;

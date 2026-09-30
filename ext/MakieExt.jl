@@ -38,18 +38,26 @@ sinks2vecs(x, y, sinks) = (x[[p.I[1] for p in sinks if p!=CartesianIndex(-1,-1)]
 """
     plt_dir( x, y, dir)
     
-Plot `dir` as flow field
+Plot `dir` as flow field. Arrow length defaults to 70% of the smaller grid
+spacing (for cardinal directions); override with `lengthscale` in data units.
 """
 @recipe(Plt_Dir, x, y, dir) do scene
-   return Attributes(sinks=CartesianIndex{2}[])
+   return Attributes(sinks=CartesianIndex{2}[], lengthscale=nothing)
 end
 function Makie.plot!(plot::Plt_Dir)
     (;dir, x, y, sinks) = plot
     vecfield  = lift(dir-> WWF.dir2vec.(dir, true), dir)
     vecfieldx = lift(vecfield -> [v[1] for v in vecfield], vecfield)
     vecfieldy = lift(vecfield -> [v[2] for v in vecfield], vecfield)
-    arrows2d!(plot, x, y, vecfieldx, vecfieldy, lengthscale=0.005, align=:center)
-    plt_sinks!(x, y, sinks)
+    lengthscale = lift(x, y, plot.lengthscale) do xs, ys, scale
+        scale !== nothing && return Float64(scale)
+        dx = length(xs) > 1 ? minimum(abs, diff(xs)) : Inf
+        dy = length(ys) > 1 ? minimum(abs, diff(ys)) : Inf
+        spacing = min(dx, dy)
+        return 0.7 * (isfinite(spacing) ? spacing : 1.0)
+    end
+    arrows2d!(plot, x, y, vecfieldx, vecfieldy; lengthscale, align=:center)
+    plt_sinks!(plot, x, y, sinks)
 end
 
 """

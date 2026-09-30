@@ -131,7 +131,7 @@ end
     for i=1:9
         dem = ones(3,3)
         dem[i] = 0
-        dir, nout, nin, pits = WWF.d8dir_feature(dem, false, false)
+        dir, nout, nin, sinks, pits = WWF.d8dir_feature(dem, false, false)
 
         @test dir[2,2] == WWF.dirnums[i]
         @test dem[WWF.dir2ind(dir[2,2])+CartesianIndex(2,2)]==0
@@ -513,11 +513,20 @@ end
     @test_throws ArgumentError waterflows(shifted)
     @test_throws ArgumentError waterflows(dem, shifted)
     @test_throws ArgumentError waterflows(dem, (source, shifted))
-    @test_throws ArgumentError waterflows((dem, shifted), source)
+    @test_throws MethodError waterflows((dem, shifted), source)
     # Internal offset-indexed pit bookkeeping remains supported.
     out = waterflows(dem; drain_pits=false)
     @test firstindex(out.pits) == length(out.sinks) + 1
     @test sum(out.area[out.sinks]) + sum(out.area[out.pits]) == length(dem)
+end
+
+@testset "Routing input sizes" begin
+    dem = [3.0 2 1; 4 5 2; 6 7 3]
+    for sz in ((2, 3), (4, 3), (3, 2), (3, 4))
+        @test_throws DimensionMismatch waterflows(dem, ones(sz))
+        @test_throws DimensionMismatch waterflows(dem, (ones(3, 3), ones(sz)))
+        @test_throws MethodError waterflows((dem, ones(sz)), ones(3, 3))
+    end
 end
 
 @testset "Pit drainage checks actual sinks" begin

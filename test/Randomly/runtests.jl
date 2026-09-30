@@ -101,6 +101,17 @@ end
     end
 end
 
+@testset "Subglacial flotation input validation" begin
+    surface = fill(10.0, 3, 3)
+    bed = zeros(3, 3)
+    source = ones(3, 3)
+    uc = WWFR.Uncertainty()
+    @test_throws MethodError WWFR.make_fns_subglacial(
+        1.0, surface, uc, bed, uc, 1.0, uc, source, uc, [])
+    @test_throws DimensionMismatch WWFR.make_fns_subglacial(
+        1.0, surface, uc, bed, uc, ones(2, 3), uc, source, uc, [])
+end
+
 @testset "Stochastic Subglacial" begin
     n = 100
     x, beddem = peaks2_nan_edge(n)

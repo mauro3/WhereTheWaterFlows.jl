@@ -22,14 +22,15 @@ end
         ys = xs
 
         @test size(dem)==(length(xs), length(ys))
-        area, slen, dir, nout, nin, sinks, pits, c, bnds = WWF.waterflows(dem);
+        area, slen, dir, nout, nin, sinks, pits, c, bnds = WWF.waterflows(dem; drain_pits=false);
+        @test !isempty(pits)
 
-        for cc=1:length(pits)
+        for cc in eachindex(pits)
             ij = pits[cc]
             @test catchment(dir, ij) == (c.==cc)
         end
 
-        for (cc,dd) in zip(1:length(pits), length(pits):-1:1)
+        for (cc,dd) in zip(eachindex(pits), reverse(eachindex(pits)))
             ii, jj = pits[cc], pits[dd]
             @test catchment(dir, [ii,jj]) == ((c.==cc) .| (c.==dd))
         end
