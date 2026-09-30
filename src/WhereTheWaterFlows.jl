@@ -131,6 +131,8 @@ Return
 - `flowdir_extra_output` -- `nothing` (not used by this function, but could be by custom ones)
 """
 function d8dir_feature(dem, bnd_as_sink, nan_as_sink, extra_sinks=CartesianIndex{2}[], extra_barriers=CartesianIndex{2}[])
+    Base.require_one_based_indexing(dem)
+
     # outputs
     dir = fill!(similar(dem, Int8), 0)
 
@@ -243,6 +245,7 @@ a breach-type algorithm, this means that the input DEM does not need to be pre-f
 args:
 - `dem` -- the DEM (or hydro-potential); array with one-based indices
 - `cellarea=fill!(similar(dem),1)` -- the source per cell, defaults to 1.
+     - each source grid must have the same size as the DEM.
      - accumulation uses the floating-point counterpart of the source element type,
        allowing integer DEMs and sources while preserving floating-point source types.
      - input grids must have one-based indices; offset-indexed grids are not supported.
@@ -283,7 +286,8 @@ Returns a `NamedTuple` with fields:
 - `bnds` -- boundaries between catchments.  The boundary to the exterior/NaNs is not in here.
 - `flowdir_extra_output` -- extra output of the `flowdir_fn`, which is `nothing` for the default
 """
-function waterflows(dem, cellarea=fill!(similar(dem),1);
+function waterflows(dem,
+                    cellarea=fill!(similar(dem),1);
                     flowdir_fn=d8dir_feature,
                     feedback_fn=nothing,
                     drain_pits=true,
@@ -292,11 +296,12 @@ function waterflows(dem, cellarea=fill!(similar(dem),1);
                     extra_sinks=CartesianIndex{2}[],
                     extra_barriers=CartesianIndex{2}[])
 
-    Base.require_one_based_indexing((dem isa Tuple ? dem : (dem,))...)
-    Base.require_one_based_indexing((cellarea isa Tuple ? cellarea : (cellarea,))...)
-
     dir, nout, nin, sinks, pits, dem4drainpits, flowdir_extra_output =
         flowdir_fn(dem, bnd_as_sink, nan_as_sink, extra_sinks, extra_barriers)
+
+    Base.require_one_based_indexing((cellarea isa Tuple ? cellarea : (cellarea,))...)
+    all(ca -> size(ca) == size(dir), cellarea isa Tuple ? cellarea : (cellarea,)) ||
+        throw(DimensionMismatch("Each cellarea grid must have the same size as the DEM"))
 
     if drain_pits && isempty(sinks)
         error("No sinks found (as returned by the flowdir_fn). Consider providing `extra_sinks`, enabling `bnd_as_sink`, or enabling `nan_as_sink` with NaNs in the DEM.")
@@ -449,20 +454,15 @@ reversing the flow connecting the lowest point (which can drain) on the catchmen
 boundary to the pit for each such catchment.
 
 Update in place `dir`, `nin`, `nout`, `pits` (sorted), `c`; returns an empty `bnds`
+when successful. Errors if a pit has no outflow or a pass fails to remove any pits.
 """
 function drainpits!(dir, nin, nout, sinks, pits, ctch, bnds, dem)
     length(pits)==0 && return bnds
 
     nsinks = length(sinks)
     npits = length(pits)
-    npits_orig = npits
-    ncolors = nsinks + npits
-
-    maxiter = 100
-    Iend = CartesianIndex(size(dem))
-
-    maxiter = 50
-    @inbounds for iter=1:maxiter
+    # Every successful pass removes at least one pit, so no arbitrary cap is needed.
+    @inbounds while npits > 0
         # Once an overspill into a pit-catchment occurs, this catchment increases in
         # size by absorbing the other.  Then its boundary is not correct anymore and
         # cannot be processed in the current iteration, thus mark "dirty".
@@ -546,18 +546,14 @@ function drainpits!(dir, nin, nout, sinks, pits, ctch, bnds, dem)
 
         # update pits
         deleteat!(no_offset_view(pits), no_offset_view(pits_to_delete))
+        length(pits) < npits || error("Pit drainage made no progress; $(length(pits)) pits remain")
         npits = length(pits)
-        ncolors = nsinks + npits
 
         # update bnds: re-use the bnds-vector to reduce allocations:
         deleteat!(no_offset_view(bnds), no_offset_view(pits_to_delete))
         for bnd in bnds; empty!(bnd) end
         bnds = make_boundaries(ctch, eachindex(pits), bnds)
 
-        if iter==maxiter-1 || npits==0
-            #@show iter, iter/(npits_orig/10^6)
-            break
-        end
     end
     return bnds
 end

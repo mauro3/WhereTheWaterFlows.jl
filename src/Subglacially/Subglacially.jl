@@ -48,6 +48,7 @@ Return
                           of such a cell is supercooled)
 """
 function d8dir_pressmelt(phi_phim, bnd_as_sink, nan_as_sink, gamma, avoid_sc)
+    Base.require_one_based_indexing(phi_phim...)
     phi, phim = phi_phim
     # outputs
     dir = fill!(similar(phi, Int8), 0)
@@ -379,7 +380,7 @@ function waterflows_subglacial(surfdem::AbstractMatrix, beddem::AbstractMatrix, 
                                nan_as_sink=true)
     Base.require_one_based_indexing(surfdem, beddem, source, mask)
     floatfrac isa AbstractArray && Base.require_one_based_indexing(floatfrac)
-    @assert size(surfdem)==size(beddem)==size(source) "Input arrays not of same size"
+    @assert size(surfdem)==size(beddem)==size(source)==size(mask) "Input arrays not of same size"
     @assert size(floatfrac)==() || size(floatfrac)==size(surfdem)  "Input arrays not of same size"
 
     # preparation
