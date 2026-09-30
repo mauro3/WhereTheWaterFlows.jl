@@ -520,6 +520,28 @@ end
     @test sum(out.area[out.sinks]) + sum(out.area[out.pits]) == length(dem)
 end
 
+@testset "Pit drainage checks actual sinks" begin
+    dem = [Float64(abs(i - 3) + abs(j - 3)) for i in 1:5, j in 1:5]
+    sink = CartesianIndex(1, 1)
+    undrained = waterflows(dem; bnd_as_sink=false, nan_as_sink=false,
+                          extra_sinks=[sink], drain_pits=false)
+    @test !isempty(undrained.pits)
+    out = waterflows(dem; bnd_as_sink=false, nan_as_sink=false, extra_sinks=[sink])
+    @test out.sinks == [sink]
+    @test isempty(out.pits)
+    @test out.area[sink] == length(dem)
+
+    custom_dir(dem, bnd, nan, sinks, barriers) =
+        WWF.d8dir_feature(dem, false, false, [sink], barriers)
+    custom = waterflows(dem; bnd_as_sink=false, nan_as_sink=false, flowdir_fn=custom_dir)
+    @test custom.area == out.area
+    @test custom.sinks == [sink]
+    @test_throws ErrorException waterflows(dem; bnd_as_sink=false, nan_as_sink=false)
+    @test_throws ErrorException waterflows(dem; bnd_as_sink=false, nan_as_sink=true)
+    @test isempty(waterflows(dem; bnd_as_sink=false, nan_as_sink=false,
+                             drain_pits=false).sinks)
+end
+
 @testset "Integer DEMs and sources" begin
     dem = [3 2 1; 4 5 2; 6 7 3]
     reference = waterflows(Float64.(dem))
