@@ -470,6 +470,16 @@ end
     @test area == [11.0 11.0 44.0 22.0; 11.0 11.0 11.0 11.0; 55.0 33.0 22.0 11.0]
 end
 
+@testset "feedback preserves values before output conversion" begin
+    n = 1_000
+    dem = reshape(Float32.(1:n), 1, n)
+    sink = CartesianIndex(1, 1)
+    out = waterflows(dem, zeros(Float32, size(dem)); drain_pits=false,
+                     bnd_as_sink=false, extra_sinks=[sink],
+                     feedback_fn=(uparea, _, _) -> Float64(uparea) + 1e-8)
+    @test out.area[sink] == Float32(n * 1e-8)
+end
+
 
 @testset "feedback_fn & multiflow" begin
     dx = 0.9
@@ -492,18 +502,31 @@ end
 
 
 
-# "Potentially pathological function for call depth"
-# function ramp(l,w)
-#     y=-w:w
-#     x=1:l
-#     dem = (1 .+ y.^2) .* x'.*0.00001
-#     return x,y,dem
-# end
-# @testset "stackoverflow" begin
-#     x,y,dem = ramp(10^4,3);
-#     waterflows(dem, drain_pits=false); # no error
-#     @test_throws TaskFailedException waterflows(dem, drain_pits=false)
-# end
+@testset "Long drainage paths and threaded routing" begin
+    n = 20_000
+    # Two independent long paths separated by barriers; each ends at an explicit sink.
+    dem = repeat(reshape(Float64.(1:n), 1, n), 3, 1)
+    dem[2, :] .= NaN
+    sinks = [CartesianIndex(1, 1), CartesianIndex(3, 1)]
+    sources = (fill(Int16(1), size(dem)), fill(0.5f0, size(dem)))
+    feedback = (uparea, _, _) -> (uparea[1] + 1, uparea[2] + 1f0)
+    kwargs = (; extra_sinks=sinks, bnd_as_sink=false, nan_as_sink=false,
+              drain_pits=false, feedback_fn=feedback)
+    serial = waterflows(dem, sources; kwargs..., threaded=false)
+    parallel = waterflows(dem, sources; kwargs...)
+    @test isequal(serial.area, parallel.area)
+    @test serial.slen == parallel.slen
+    @test serial.c == parallel.c
+    @test isempty(serial.pits)
+    @test all(serial.slen[sink] == n for sink in sinks)
+    @test all(serial.area[1][sink] == 2n for sink in sinks)
+    @test all(serial.area[2][sink] == 1.5f0*n for sink in sinks)
+    @test all(serial.c[2, :] .== 0)
+    @test all(isnan, serial.area[1][2, :])
+    @test sum(catchment(serial.dir, sinks[1])) == n
+    @test sum(catchment(serial.dir, sinks)) == 2n
+    @test isequal(fill_dem(dem, sinks, serial.dir), dem)
+end
 
 @testset "One-based input grids" begin
     WWF = WhereTheWaterFlows

@@ -235,9 +235,10 @@ end
                 bnd_as_sink=true,
                 nan_as_sink=true,
                 extra_sinks=CartesianIndex{2}[],
-                extra_barriers=CartesianIndex{2}[],
-                flowdir_fn=d8dir_feature,
-                feedback_fn=nothing)
+                 extra_barriers=CartesianIndex{2}[],
+                 flowdir_fn=d8dir_feature,
+                 feedback_fn=nothing,
+                 threaded=true)
 
 Water flow routing according to the D8 algorithm. Local minima are filled, by default, using
 a breach-type algorithm, this means that the input DEM does not need to be pre-filled.
@@ -268,10 +269,13 @@ kwargs:
 - `flowdir_fn`=`d8dir_feature` -- the routing function.  Defaults to the built-in `d8dir_feature`
                                   function but could be customized
 - `feedback_fn` -- function which is applied to area-value(s) at each cell once all water
-                 of the cell has been accumulated but before the water is routed further downstream.
-                 Signature `(uparea, ij, dir) -> `new_uparea`
-              --> for example, `(uparea, ij, dir) -> max(uparea, 0)` would ensure that all
-                  upareas are non-negative.
+                  of the cell has been accumulated but before the water is routed further downstream.
+                  Signature `(uparea, ij, dir) -> `new_uparea`
+               --> for example, `(uparea, ij, dir) -> max(uparea, 0)` would ensure that all
+                   upareas are non-negative.
+- `threaded` (true) -- process independent sink and pit catchments concurrently when multiple
+                       Julia threads are available. Set to false for a serial traversal, e.g.
+                       if `feedback_fn` has side effects or is not thread-safe.
 
 
 Returns a `NamedTuple` with fields:
@@ -290,10 +294,11 @@ function waterflows(dem,
                     cellarea=fill!(similar(dem),1);
                     flowdir_fn=d8dir_feature,
                     feedback_fn=nothing,
-                    drain_pits=true,
-                    bnd_as_sink=true,
-                    nan_as_sink=true,
-                    extra_sinks=CartesianIndex{2}[],
+                     drain_pits=true,
+                     bnd_as_sink=true,
+                     nan_as_sink=true,
+                     threaded=true,
+                     extra_sinks=CartesianIndex{2}[],
                     extra_barriers=CartesianIndex{2}[])
 
     dir, nout, nin, sinks, pits, dem4drainpits, flowdir_extra_output =
@@ -307,20 +312,21 @@ function waterflows(dem,
         error("No sinks found (as returned by the flowdir_fn). Consider providing `extra_sinks`, enabling `bnd_as_sink`, or enabling `nan_as_sink` with NaNs in the DEM.")
     end
 
-    area, slen, c = flowrouting_catchments(dir, sinks, pits, cellarea, feedback_fn)
+    area, slen, c = flowrouting_catchments(dir, sinks, pits, cellarea, feedback_fn; threaded)
     bnds = make_boundaries(c, eachindex(pits))
     if drain_pits
         bnds = drainpits!(dir, nin, nout, sinks, pits, c, bnds, dem4drainpits)
-        area, slen, c = flowrouting_catchments(dir, sinks, pits, cellarea, feedback_fn)
+        area, slen, c = flowrouting_catchments(dir, sinks, pits, cellarea, feedback_fn; threaded)
     end
     return (;area, slen, dir, nout, nin, sinks, pits, c, bnds, flowdir_extra_output)
 end
 
 """
-    flowrouting_catchments(dir, pits, cellarea, feedback_fn)
+    flowrouting_catchments(dir, sinks, pits, cellarea, feedback_fn; threaded=true)
 
-Recursively calculate flow-routing and catchments from
+Calculate flow-routing and catchments by iterating over each drainage tree from
 - `dir` - direction field
+- `sinks` - sink coordinates
 - `pits` - pit coordinates
 - `cellarea` - water input
 
@@ -331,12 +337,12 @@ Returns:
 - `c` -- catchment map (`Matrix{Int}`); `c==0` corresponds to `NaN`/`BARRIER`
   regions where no water flows into.
 
-Note: this function may cause a stackoverflow on very big catchments.
+Independent drainage trees are routed in parallel by default when multiple Julia threads
+are available. Use `threaded=false` if `feedback_fn` is not thread-safe.
 """
-function flowrouting_catchments(dir, sinks, pits, cellarea, feedback_fn) #TODO: , stacksize) # on linux standard is 2^13 * 2^10
+function flowrouting_catchments(dir, sinks, pits, cellarea, feedback_fn; threaded=true)
     c = fill!(similar(dir, Int), 0) # catchment color of BARRIER is 0
     slen = fill!(similar(dir, Int), 0)
-    np = length(pits)
     # Some setup to allow both array and tuple-of-array inputs for cellarea and feedback_fn:
     area = init_area(dir, cellarea) # (matrix,) or tuple of matrices
     cellarea_ = cellarea isa Tuple ? cellarea : (cellarea, )
@@ -346,29 +352,21 @@ function flowrouting_catchments(dir, sinks, pits, cellarea, feedback_fn) #TODO: 
         cellarea isa Tuple ? feedback_fn : (uparea, ij, dir) -> (feedback_fn(uparea[1], ij, dir),)
     end
 
-    # recursively traverse the drainage tree in up-flow direction,
-    # starting at all sinks and pits (the pits will likely be removed with drainpits! eventually)
-    #Threads.@threads
-    for color = 1:length(sinks)
-        sink = sinks[color]
-        # This is a dirty trick to increase the call-stack size
-        # https://stackoverflow.com/questions/71956946/how-to-increase-stack-size-for-julia-in-windows
-        #
-        # Unfortunately, it decreases performance a lot!
-        # wait(schedule( Task(() -> _flowrouting_catchments!(area, slen, c, dir, cellarea_, feedback_fn_, color, sink),
-        #                     stacksize) ))
-
-        _flowrouting_catchments!(area, slen, c, dir, cellarea_, feedback_fn_, color, sink)
+    # Each root owns a disjoint drainage tree, so workers write to disjoint cells.
+    nsinks = length(sinks)
+    nroots = nsinks + length(pits)
+    route_root! = function (color)
+        root = color <= nsinks ? sinks[color] : pits[color]
+        _flowrouting_catchments!(area, slen, c, dir, cellarea_, feedback_fn_, color, root)
     end
-    for color in axes(pits)[1]
-        pit = pits[color]
-
-        # This is a dirty trick to increase the call-stack size
-        # https://stackoverflow.com/questions/71956946/how-to-increase-stack-size-for-julia-in-windows
-        # wait(schedule( Task(() -> _flowrouting_catchments!(area, slen, c, dir, cellarea_, feedback_fn_, color, pit),
-        #                     stacksize) ))
-
-        _flowrouting_catchments!(area, slen, c, dir, cellarea_, feedback_fn_, color, pit)
+    if threaded && Threads.nthreads() > 1 && nroots > 1
+        Threads.@threads for color in 1:nroots
+            route_root!(color)
+        end
+    else
+        for color in 1:nroots
+            route_root!(color)
+        end
     end
     # unwrap tuple if cellarea was not a tuple:
     if !(cellarea isa Tuple)
@@ -382,33 +380,42 @@ end
 init_area(dir, cellarea) = (fill!(similar(dir, float(eltype(cellarea))), NaN), )
 init_area(dir, cellarea::Tuple) = map(x -> init_area(dir,x)[1], cellarea)
 
-# modifies c and area
+# Explicit depth-first frames keep the recursive visit and addition order, including
+# the order in which feedback_fn is called, without consuming the call stack.
 function _flowrouting_catchments!(area, len, c, dir, cellarea, feedback_fn, color, ij)
-    # assign catchment (solely dependent on `dir`)
+    source_at(ij) = map((a, ca) -> convert(eltype(a), ca[ij]), area, cellarea)
+    initial = source_at(ij)
+    # A feedback function may return a different numeric type from the source.
+    # Preserve that value until it has been passed to the parent (before storage
+    # in the output arrays converts it), just as the recursive version did.
+    A = feedback_fn === nothing ? typeof(initial) : Any
+    stack = Tuple{CartesianIndex{2},Int,A,Int}[(ij, 1, initial, 1)]
     c[ij] = color
-    n = length(cellarea)
-
-    # proc upstream points
-    slen = 0 # note: solely dependent on `dir`
-    # Convert before accumulation so integer sources cannot overflow in integer arithmetic.
-    uparea = map((a, ca) -> convert(eltype(a), ca[ij]), area, cellarea)
-    slen = max(slen, 1)
-    @inbounds for IJ in iterate_D9(ij, c)
-        if ij==IJ
+    while !isempty(stack)
+        current, k, uparea, slen = stack[end]
+        neighbors = iterate_D9(current, c)
+        if k <= length(neighbors)
+            stack[end] = (current, k + 1, uparea, slen)
+            upstream = neighbors[k]
+            if upstream != current && flowsinto(upstream, dir[upstream], current)
+                c[upstream] = color
+                push!(stack, (upstream, 1, source_at(upstream), 1))
+            end
             continue
-        elseif flowsinto(IJ, dir[IJ], ij)
-            uparea_, slen_ = _flowrouting_catchments!(area, len, c, dir, cellarea, feedback_fn, color, IJ)
-            uparea = uparea .+ uparea_
-            slen = max(slen, slen_+1) # TODO take diagonal into account
+        end
+        if feedback_fn!==nothing
+            uparea = feedback_fn(uparea, current, dir)
+        end
+        setindex!.(area, uparea, Ref(current))
+        len[current] = slen
+        pop!(stack)
+        if !isempty(stack)
+            parent, next, parent_area, parent_len = stack[end]
+            stack[end] = (parent, next, parent_area .+ uparea,
+                          max(parent_len, slen + 1)) # TODO take diagonal into account
         end
     end
-    # feedback of areas with each other and onto themselves
-    if feedback_fn!==nothing
-        uparea = feedback_fn(uparea, ij, dir)
-    end
-    setindex!.(area, uparea, Ref(ij)) # the setindex! is needed for the broadcasting over the area-tuple to work
-    len[ij] = slen
-    return uparea, slen
+    return nothing
 end
 
 """

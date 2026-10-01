@@ -65,8 +65,7 @@ catchment(dir, ij::Tuple) = catchment(dir, CartesianIndex(ij...))
 function catchment(dir, ij::CartesianIndex)
     # c = fill!(similar(dir, Bool), false) # makes Matrix{Bool}
     c = fill!(similar(BitArray, axes(dir)), false) # makes BitMatrix
-    # recursively traverse the drainage tree in up-flow direction,
-    # starting at ij
+    # Traverse the drainage tree in up-flow direction, starting at ij.
     _catchment!(c, dir, ij)
     return c
 end
@@ -80,13 +79,16 @@ function catchment(dir, ijs::Union{<:Array{CartesianIndex{2}}, CartesianIndices{
 end
 function _catchment!(c, dir, ij)
     c[ij] = true
-    # proc upstream points
-    for IJ in iterate_D9(ij, c)
-        ij==IJ && continue
-        c[IJ] && continue # this hits a point which is already processed,
-                          # thus nothing more to do
-        if flowsinto(IJ, dir[IJ], ij)
-            _catchment!(c, dir, IJ)
+    stack = CartesianIndex{2}[ij]
+    while !isempty(stack)
+        current = pop!(stack)
+        for upstream in iterate_D9(current, c)
+            upstream==current && continue
+            c[upstream] && continue
+            if flowsinto(upstream, dir[upstream], current)
+                c[upstream] = true
+                push!(stack, upstream)
+            end
         end
     end
     return nothing
@@ -144,8 +146,7 @@ Notes:
 - routing on a filled DEM will not produce exactly the same flow pattern: on
   the shores of lakes streams which entered the lake can now go the other way.
   I suspect on most DEMs the differences will be very minimal.
-- This uses a tree traversal to fill the DEM. It does it depth-first (as it
-  is easier) which may lead to a stack overflow on a large DEM.
+- This uses an iterative tree traversal to fill the DEM.
 """
 function fill_dem(dem, sinks, dir; small=0)
     dem = copy(dem)
@@ -155,21 +156,25 @@ function fill_dem(dem, sinks, dir; small=0)
     return dem
 end
 
-# The recursion goes up the catchment using `dir`.  If it ever encounters a point
+# The traversal goes up the catchment using `dir`. If it ever encounters a point
 # which has lower elevation than the previous one, it will set that point's elevation
 # and all upstream points' elevation the elevation of the first point.
 function _fill_ij!(ele, dem, ij, dir, small)
-    if ele >= dem[ij]
-        ele += 2*eps(ele)
-        dem[ij] = ele
-    else
-        ele = dem[ij]
-    end
-    # proc upstream points
-    for IJ in iterate_D9(ij, dem)
-        ij==IJ && continue
-        if flowsinto(IJ, dir[IJ], ij)
-            _fill_ij!(ele, dem, IJ, dir, small)
+    T = Union{typeof(ele),eltype(dem)}
+    stack = Tuple{CartesianIndex{2},T}[(ij, ele)]
+    while !isempty(stack)
+        current, downstream_ele = pop!(stack)
+        if downstream_ele >= dem[current]
+            downstream_ele += 2*eps(downstream_ele)
+            dem[current] = downstream_ele
+        else
+            downstream_ele = dem[current]
+        end
+        for upstream in iterate_D9(current, dem)
+            upstream==current && continue
+            if flowsinto(upstream, dir[upstream], current)
+                push!(stack, (upstream, downstream_ele))
+            end
         end
     end
     return nothing
