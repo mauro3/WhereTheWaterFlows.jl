@@ -151,7 +151,7 @@ contribute to enhanced subglacial melt.
 
 WWF is used for teaching in the lecture courses "Physics of Glaciers" at ETH Zurich (Switzerland) and
 "Introduction to geoscientific programming" at Uni Mainz (Germany).
-The software is archived on Zenodo [@MauroA.WhereTheWaterFlowsjl2024] and has
+The software is archived on Zenodo, has
 accumulated 20+ GitHub stars and 5+ forks since its public release in 2019.
 It has four contributors and 200+ commits across 20+ tagged releases.
 
@@ -176,6 +176,6 @@ heavily edited and rewritten by the two authors.
 Development of WWF was partly funded by the European Space Agency's project 4DAntarctica (ESA: Grant 4000128611/19/I-DT)
 and by the Swiss National Science Foundation's project DIWING (grant nr. 212061).
 
-We thank the reviewers, Xin Kai Lee [xkykai](https://github.com/xkykai) and Maarten Pronk [evetion](https://github.com/evetion), and the editor Jayaram Hariharan [elbeejay](https://github.com/elbeejay) for their suggestions, inputs and for their time.
+We thank the reviewers, Xin Kai Lee [\@xkykai](https://github.com/xkykai) and Maarten Pronk [\@evetion](https://github.com/evetion), and the editor Jayaram Hariharan [\@elbeejay](https://github.com/elbeejay) for their suggestions, inputs and for their time.
 
 # References
