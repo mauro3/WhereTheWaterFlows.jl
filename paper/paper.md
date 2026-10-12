@@ -63,7 +63,7 @@ back to @OCallaghanExtractionDrainageNetworks1984 and, nowadays, many implementa
 WWF is suitable for any domain where DEM-based flow analysis is required.
 However, the package has been designed with glaciological applications in mind where it
 has been used in six publications to date, see section [Research impact](#research-impact).
-The glaciological focus required the implementation of glacier specific aspects, such as Shreve
+The glaciological focus required the implementation of glacier-specific aspects, such as Shreve
 potential routing [@ShreveMovementWaterGlaciers1972] in the `Subglacially` submodule, as well as the development
 of uncertainty quantification via Monte Carlo methods (the `Randomly` submodule). The latter
 aspect is needed in glaciology as uncertainties in glacier bed DEMs and Shreve-potential are
@@ -71,7 +71,7 @@ large and thus warrant quantification.
 
 # State of the field
 
-Several mature tools exist for hydrological flow routing on DEMs, examples include:
+Several mature tools exist for hydrological flow routing on DEMs; examples include:
 
 - **Geomorphometry.jl** is a Julia package providing many geomorphic analysis tools, among them flow routing. [@PronkGeomorphometryjlAnalyzingVisualizing2026]
 - **GRASS GIS** (command line/C/Python/QGIS), the component `r.watershed` implements
@@ -104,12 +104,11 @@ on sediment transport and subglacial melt calculations.
 For subglacial routing, the main function is `waterflows_subglacial(surfdem, beddem, dx, f)`
 with surface and bed DEMs, grid spacing and water pressure as flotation fraction as inputs.
 In the subglacial setting, the `beddem` and `f` input fields have large uncertainties associated with them.
-This spurred the development of the Monte Carlo based uncertainty quantification in WWF (which can be used independently of subglacial routing). The main function
+This spurred the development of the Monte Carlo-based uncertainty quantification in WWF (which can be used independently of subglacial routing). The main function
 there is `map_mc(model, sample, reduce!, n)` which runs the `model` function (i.e. the water routing)
 on `n` samples of surface, bed and flotation fractions fields and reduces the results with `reduce!`
 (to avoid huge data volumes). The uncertainty in the input fields is modelled using Gaussian Random Fields,
-which provide spatially correlated random noise. The random fields are generated using a FFT-based method [@RassEfficientParallelRandom2019]. However, the software design allows to couple
-more sophisticated, external geostatistical models to generate the uncertainty fields.
+which provide spatially correlated random noise. The random fields are generated using an FFT-based method [@RassEfficientParallelRandom2019]. However, the software design allows users to couple more sophisticated, external geostatistical models to generate the uncertainty fields.
 
 From the outset, WWF has been developed with subglacial applications in mind where uncertainties in inputs are large and would likely dominate over routing algorithm choices.
 Therefore, the simplest routing algorithm, D8, was deemed sufficient and implemented.
@@ -117,7 +116,7 @@ Incidentally, the ensemble of flow paths resulting from stochastic routing exhib
 Although subglacial routing was the motivation to develop WWF, the main WWF module and the `Randomly` submodule were designed, again from the outset, to be usable and useful for general settings.
 Making WWF useful for general settings also motivated our choice to keep the subglacial and stochastic functionality tucked away in submodules, which makes it clear that these are optional features and that WWF can be used without them.
 The API of WWF is intentionally kept simple and is based around using generic vectors and arrays as inputs and no custom datatypes are defined (with the exception of the `Uncertainty` struct).
-This makes WWF interoperable with many grid based Julia packages, in particular georeferenced raster data of the standard packages [`Rasters.jl`](https://github.com/rafaqz/Rasters.jl) and [GeoArrays.jl](https://github.com/evetion/GeoArrays.jl) can be used and leads to georeferenced WWF outputs (except for `Randomly` workflows which currently return normal arrays).
+This makes WWF interoperable with many grid-based Julia packages, in particular georeferenced raster data of the standard packages [`Rasters.jl`](https://github.com/rafaqz/Rasters.jl) and [GeoArrays.jl](https://github.com/evetion/GeoArrays.jl) can be used and lead to georeferenced WWF outputs (except for `Randomly` workflows which currently return normal arrays).
 
 # Example
 
@@ -164,7 +163,7 @@ developed in a separate, private repository
 and only now merged into WWF. Recently, code refactoring was helped by LLMs.
 Much of the documentation, examples and benchmarks were generated
 with the help of LLMs. The tools employed to date are Claude Sonnet 4.6
-and GPT-5.3-Codex. All AI generated content was reviewed by a human.
+and GPT-5.3-Codex. All AI-generated content was reviewed by a human.
 
 The first draft of this manuscript was created by Claude Sonnet 4.6.
 The tool was used for initial text generation
