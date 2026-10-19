@@ -76,6 +76,10 @@ Questions and general discussions can be posted on [https://github.com/mauro3/Wh
 
 You are welcome to contribute to WWF by filing issues and making pull-requests; please first have a look at [https://github.com/mauro3/WhereTheWaterFlows.jl/blob/master/CONTRIBUTING.md](https://github.com/mauro3/WhereTheWaterFlows.jl/blob/master/CONTRIBUTING.md).
 
+# Citing WWF
+
+If you use this software for scientific work, please cite the [JOSS paper](https://doi.org/10.21105/joss.10834) and the used version via [Zenodo](https://doi.org/10.5281/zenodo.7086860).
+
 ## Algorithm
 
 ![D8 algorithm illustration](./d8-algo.png)

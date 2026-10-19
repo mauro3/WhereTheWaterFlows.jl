@@ -3,10 +3,12 @@
 [![](https://img.shields.io/badge/docs-stable-blue.svg)](https://mauro3.github.io/WhereTheWaterFlows.jl/stable)
 [![](https://img.shields.io/badge/docs-dev-blue.svg)](https://mauro3.github.io/WhereTheWaterFlows.jl/dev)
 
+[![DOI JOSS](https://joss.theoj.org/papers/10.21105/joss.10834/status.svg)](https://doi.org/10.21105/joss.10834)
+[![DOI Zenodo](https://zenodo.org/badge/DOI/10.5281/zenodo.7086860.svg)](https://doi.org/10.5281/zenodo.7086860)
+
 [![Build Status](https://github.com/mauro3/WhereTheWaterFlows.jl/workflows/CI/badge.svg)](https://github.com/mauro3/WhereTheWaterFlows.jl/actions)
 [![Build Status](https://ci.appveyor.com/api/projects/status/github/mauro3/WhereTheWaterFlows.jl?svg=true)](https://ci.appveyor.com/project/mauro3/WhereTheWaterFlows-jl)
 [![Coverage](https://codecov.io/gh/mauro3/WhereTheWaterFlows.jl/branch/master/graph/badge.svg)](https://codecov.io/gh/mauro3/WhereTheWaterFlows.jl)
-[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.7086860.svg)](https://doi.org/10.5281/zenodo.7086860)
 
 This package calculates water flow paths and catchments on
 - digital elevation models (DEMs), and
@@ -44,6 +46,10 @@ For details, see the [documentation](https://mauro3.github.io/WhereTheWaterFlows
 # Other Julia packages
 
 [Geomorphometry.jl](https://github.com/Deltares/Geomorphometry.jl) includes flow routing (among other functionality) using the FD8 algorithm which includes D8. 
+
+# Citing WWF
+
+If you use this software for scientific work, please cite the [JOSS paper](https://doi.org/10.21105/joss.10834) and the used version via [Zenodo](https://doi.org/10.5281/zenodo.7086860).
 
 # Algorithms
 [1] O’Callaghan, J. and Mark, D.: The extraction of drainage networks
