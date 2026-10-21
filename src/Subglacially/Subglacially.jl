@@ -316,6 +316,9 @@ function lake_depth(phi_filled, phi_orig; fixed_surface=true, rhow=RHOW, rhoi=RH
     end
 end
 
+# Iterate true linear positions without materializing an index vector.
+_true_indices(mask) = Base.LogicalIndex{Int}(mask)
+
 """
     waterflows_subglacial(surfdem, beddem, dx, 
                                floatfrac=1,
@@ -411,9 +414,20 @@ function waterflows_subglacial(surfdem::AbstractMatrix, beddem::AbstractMatrix, 
     # Sink areas and fluxes
     #any(isempty.(ctch_sinks)) && error("One of the sinks contains no cells!")
     cs = [WWF.catchment(dir, s) for s in ctch_sinks]
-    fluxes = (total = [WWF.catchment_flux((source .+ area[3] .+ area[4])*dx^2, c) for c in cs],
-              dissipation = [WWF.catchment_flux(area[3]*dx^2, c) for c in cs],
-              pressmelt = [WWF.catchment_flux(area[4]*dx^2, c) for c in cs])
+    fluxes = (total=zeros(Float64, length(cs)),
+              dissipation=zeros(Float64, length(cs)),
+              pressmelt=zeros(Float64, length(cs)))
+    for (group, c) in enumerate(cs)
+        total = dissipation = pressmelt = 0.0
+        for i in _true_indices(c)
+            total += source[i] + area[3][i] + area[4][i]
+            dissipation += area[3][i]
+            pressmelt += area[4][i]
+        end
+        fluxes.total[group] = total * dx^2
+        fluxes.dissipation[group] = dissipation * dx^2
+        fluxes.pressmelt[group] = pressmelt * dx^2
+    end
 
     return (
         routing = (

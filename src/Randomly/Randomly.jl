@@ -237,7 +237,7 @@ function make_fns_subglacial(dx,
             push!(aggr.catchment_fluxes.total[i], fluxes.total[i])
             push!(aggr.catchment_fluxes.dissipation[i], fluxes.dissipation[i])
             push!(aggr.catchment_fluxes.pressmelt[i], fluxes.pressmelt[i])
-            aggr.catchments[:,:,i] .+= masks[i]
+            _accumulate_catchment!(view(aggr.catchments, :, :, i), masks[i])
         end
 
         aggr.n_samples[] += 1
@@ -267,6 +267,24 @@ function make_fns_subglacial(dx,
 
     return model, sample, reduce!
 end
+
+"""
+    _accumulate_catchment!(layer, mask)
+
+Add a 1 to each location in layer where mask==true.
+"""
+function _accumulate_catchment!(layer, mask)
+    # Add membership without reading/writing every zero in the aggregate layer.
+    size(layer) == size(mask) || throw(DimensionMismatch("Aggregate and mask sizes differ"))
+    bits = vec(mask)
+    i = findnext(bits, 1)
+    while !isnothing(i)
+        layer[i] += one(eltype(layer))
+        i = findnext(bits, i + 1)
+    end
+    return layer
+end
+
 
 """
     make_fns_subaerial(dx,
@@ -329,7 +347,7 @@ function make_fns_subaerial(dx,
 
         for i=1:length(ctch_sinks)
             c = WhereTheWaterFlows.catchment(output.dir, ctch_sinks[i])
-            aggr.catchments[:, :, i] .+= c
+            _accumulate_catchment!(view(aggr.catchments, :, :, i), c)
             flux = WhereTheWaterFlows.catchment_flux(input.source, c) * input.dx^2
             push!(aggr.catchment_fluxes[i], flux)
         end

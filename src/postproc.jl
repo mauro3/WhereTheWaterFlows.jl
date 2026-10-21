@@ -79,6 +79,7 @@ function catchment(dir, ijs::Union{<:Array{CartesianIndex{2}}, CartesianIndices{
     return c
 end
 function _catchment!(c, dir, ij)
+    c[ij] && return nothing
     c[ij] = true
     # proc upstream points
     for IJ in iterate_D9(ij, c)
@@ -98,8 +99,18 @@ end
 
 The total flux, i.e. input, in one catchment.
 """
-catchment_flux(cellarea, c, color) = sum(cellarea[c.==color])
-catchment_flux(cellarea, c::Union{BitArray, AbstractMatrix{<:Bool}}) = sum(cellarea[c])
+catchment_flux(cellarea, c, color) = catchment_flux(cellarea, c.==color)
+function catchment_flux(cellarea, c::Union{BitArray, AbstractMatrix{<:Bool}})
+    size(cellarea) == size(c) || throw(DimensionMismatch("Flux and mask sizes differ"))
+    total = zero(Base.promote_op(Base.add_sum, eltype(cellarea), eltype(cellarea)))
+    bits = vec(c)
+    i = findnext(bits, 1)
+    while !isnothing(i)
+        total += cellarea[i]
+        i = findnext(bits, i + 1)
+    end
+    return total
+end
 
 """
     catchments(dir, sinks::Union{Vector{Vector{CartesianIndex{2}}}, Vector{<:CartesianIndices{2}}}, dem=nothing;
