@@ -28,6 +28,7 @@ These functions are exported but are called separately after `waterflows`:
 
 ```@docs
 catchment
+catchment!
 catchments
 catchment_flux
 prune_catchments

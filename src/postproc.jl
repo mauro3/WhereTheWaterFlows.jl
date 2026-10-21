@@ -1,6 +1,6 @@
 # Misc post-processing functions
 
-export catchment, catchments, catchment_flux, prune_catchments, fill_dem
+export catchment, catchment!, catchments, catchment_flux, prune_catchments, fill_dem
 
 """
     prune_catchments(catchments, minsize)
@@ -59,24 +59,33 @@ Returns
 Tip: only being off by one grid-point can make the difference
      between a tiny and a huge catchment!
 
-See also: `catchments`
+See also: [`catchment!`](@ref), `catchments`.
 """
-catchment(dir, ij::Tuple) = catchment(dir, CartesianIndex(ij...))
-function catchment(dir, ij::CartesianIndex)
-    # c = fill!(similar(dir, Bool), false) # makes Matrix{Bool}
-    c = fill!(similar(BitArray, axes(dir)), false) # makes BitMatrix
-    # recursively traverse the drainage tree in up-flow direction,
-    # starting at ij
-    _catchment!(c, dir, ij)
-    return c
-end
-function catchment(dir, ijs::Union{<:Array{CartesianIndex{2}}, CartesianIndices{2}})
-    #c = fill!(similar(dir, Bool), false) # makes Matrix{Bool}
-    c = fill!(similar(BitArray, axes(dir)), false) # makes BitMatrix
-    for ij in ijs
-        _catchment!(c, dir, ij)
+catchment(dir, ij) = catchment!(similar(BitArray, axes(dir)), dir, ij)
+
+"""
+    catchment!(mask, dir, seeds) -> mask
+
+Clear and fill a Boolean `mask` with the upstream catchment of `seeds`.
+
+Supply `mask` with the same axes as `dir`. Seeds can be a coordinate tuple,
+a `CartesianIndex`, or a collection of Cartesian indices. Clear the mask once per
+call, not between seeds; repeated seeds are ignored. Return the supplied mask.
+Consume its contents before reusing it for another catchment.
+
+See also [`catchment`](@ref).
+"""
+catchment!(mask::AbstractMatrix{Bool}, dir, ij::Tuple{Integer,Integer}) =
+    catchment!(mask, dir, CartesianIndex(ij...))
+catchment!(mask::AbstractMatrix{Bool}, dir, ij::CartesianIndex) =
+    catchment!(mask, dir, (ij,))
+function catchment!(mask::AbstractMatrix{Bool}, dir, seeds)
+    axes(mask) == axes(dir) || throw(DimensionMismatch("Mask and direction axes differ"))
+    fill!(mask, false)
+    for ij in seeds
+        _catchment!(mask, dir, ij)
     end
-    return c
+    return mask
 end
 function _catchment!(c, dir, ij)
     c[ij] && return nothing

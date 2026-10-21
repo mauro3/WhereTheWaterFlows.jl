@@ -332,6 +332,9 @@ function make_fns_subaerial(dx,
         end
     end
 
+    # Only the reducer uses this buffer; each group is consumed before the next fill.
+    catchment_mask = similar(BitArray, axes(dem))
+
     function reduce_step(aggr, res; init=false, sz=nothing)
         if init
             return (;areas_total = zeros(Float32, sz),
@@ -346,9 +349,9 @@ function make_fns_subaerial(dx,
         aggr.stream_length .+= output.slen
 
         for i=1:length(ctch_sinks)
-            c = WhereTheWaterFlows.catchment(output.dir, ctch_sinks[i])
-            _accumulate_catchment!(view(aggr.catchments, :, :, i), c)
-            flux = WhereTheWaterFlows.catchment_flux(input.source, c) * input.dx^2
+            WhereTheWaterFlows.catchment!(catchment_mask, output.dir, ctch_sinks[i])
+            _accumulate_catchment!(view(aggr.catchments, :, :, i), catchment_mask)
+            flux = WhereTheWaterFlows.catchment_flux(input.source, catchment_mask) * input.dx^2
             push!(aggr.catchment_fluxes[i], flux)
         end
 
