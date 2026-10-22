@@ -127,6 +127,11 @@ routed maps and diagnostics (`areas_total`,
 `lake_depth_*`, `lake_mask_*`, `sc_locs`, `kappas`, `catchments`) and appends
 sink-flux records to vectors (`catchment_fluxes.total/dissipation/pressmelt`).
 
+Catchments may overlap. Membership is accumulated only at true mask cells, using
+Float16 counts and in-place normalization. Counts are exact through 2048 samples;
+final probabilities are rounded to Float16. Each group retains a full-grid BitMatrix
+per realization and a full-grid aggregate layer.
+
 At the finalize step map-style fields are normalized by `n_samples` (so they are
 means/frequencies) and flux vectors remain per-sample records by design.
 

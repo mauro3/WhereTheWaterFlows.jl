@@ -220,7 +220,7 @@ function make_fns_subglacial(dx,
 
         aggr.areas_total .+= area.total
         aggr.areas_extra .+= area.extra
-        aggr.melt_rate .+= area.dissipation_melt_rate + area.pressure_melt_rate
+        aggr.melt_rate .+= area.dissipation_melt_rate .+ area.pressure_melt_rate
         aggr.lake_depth_fixed_surface .+= depth_fixed_surface
         aggr.lake_mask_fixed_surface .+= depth_fixed_surface.>min_lake_depth
 
@@ -237,7 +237,7 @@ function make_fns_subglacial(dx,
             push!(aggr.catchment_fluxes.total[i], fluxes.total[i])
             push!(aggr.catchment_fluxes.dissipation[i], fluxes.dissipation[i])
             push!(aggr.catchment_fluxes.pressmelt[i], fluxes.pressmelt[i])
-            aggr.catchments[:,:,i] .+= masks[i]
+            _accumulate_catchment!(view(aggr.catchments, :, :, i), masks[i])
         end
 
         aggr.n_samples[] += 1
@@ -267,6 +267,21 @@ function make_fns_subglacial(dx,
 
     return model, sample, reduce!
 end
+
+"""
+    _accumulate_catchment!(layer, mask)
+
+Add a 1 to each location in layer where mask==true.
+"""
+function _accumulate_catchment!(layer, mask)
+    # Add membership without reading/writing every zero in the aggregate layer.
+    size(layer) == size(mask) || throw(DimensionMismatch("Aggregate and mask sizes differ"))
+    for i in Base.LogicalIndex{Int}(vec(mask)) # ref https://github.com/rafaqz/DimensionalData.jl/issues/1244
+      layer[i] += one(eltype(layer))
+    end
+    return layer
+end
+
 
 """
     make_fns_subaerial(dx,
@@ -314,23 +329,27 @@ function make_fns_subaerial(dx,
         end
     end
 
-    function reduce_step(aggr, res; init=false, sz=nothing)
-        if init
-            return (;areas_total = zeros(Float32, sz),
-                    stream_length = zeros(Float32, sz),
-                    catchments = zeros(Float16, sz..., length(ctch_sinks)),
-                    catchment_fluxes = [Float32[] for _ in ctch_sinks],
-                    n_samples = Ref(0))
-        end
+    # initialize storage
+    function reduce!()
+        sz = size(dem)
+        return (;areas_total = zeros(Float32, sz),
+                stream_length = zeros(Float32, sz),
+                catchments = zeros(Float16, sz..., length(ctch_sinks)),
+                catchment_fluxes = [Float32[] for _ in ctch_sinks],
+                n_samples = Ref(0))
+    end
 
+    # aggreate values
+    catchment_mask = similar(BitArray, axes(dem)) # scratch storage to avoid allocations
+    function reduce!(aggr, res)
         (input, output) = res
         aggr.areas_total .+= output.area
         aggr.stream_length .+= output.slen
 
         for i=1:length(ctch_sinks)
-            c = WhereTheWaterFlows.catchment(output.dir, ctch_sinks[i])
-            aggr.catchments[:, :, i] .+= c
-            flux = WhereTheWaterFlows.catchment_flux(input.source, c) * input.dx^2
+            WhereTheWaterFlows.catchment!(catchment_mask, output.dir, ctch_sinks[i])
+            _accumulate_catchment!(view(aggr.catchments, :, :, i), catchment_mask)
+            flux = WhereTheWaterFlows.catchment_flux(input.source, catchment_mask) * input.dx^2
             push!(aggr.catchment_fluxes[i], flux)
         end
 
@@ -338,23 +357,13 @@ function make_fns_subaerial(dx,
         return aggr
     end
 
-    function reduce_finalize(aggr)
+    # finalize output
+    function reduce!(aggr)
         n = aggr.n_samples[]
         aggr.areas_total ./= n
         aggr.stream_length ./= n
         aggr.catchments ./= n
         return aggr
-    end
-
-    function reduce!()
-        sz = size(dem)
-        return reduce_step(nothing, nothing; init=true, sz)
-    end
-    function reduce!(aggr, res)
-        return reduce_step(aggr, res)
-    end
-    function reduce!(aggr)
-        return reduce_finalize(aggr)
     end
 
     return model, sample, reduce!

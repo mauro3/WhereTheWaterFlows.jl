@@ -1,4 +1,5 @@
 include("core/runtests.jl")
+include("catchment-performance.jl")
 include("Subglacially/runtests.jl")
 include("Randomly/runtests.jl")
 include("plotting.jl")

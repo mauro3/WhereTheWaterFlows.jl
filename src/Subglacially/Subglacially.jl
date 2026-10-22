@@ -411,9 +411,23 @@ function waterflows_subglacial(surfdem::AbstractMatrix, beddem::AbstractMatrix, 
     # Sink areas and fluxes
     #any(isempty.(ctch_sinks)) && error("One of the sinks contains no cells!")
     cs = [WWF.catchment(dir, s) for s in ctch_sinks]
-    fluxes = (total = [WWF.catchment_flux((source .+ area[3] .+ area[4])*dx^2, c) for c in cs],
-              dissipation = [WWF.catchment_flux(area[3]*dx^2, c) for c in cs],
-              pressmelt = [WWF.catchment_flux(area[4]*dx^2, c) for c in cs])
+    fluxes = (total=zeros(Float64, length(cs)),
+              dissipation=zeros(Float64, length(cs)),
+              pressmelt=zeros(Float64, length(cs)))
+    # Extract once: tuple access in the cell loop can box metadata-rich Raster wrappers.
+    dissipation_rate, pressure_rate = area[3], area[4]
+    for (group, catchment_mask) in enumerate(cs)
+        total = dissipation = pressmelt = 0.0
+        # Expose packed-bit storage behind array wrappers without collecting indices:
+        for i in Base.LogicalIndex{Int}(vec(catchment_mask)) # vec because of https://github.com/rafaqz/DimensionalData.jl/issues/1244
+            total += source[i] + dissipation_rate[i] + pressure_rate[i]
+            dissipation += dissipation_rate[i]
+            pressmelt += pressure_rate[i]
+        end
+        fluxes.total[group] = total * dx^2
+        fluxes.dissipation[group] = dissipation * dx^2
+        fluxes.pressmelt[group] = pressmelt * dx^2
+    end
 
     return (
         routing = (

@@ -167,10 +167,11 @@ end
     baseline = ones(size(dem))
     sinks = WWF.waterflows(dem).sinks
     # Including an upstream point in the all-outlets group must not count it twice.
-    groups = [sinks, [sinks; CartesianIndex(3, 3)], [CartesianIndex(3, 3)]]
+    groups = [sinks, [sinks; CartesianIndex(3, 3)], [CartesianIndex(3, 3)], CartesianIndex{2}[]]
     model, _, reduce! = WWFR.make_fns_subaerial(
         dx, dem, WWFR.Uncertainty(), baseline, WWFR.Uncertainty(), groups)
     aggr = reduce!()
+    expected = zeros(Float16, size(dem)..., length(groups))
     for scale in (1.0, 2.0)
         source = scale .* reshape(collect(1.0:25.0), size(dem))
         res = model(dem, source)
@@ -181,8 +182,24 @@ end
         @test aggr.catchment_fluxes[2][end] ≈ total
         @test aggr.catchment_fluxes[1][end] ≈ sum(out.area[sinks])
         @test aggr.catchment_fluxes[3][end] ≈ out.area[3, 3]
+        for (i, group) in enumerate(groups)
+            c = WWF.catchment(out.dir, group)
+            @views expected[:,:,i] .+= c
+            @test aggr.catchment_fluxes[i][end] ≈ sum(source[c]) * dx^2
+        end
+        @test aggr.catchments == expected
     end
     @test aggr.catchment_fluxes[1][2] ≈ 2 * aggr.catchment_fluxes[1][1]
+
+    # Reuse the same scratch storage with a different direction field.
+    res = model(reverse(dem; dims=1), baseline)
+    reduce!(aggr, res)
+    for (i, group) in enumerate(groups)
+        c = WWF.catchment(res[2].dir, group)
+        @views expected[:,:,i] .+= c
+        @test aggr.catchment_fluxes[i][end] ≈ sum(baseline[c]) * dx^2
+    end
+    @test aggr.catchments == expected
 end
 
 @testset "Stochastic Subaerial" begin

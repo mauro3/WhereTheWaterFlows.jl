@@ -1,6 +1,6 @@
 # Misc post-processing functions
 
-export catchment, catchments, catchment_flux, prune_catchments, fill_dem
+export catchment, catchment!, catchments, catchment_flux, prune_catchments, fill_dem
 
 """
     prune_catchments(catchments, minsize)
@@ -59,26 +59,42 @@ Returns
 Tip: only being off by one grid-point can make the difference
      between a tiny and a huge catchment!
 
-See also: `catchments`
+See also: [`catchment!`](@ref), `catchments`.
 """
-catchment(dir, ij::Tuple) = catchment(dir, CartesianIndex(ij...))
-function catchment(dir, ij::CartesianIndex)
-    # c = fill!(similar(dir, Bool), false) # makes Matrix{Bool}
-    c = fill!(similar(BitArray, axes(dir)), false) # makes BitMatrix
-    # recursively traverse the drainage tree in up-flow direction,
-    # starting at ij
-    _catchment!(c, dir, ij)
-    return c
+function catchment(dir, ij)
+    out = similar(BitArray, axes(dir))
+    catchment!(out, dir, ij)
+    return out
 end
-function catchment(dir, ijs::Union{<:Array{CartesianIndex{2}}, CartesianIndices{2}})
-    #c = fill!(similar(dir, Bool), false) # makes Matrix{Bool}
-    c = fill!(similar(BitArray, axes(dir)), false) # makes BitMatrix
-    for ij in ijs
-        _catchment!(c, dir, ij)
+
+"""
+    catchment!(mask, dir, seeds) -> mask
+
+Clear and fill a Boolean `mask` with the upstream catchment of `seeds`.
+
+- Supply `mask` with the same axes as `dir`
+- `seeds` a coordinate tuple, a `CartesianIndex`, or a collection of Cartesian indices.
+
+Clears the mask once per call, but not between seeds; repeated seeds are ignored.
+
+See also [`catchment`](@ref).
+"""
+catchment!(mask::AbstractMatrix{Bool}, dir, ij::Tuple{Integer,Integer}) =
+    catchment!(mask, dir, CartesianIndex(ij...))
+catchment!(mask::AbstractMatrix{Bool}, dir, ij::CartesianIndex) =
+    catchment!(mask, dir, (ij,))
+function catchment!(mask::AbstractMatrix{Bool}, dir, seeds)
+    axes(mask) == axes(dir) || throw(DimensionMismatch("Mask and direction axes differ"))
+    # Expose packed-bit storage without changing the output container.
+    # https://github.com/rafaqz/DimensionalData.jl/issues/1244
+    fill!(vec(mask), false)
+    for ij in seeds
+        _catchment!(mask, dir, ij)
     end
-    return c
+    return nothing
 end
 function _catchment!(c, dir, ij)
+    c[ij] && return nothing
     c[ij] = true
     # proc upstream points
     for IJ in iterate_D9(ij, c)
@@ -98,8 +114,15 @@ end
 
 The total flux, i.e. input, in one catchment.
 """
-catchment_flux(cellarea, c, color) = sum(cellarea[c.==color])
-catchment_flux(cellarea, c::Union{BitArray, AbstractMatrix{<:Bool}}) = sum(cellarea[c])
+catchment_flux(cellarea, c, color) = catchment_flux(cellarea, c.==color)
+function catchment_flux(cellarea, c::Union{BitArray, AbstractMatrix{<:Bool}})
+    size(cellarea) == size(c) || throw(DimensionMismatch("Flux and mask sizes differ"))
+    total = zero(Base.promote_op(Base.add_sum, eltype(cellarea), eltype(cellarea)))
+    for i in Base.LogicalIndex{Int}(vec(c))
+      total += cellarea[i]
+    end
+    return total
+end
 
 """
     catchments(dir, sinks::Union{Vector{Vector{CartesianIndex{2}}}, Vector{<:CartesianIndices{2}}}, dem=nothing;

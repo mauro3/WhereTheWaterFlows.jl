@@ -49,6 +49,37 @@ end
         @test length(unique(prune_catchments(c, 10))) < length(unique(c))
     end
 end
+@testset "In-place catchment" begin
+    dir = fill(WWF.ind2dir(CartesianIndex(1,0)), 5, 4)
+    dir[end,:] .= WWF.SINK
+    original = copy(dir)
+    first_column = falses(5,4); first_column[:,1] .= true
+    last_column = falses(5,4); last_column[:,4] .= true
+    first_two = falses(5,4); first_two[:,1:2] .= true
+    strided_parent = trues(10,8)
+    strided = view(strided_parent, 1:2:9, 2:2:8)
+    for mask in (trues(5,4), fill(true,5,4), view(trues(7,6), 2:6, 2:5), strided)
+        catchment!(mask, dir, CartesianIndex(5,1))
+        @test mask == first_column
+        catchment!(mask, dir, (5,4))
+        @test mask == last_column # previous catchment was cleared
+        seeds = [CartesianIndex(5,1), CartesianIndex(3,1),
+                 CartesianIndex(5,1), CartesianIndex(5,4)]
+        catchment!(mask, dir, seeds)
+        @test mask == (first_column .| last_column)
+        catchment!(mask, dir, CartesianIndices((5:5,1:2)))
+        @test mask == first_two
+        catchment!(mask, dir, CartesianIndex{2}[])
+        @test !any(mask)
+    end
+    @test all(strided_parent[2:2:end,:])
+    @test all(strided_parent[:,1:2:end])
+    @test catchment(dir, CartesianIndex(5,1)) == first_column
+    @test catchment(dir, (5,4)) == last_column
+    @test dir == original
+    @test_throws DimensionMismatch catchment!(falses(4,4), dir, (5,1))
+end
+
 @testset "prune_catchments assigns zero to small catchments" begin
     c = [1 1 2; 1 1 3; 4 4 3]
     original = copy(c)
