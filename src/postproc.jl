@@ -86,7 +86,7 @@ catchment!(mask::AbstractMatrix{Bool}, dir, ij::CartesianIndex) =
 function catchment!(mask::AbstractMatrix{Bool}, dir, seeds)
     axes(mask) == axes(dir) || throw(DimensionMismatch("Mask and direction axes differ"))
     # Expose packed-bit storage without changing the output container.
-    # 
+    # https://github.com/rafaqz/DimensionalData.jl/issues/1244
     fill!(vec(mask), false)
     for ij in seeds
         _catchment!(mask, dir, ij)
@@ -118,11 +118,8 @@ catchment_flux(cellarea, c, color) = catchment_flux(cellarea, c.==color)
 function catchment_flux(cellarea, c::Union{BitArray, AbstractMatrix{<:Bool}})
     size(cellarea) == size(c) || throw(DimensionMismatch("Flux and mask sizes differ"))
     total = zero(Base.promote_op(Base.add_sum, eltype(cellarea), eltype(cellarea)))
-    bits = vec(c)
-    i = findnext(bits, 1)
-    while !isnothing(i)
-        total += cellarea[i]
-        i = findnext(bits, i + 1)
+    for i in Base.LogicalIndex{Int}(vec(c))
+      total += cellarea[i]
     end
     return total
 end
