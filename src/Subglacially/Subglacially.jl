@@ -316,9 +316,6 @@ function lake_depth(phi_filled, phi_orig; fixed_surface=true, rhow=RHOW, rhoi=RH
     end
 end
 
-# Expose packed-bit storage behind array wrappers without collecting indices.
-_true_indices(mask) = Base.LogicalIndex{Int}(vec(mask))
-
 """
     waterflows_subglacial(surfdem, beddem, dx, 
                                floatfrac=1,
@@ -421,7 +418,8 @@ function waterflows_subglacial(surfdem::AbstractMatrix, beddem::AbstractMatrix, 
     dissipation_rate, pressure_rate = area[3], area[4]
     for (group, catchment_mask) in enumerate(cs)
         total = dissipation = pressmelt = 0.0
-        for i in _true_indices(catchment_mask)
+        # Expose packed-bit storage behind array wrappers without collecting indices:
+        for i in Base.LogicalIndex{Int}(vec(catchment_mask)) # vec because of https://github.com/rafaqz/DimensionalData.jl/issues/1244
             total += source[i] + dissipation_rate[i] + pressure_rate[i]
             dissipation += dissipation_rate[i]
             pressmelt += pressure_rate[i]

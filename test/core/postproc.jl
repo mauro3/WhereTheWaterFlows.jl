@@ -59,17 +59,17 @@ end
     strided_parent = trues(10,8)
     strided = view(strided_parent, 1:2:9, 2:2:8)
     for mask in (trues(5,4), fill(true,5,4), view(trues(7,6), 2:6, 2:5), strided)
-        @test catchment!(mask, dir, CartesianIndex(5,1)) === mask
+        catchment!(mask, dir, CartesianIndex(5,1))
         @test mask == first_column
-        @test catchment!(mask, dir, (5,4)) === mask
+        catchment!(mask, dir, (5,4))
         @test mask == last_column # previous catchment was cleared
         seeds = [CartesianIndex(5,1), CartesianIndex(3,1),
                  CartesianIndex(5,1), CartesianIndex(5,4)]
-        @test catchment!(mask, dir, seeds) === mask
+        catchment!(mask, dir, seeds)
         @test mask == (first_column .| last_column)
-        @test catchment!(mask, dir, CartesianIndices((5:5,1:2))) === mask
+        catchment!(mask, dir, CartesianIndices((5:5,1:2)))
         @test mask == first_two
-        @test catchment!(mask, dir, CartesianIndex{2}[]) === mask
+        catchment!(mask, dir, CartesianIndex{2}[])
         @test !any(mask)
     end
     @test all(strided_parent[2:2:end,:])

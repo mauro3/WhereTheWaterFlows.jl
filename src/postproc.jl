@@ -61,17 +61,21 @@ Tip: only being off by one grid-point can make the difference
 
 See also: [`catchment!`](@ref), `catchments`.
 """
-catchment(dir, ij) = catchment!(similar(BitArray, axes(dir)), dir, ij)
+function catchment(dir, ij)
+    out = similar(BitArray, axes(dir))
+    catchment!(out, dir, ij)
+    return out
+end
 
 """
     catchment!(mask, dir, seeds) -> mask
 
 Clear and fill a Boolean `mask` with the upstream catchment of `seeds`.
 
-Supply `mask` with the same axes as `dir`. Seeds can be a coordinate tuple,
-a `CartesianIndex`, or a collection of Cartesian indices. Clear the mask once per
-call, not between seeds; repeated seeds are ignored. Return the supplied mask.
-Consume its contents before reusing it for another catchment.
+- Supply `mask` with the same axes as `dir`
+- `seeds` a coordinate tuple, a `CartesianIndex`, or a collection of Cartesian indices.
+
+Clears the mask once per call, but not between seeds; repeated seeds are ignored.
 
 See also [`catchment`](@ref).
 """
@@ -82,11 +86,12 @@ catchment!(mask::AbstractMatrix{Bool}, dir, ij::CartesianIndex) =
 function catchment!(mask::AbstractMatrix{Bool}, dir, seeds)
     axes(mask) == axes(dir) || throw(DimensionMismatch("Mask and direction axes differ"))
     # Expose packed-bit storage without changing the output container.
+    # 
     fill!(vec(mask), false)
     for ij in seeds
         _catchment!(mask, dir, ij)
     end
-    return mask
+    return nothing
 end
 function _catchment!(c, dir, ij)
     c[ij] && return nothing

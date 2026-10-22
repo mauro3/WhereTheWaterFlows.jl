@@ -276,11 +276,8 @@ Add a 1 to each location in layer where mask==true.
 function _accumulate_catchment!(layer, mask)
     # Add membership without reading/writing every zero in the aggregate layer.
     size(layer) == size(mask) || throw(DimensionMismatch("Aggregate and mask sizes differ"))
-    bits = vec(mask)
-    i = findnext(bits, 1)
-    while !isnothing(i)
-        layer[i] += one(eltype(layer))
-        i = findnext(bits, i + 1)
+    for i in Base.LogicalIndex{Int}(vec(mask)) # ref https://github.com/rafaqz/DimensionalData.jl/issues/1244
+      layer[i] += one(eltype(layer))
     end
     return layer
 end

@@ -7,7 +7,6 @@ using Test, WhereTheWaterFlows
     sparse = BitMatrix(values .% 7 .== 0)
     for mask in (falses(17,9), trues(17,9), sparse, Matrix(sparse))
         @test WWF.catchment_flux(values, mask) == sum(values[mask])
-        @test collect(WWFS._true_indices(mask)) == findall(vec(mask))
     end
     @test WWF.catchment_flux(values, Int.(sparse), 1) == sum(values[sparse])
     bed = [1000. - 10i + j for i in 1:7, j in 1:7]
