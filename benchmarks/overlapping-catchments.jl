@@ -1,7 +1,8 @@
 # julia --project benchmarks/overlapping-catchments.jl
 using WhereTheWaterFlows
 const WWF = WhereTheWaterFlows
-const SG = WWF.Subglacially
+const WWFS = WWF.Subglacially
+const WWFR = WWF.Randomly
 
 function measure(name, f)
     f() # warm up
@@ -14,11 +15,11 @@ end
 n = 256
 bed = [1000. - i for i in 1:n, j in 1:n]
 surf, source = bed .+ 100., fill(1e-8,n,n)
-base = SG.waterflows_subglacial(surf, bed, 200., 0.97, source; gamma=0.)
+base = WWFS.waterflows_subglacial(surf, bed, 200., 0.97, source; gamma=0.)
 sinks = base.routing.sinks
 groups = [sinks[i:198:end] for i in 1:198]
 push!(groups, [CartesianIndex(n÷2,n÷2)]) # interior catchment overlaps terminal groups
-out = measure("routing with groups", () -> SG.waterflows_subglacial(surf, bed, 200.,
+out = measure("routing with groups", () -> WWFS.waterflows_subglacial(surf, bed, 200.,
     0.97, source; gamma=0., ctch_sinks=groups))
 masks, a = out.sink_catchments.masks, out.routing.area
 old_fluxes = measure("original flux expressions alone", () -> (
@@ -34,7 +35,7 @@ function old_update!(counts, masks)
 end
 function new_update!(counts, masks)
     for (i,c) in enumerate(masks)
-        WWF._accumulate_catchment!(view(counts,:,:,i), c)
+        WWFR._accumulate_catchment!(view(counts,:,:,i), c)
     end
 end
 measure("full-layer aggregation", () -> old_update!(counts, masks))

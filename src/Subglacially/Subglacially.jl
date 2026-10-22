@@ -417,12 +417,14 @@ function waterflows_subglacial(surfdem::AbstractMatrix, beddem::AbstractMatrix, 
     fluxes = (total=zeros(Float64, length(cs)),
               dissipation=zeros(Float64, length(cs)),
               pressmelt=zeros(Float64, length(cs)))
-    for (group, c) in enumerate(cs)
+    # Extract once: tuple access in the cell loop can box metadata-rich Raster wrappers.
+    dissipation_rate, pressure_rate = area[3], area[4]
+    for (group, catchment_mask) in enumerate(cs)
         total = dissipation = pressmelt = 0.0
-        for i in _true_indices(c)
-            total += source[i] + area[3][i] + area[4][i]
-            dissipation += area[3][i]
-            pressmelt += area[4][i]
+        for i in _true_indices(catchment_mask)
+            total += source[i] + dissipation_rate[i] + pressure_rate[i]
+            dissipation += dissipation_rate[i]
+            pressmelt += pressure_rate[i]
         end
         fluxes.total[group] = total * dx^2
         fluxes.dissipation[group] = dissipation * dx^2
