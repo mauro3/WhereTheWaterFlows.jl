@@ -332,18 +332,19 @@ function make_fns_subaerial(dx,
         end
     end
 
-    # Only the reducer uses this buffer; each group is consumed before the next fill.
-    catchment_mask = similar(BitArray, axes(dem))
+    # initialize storage
+    function reduce!()
+        sz = size(dem)
+        return (;areas_total = zeros(Float32, sz),
+                stream_length = zeros(Float32, sz),
+                catchments = zeros(Float16, sz..., length(ctch_sinks)),
+                catchment_fluxes = [Float32[] for _ in ctch_sinks],
+                n_samples = Ref(0))
+    end
 
-    function reduce_step(aggr, res; init=false, sz=nothing)
-        if init
-            return (;areas_total = zeros(Float32, sz),
-                    stream_length = zeros(Float32, sz),
-                    catchments = zeros(Float16, sz..., length(ctch_sinks)),
-                    catchment_fluxes = [Float32[] for _ in ctch_sinks],
-                    n_samples = Ref(0))
-        end
-
+    # aggreate values
+    catchment_mask = similar(BitArray, axes(dem)) # scratch storage to avoid allocations
+    function reduce!(aggr, res)
         (input, output) = res
         aggr.areas_total .+= output.area
         aggr.stream_length .+= output.slen
@@ -359,23 +360,13 @@ function make_fns_subaerial(dx,
         return aggr
     end
 
-    function reduce_finalize(aggr)
+    # finalize output
+    function reduce!(aggr)
         n = aggr.n_samples[]
         aggr.areas_total ./= n
         aggr.stream_length ./= n
         aggr.catchments ./= n
         return aggr
-    end
-
-    function reduce!()
-        sz = size(dem)
-        return reduce_step(nothing, nothing; init=true, sz)
-    end
-    function reduce!(aggr, res)
-        return reduce_step(aggr, res)
-    end
-    function reduce!(aggr)
-        return reduce_finalize(aggr)
     end
 
     return model, sample, reduce!
