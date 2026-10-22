@@ -81,7 +81,8 @@ catchment!(mask::AbstractMatrix{Bool}, dir, ij::CartesianIndex) =
     catchment!(mask, dir, (ij,))
 function catchment!(mask::AbstractMatrix{Bool}, dir, seeds)
     axes(mask) == axes(dir) || throw(DimensionMismatch("Mask and direction axes differ"))
-    fill!(mask, false)
+    # Expose packed-bit storage without changing the output container.
+    fill!(vec(mask), false)
     for ij in seeds
         _catchment!(mask, dir, ij)
     end

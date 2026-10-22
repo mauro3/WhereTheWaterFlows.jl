@@ -220,7 +220,7 @@ function make_fns_subglacial(dx,
 
         aggr.areas_total .+= area.total
         aggr.areas_extra .+= area.extra
-        aggr.melt_rate .+= area.dissipation_melt_rate + area.pressure_melt_rate
+        aggr.melt_rate .+= area.dissipation_melt_rate .+ area.pressure_melt_rate
         aggr.lake_depth_fixed_surface .+= depth_fixed_surface
         aggr.lake_mask_fixed_surface .+= depth_fixed_surface.>min_lake_depth
 

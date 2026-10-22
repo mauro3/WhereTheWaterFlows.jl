@@ -56,7 +56,9 @@ end
     first_column = falses(5,4); first_column[:,1] .= true
     last_column = falses(5,4); last_column[:,4] .= true
     first_two = falses(5,4); first_two[:,1:2] .= true
-    for mask in (trues(5,4), fill(true,5,4), view(trues(7,6), 2:6, 2:5))
+    strided_parent = trues(10,8)
+    strided = view(strided_parent, 1:2:9, 2:2:8)
+    for mask in (trues(5,4), fill(true,5,4), view(trues(7,6), 2:6, 2:5), strided)
         @test catchment!(mask, dir, CartesianIndex(5,1)) === mask
         @test mask == first_column
         @test catchment!(mask, dir, (5,4)) === mask
@@ -70,6 +72,8 @@ end
         @test catchment!(mask, dir, CartesianIndex{2}[]) === mask
         @test !any(mask)
     end
+    @test all(strided_parent[2:2:end,:])
+    @test all(strided_parent[:,1:2:end])
     @test catchment(dir, CartesianIndex(5,1)) == first_column
     @test catchment(dir, (5,4)) == last_column
     @test dir == original

@@ -7,6 +7,7 @@ using Test, WhereTheWaterFlows
     sparse = BitMatrix(values .% 7 .== 0)
     for mask in (falses(17,9), trues(17,9), sparse, Matrix(sparse))
         @test WWF.catchment_flux(values, mask) == sum(values[mask])
+        @test collect(WWFS._true_indices(mask)) == findall(vec(mask))
     end
     @test WWF.catchment_flux(values, Int.(sparse), 1) == sum(values[sparse])
     bed = [1000. - 10i + j for i in 1:7, j in 1:7]
@@ -50,4 +51,32 @@ using Test, WhereTheWaterFlows
     for i in eachindex(groups)
         @test aggr.catchments[:,:,i] == out[2].sink_catchments.masks[i]
     end
+end
+
+@testset "Fused stochastic melt aggregation" begin
+    WWFR = WhereTheWaterFlows.Randomly
+    n = 64
+    bed = [1000. - 10i + j for i in 1:n, j in 1:n]
+    surface = [2000. - 5i + 0.2j for i in 1:n, j in 1:n]
+    source, floatfrac = fill(1e-8,n,n), fill(0.97,n,n)
+    fixed = WWFR.Uncertainty()
+    groups = Vector{CartesianIndex{2}}[]
+    model, _, reduce! = WWFR.make_fns_subglacial(200., surface, fixed, bed, fixed,
+        floatfrac, fixed, source, fixed, groups; gamma=-0.31)
+    res = model(surface,bed,floatfrac,source)
+    area = res[2].routing.area
+    # Exercise cancellation, freezing and inactive-cell NaNs in this reducer fixture.
+    area.dissipation_melt_rate[1,1:3] .= [1., -2., NaN]
+    area.pressure_melt_rate[1,1:3] .= [-1., 0.5, NaN]
+    aggr = reduce!()
+    expected = zeros(Float32,n,n)
+    for _ in 1:3
+        # Preserve the original unfused expression as an independent reference.
+        expected .+= area.dissipation_melt_rate + area.pressure_melt_rate
+        reduce!(aggr,res)
+        @test isequal(aggr.melt_rate,expected)
+    end
+    # Allow the small lake masks/statistics, not a Float64 melt-rate temporary.
+    bytes = @allocated reduce!(aggr,res)
+    @test bytes < 4 * length(source)
 end

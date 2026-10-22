@@ -316,8 +316,8 @@ function lake_depth(phi_filled, phi_orig; fixed_surface=true, rhow=RHOW, rhoi=RH
     end
 end
 
-# Iterate true linear positions without materializing an index vector.
-_true_indices(mask) = Base.LogicalIndex{Int}(mask)
+# Expose packed-bit storage behind array wrappers without collecting indices.
+_true_indices(mask) = Base.LogicalIndex{Int}(vec(mask))
 
 """
     waterflows_subglacial(surfdem, beddem, dx, 
