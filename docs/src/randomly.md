@@ -86,6 +86,7 @@ Subaerial wrapper (`make_fns_subaerial`):
 - uncertain fields: `dem`, `source`
 - routing controls: `drain_pits`, `bnd_as_sink`, `nan_as_sink`
 - sink groups for aggregation: `ctch_sinks`
+- catchment storage: `catchment_storage=:blocksparse` (default), or `:dense`
 
 Subglacial wrapper (`make_fns_subglacial`):
 - uncertain fields: `surfdem`, `beddem`, `floatfrac`, `source`
@@ -93,6 +94,7 @@ Subglacial wrapper (`make_fns_subglacial`):
     `make_fns_subglacial` requires `floatfrac` to be an array.
 - physical controls: `gamma`, `rhow`, `rhoi`
 - processing controls: `mask`, `ctch_sinks`, `min_lake_depth`
+- catchment storage: `catchment_storage=:blocksparse` (default), or `:dense`
 
 ## Why reduction is needed
 
@@ -108,6 +110,31 @@ In WWFR wrappers, reduction happens in three stages:
 3. `reduce!(aggr)` finalizes (typically divides accumulated maps by `n`).
 
 ## How outputs are reduced
+
+### Catchment storage
+
+Both wrappers return `aggr.catchments` as a three-dimensional Float16 array with
+shape `(nx, ny, n_groups)`. The default is a `BlockArrays.BlockArray` containing
+50×50×1 tiles (smaller at spatial edges). Untouched tiles share lazy zeros;
+only tiles reached by a catchment are allocated. Counts are accumulated in this
+storage and normalized in place, so final probabilities remain tiled. Tile support
+is the union over all samples, not just the last realization.
+
+Use ordinary indexing, such as `aggr.catchments[x, y, group]`, and
+`view(aggr.catchments, :, :, group)` for a zero-copy matrix view. Implicit zero is
+valid zero membership, not missing data. Groups remain independent and may overlap.
+The deterministic `Subglacially` output still contains the same packed Boolean masks.
+
+Set `catchment_storage=:dense` in either `make_fns_*` call to obtain a conventional
+`Array{Float16,3}` instead. This changes only membership storage, not sampling,
+routing, flux records, other aggregate fields, or precision. Float16 counts are exact
+through 2048 samples; final probabilities are rounded to Float16 as before.
+
+The tiled output is intended for reading. A nonzero scalar write into an untouched
+lazy tile is not supported; use `Array(aggr.catchments)` if a conventional editable
+array is needed. Slicing, generic array operations and plotting can materialize dense
+storage: crop/stride views before converting or plotting large grids. The reducer's
+updates and finalization explicitly avoid these materializations.
 
 ### Subaerial
 
@@ -128,9 +155,8 @@ routed maps and diagnostics (`areas_total`,
 sink-flux records to vectors (`catchment_fluxes.total/dissipation/pressmelt`).
 
 Catchments may overlap. Membership is accumulated only at true mask cells, using
-Float16 counts and in-place normalization. Counts are exact through 2048 samples;
-final probabilities are rounded to Float16. Each group retains a full-grid BitMatrix
-per realization and a full-grid aggregate layer.
+Float16 counts and in-place normalization. Each group retains a full-grid BitMatrix
+per realization; the aggregate uses the catchment storage described above.
 
 At the finalize step map-style fields are normalized by `n_samples` (so they are
 means/frequencies) and flux vectors remain per-sample records by design.
@@ -278,7 +304,7 @@ using `make_fns_subglacial`.
 | `aggr.lake_mask_free_surface` | `Matrix{Float32}` | Lake-occurrence frequency (depth `> min_lake_depth`) for free-surface case [0, 1] | Fraction over samples |
 | `aggr.sc_locs` | `Matrix{Float32}` | Supercooling occurrence frequency [0, 1] | Fraction over samples |
 | `aggr.kappas` | `Matrix{Float32}` | Mean supercooling deflection | Mean over samples |
-| `aggr.catchments` | `Array{Float16,3}` (`nx x ny x n_groups`) | Catchment-membership frequency for each `ctch_sinks` group [0, 1] | Fraction over samples |
+| `aggr.catchments` | `BlockArray{Float16,3}` by default (`nx x ny x n_groups`); `Array{Float16,3}` with `catchment_storage=:dense` | Catchment-membership frequency for each `ctch_sinks` group [0, 1] | Fraction over samples |
 | `aggr.catchment_fluxes.total` | `Vector{Vector{Float32}}` (length `n_groups`) | Per-group total outlet flux [m^3/s] | Per-sample vectors (not averaged) |
 | `aggr.catchment_fluxes.dissipation` | `Vector{Vector{Float32}}` (length `n_groups`) | Per-group dissipation-melt flux contribution records [m^3/s] | Per-sample vectors (not averaged) |
 | `aggr.catchment_fluxes.pressmelt` | `Vector{Vector{Float32}}` (length `n_groups`) | Per-group pressure-melt flux contribution records [m^3/s] | Per-sample vectors (not averaged) |

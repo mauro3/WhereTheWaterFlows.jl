@@ -6,6 +6,7 @@ using ..Subglacially
 using ProgressMeter
 
 include("grf.jl")
+include("blocksparse.jl")
 
 export Uncertainty, map_mc, make_fns_subaerial, make_fns_subglacial
 export find_next_2357, pad, depad, distance_squared, gaussian_kernel, exponential_kernel, make_kernel, make_grf_sampler
@@ -123,7 +124,8 @@ end
                           mask::AbstractMatrix=fill!(similar(surfdem, Bool), true),
                           gamma=0.0,
                           min_lake_depth=10.0, # default min lake depth under which value are not aggregated
-                          rhow=RHOW, rhoi=RHOI)
+                          rhow=RHOW, rhoi=RHOI,
+                          catchment_storage=:blocksparse)
 
 Build `model`, `sample`, and `reduce!` functions for stochastic subglacial routing
 which are then used in `map_mc`.
@@ -143,6 +145,9 @@ Kwargs
              set to WWF.GAMMA for a standard value.
 - `min_lake_depth` -- threshold used for lake-occurrence masks and lake-volume vectors
 - `rhow`, `rhoi` -- water and ice density overrides
+- `catchment_storage` -- `:blocksparse` (default) for lazy-zero 50×50×1 tiles,
+  or `:dense` for a conventional Float16 array. Both retain `(x, y, group)` indexing.
+  Counts and final probabilities use the same storage; other outputs are unchanged.
 
 Return:
 - model(surf, bed, floatfrac, source) -> runs one model realisation returning
@@ -159,7 +164,8 @@ function make_fns_subglacial(dx,
                               mask::AbstractMatrix=fill!(similar(surfdem, Bool), true),
                               gamma=0.0,
                               min_lake_depth=10.0, # default min lake depth under which value are not aggregated
-                              rhow=Subglacially.RHOW, rhoi=Subglacially.RHOI)
+                              rhow=Subglacially.RHOW, rhoi=Subglacially.RHOI,
+                              catchment_storage=:blocksparse)
 
     size(floatfrac) == size(surfdem) || throw(DimensionMismatch(
         "floatfrac must have the same size as surfdem"))
@@ -199,7 +205,7 @@ function make_fns_subglacial(dx,
           lake_mask_free_surface = zeros(Float32,sz),
           sc_locs = zeros(Float32,sz),
           kappas = zeros(Float32,sz),
-          catchments = zeros(Float16,sz...,length(ctch_sinks)),
+          catchments = _init_catchments(sz, length(ctch_sinks), catchment_storage),
           catchment_fluxes = (total=[Float32[] for s in ctch_sinks],
                               dissipation=[Float32[] for s in ctch_sinks],
                               pressmelt=[Float32[] for s in ctch_sinks]),
@@ -237,7 +243,7 @@ function make_fns_subglacial(dx,
             push!(aggr.catchment_fluxes.total[i], fluxes.total[i])
             push!(aggr.catchment_fluxes.dissipation[i], fluxes.dissipation[i])
             push!(aggr.catchment_fluxes.pressmelt[i], fluxes.pressmelt[i])
-            _accumulate_catchment!(view(aggr.catchments, :, :, i), masks[i])
+            _accumulate_catchment!(aggr.catchments, masks[i], i)
         end
 
         aggr.n_samples[] += 1
@@ -260,7 +266,7 @@ function make_fns_subglacial(dx,
         aggr.sc_locs ./= n
         aggr.kappas ./= n
 
-        aggr.catchments ./= n
+        _normalize_catchments!(aggr.catchments, n)
 
         return aggr
     end
@@ -269,28 +275,14 @@ function make_fns_subglacial(dx,
 end
 
 """
-    _accumulate_catchment!(layer, mask)
-
-Add a 1 to each location in layer where mask==true.
-"""
-function _accumulate_catchment!(layer, mask)
-    # Add membership without reading/writing every zero in the aggregate layer.
-    size(layer) == size(mask) || throw(DimensionMismatch("Aggregate and mask sizes differ"))
-    for i in Base.LogicalIndex{Int}(vec(mask)) # ref https://github.com/rafaqz/DimensionalData.jl/issues/1244
-      layer[i] += one(eltype(layer))
-    end
-    return layer
-end
-
-
-"""
     make_fns_subaerial(dx,
                         dem, dem_uc,
                         source, source_uc,
                         ctch_sinks;
                         drain_pits=true,
                         bnd_as_sink=true,
-                        nan_as_sink=true)
+                        nan_as_sink=true,
+                        catchment_storage=:blocksparse)
 
 Build `model`, `sample`, and `reduce!` functions for stochastic subaerial routing.
 
@@ -302,6 +294,9 @@ Args
 
 Kwargs
 - `drain_pits`, `bnd_as_sink`, `nan_as_sink` -- forwarded to `WhereTheWaterFlows.waterflows`
+- `catchment_storage` -- `:blocksparse` (default) for lazy-zero 50×50×1 tiles,
+  or `:dense` for a conventional Float16 array. Both retain `(x, y, group)` indexing.
+  Counts and final probabilities use the same storage; other outputs are unchanged.
 
 Return
 - model(dem_, source_) -> returns `(; dem, dx, source), waterflows(...)`
@@ -314,7 +309,8 @@ function make_fns_subaerial(dx,
                             ctch_sinks;
                             drain_pits=true,
                             bnd_as_sink=true,
-                            nan_as_sink=true)
+                            nan_as_sink=true,
+                            catchment_storage=:blocksparse)
     model(dem_, source_) = ((;dem=dem_, dx, source=source_),
                             WhereTheWaterFlows.waterflows(dem_, source_ .* dx^2;
                                                           drain_pits, bnd_as_sink, nan_as_sink))
@@ -334,7 +330,7 @@ function make_fns_subaerial(dx,
         sz = size(dem)
         return (;areas_total = zeros(Float32, sz),
                 stream_length = zeros(Float32, sz),
-                catchments = zeros(Float16, sz..., length(ctch_sinks)),
+                catchments = _init_catchments(sz, length(ctch_sinks), catchment_storage),
                 catchment_fluxes = [Float32[] for _ in ctch_sinks],
                 n_samples = Ref(0))
     end
@@ -348,7 +344,7 @@ function make_fns_subaerial(dx,
 
         for i=1:length(ctch_sinks)
             WhereTheWaterFlows.catchment!(catchment_mask, output.dir, ctch_sinks[i])
-            _accumulate_catchment!(view(aggr.catchments, :, :, i), catchment_mask)
+            _accumulate_catchment!(aggr.catchments, catchment_mask, i)
             flux = WhereTheWaterFlows.catchment_flux(input.source, catchment_mask) * input.dx^2
             push!(aggr.catchment_fluxes[i], flux)
         end
@@ -362,7 +358,7 @@ function make_fns_subaerial(dx,
         n = aggr.n_samples[]
         aggr.areas_total ./= n
         aggr.stream_length ./= n
-        aggr.catchments ./= n
+        _normalize_catchments!(aggr.catchments, n)
         return aggr
     end
 
