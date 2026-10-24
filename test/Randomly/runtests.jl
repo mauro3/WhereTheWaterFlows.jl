@@ -7,6 +7,8 @@ const WWFR = WhereTheWaterFlows.Randomly
 const WWFS = WhereTheWaterFlows.Subglacially
 const WWF = WhereTheWaterFlows
 
+include("blocksparse.jl")
+
 const _offset = [0.2, 0.5]
 
 "DEM with a few more maxs and mins. NaN masked edge."
