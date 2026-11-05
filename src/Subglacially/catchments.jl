@@ -69,14 +69,17 @@ function catchment_sinks(ctch_polygons::Vector{Vector{T}} where T<:Point2, routi
 
     ## turn into ctch_sinks which can be fed to waterflows_subglacial
     ctch_sinks = [findall(ctch_sinks_map.==i) for i = 1:length(ctch_polygons)]
-    if connect && connect_catchment_sinks!(ctch_sinks) > 0
-        for (i, cells) in enumerate(ctch_sinks)
-            ctch_sinks_map[cells] .= i
+    if connect
+        n = connect_catchment_sinks!(ctch_sinks)
+        if check && n > 0
+            for (i, cells) in enumerate(ctch_sinks)
+                ctch_sinks_map[cells] .= i
+            end
         end
     end
     check && check_catchment_sinks(ctch_sinks_map, ctch_polygons, sinks)
 
-    return ctch_sinks #, ctch_sinks_map
+    return ctch_sinks
 end
 
 """
@@ -105,8 +108,7 @@ end
 Return the eight-neighbour-connected components of a sink-cell group, largest first.
 
 Arguments
-- `cells` as a vector of `CartesianIndex{2}` sink-cell indices on a one-based
-          raster grid, not projected coordinates.
+- `cells` as a vector of `CartesianIndex{2}` sink-cell indices
 
 Return
 - `Vector{Vector{CartesianIndex{2}}}`, with one cell-index vector per component.
@@ -169,30 +171,40 @@ can be retained with `catchment_sinks(...; connect=false)`.
 """
 function connect_catchment_sinks!(groups)
     isempty(groups) && return 0
+    # label each cell's group. Of form: CartesianIndex(12, 34) => 5
     labels = Dict{CartesianIndex{2},Int}(I => g for (g, cells) in enumerate(groups) for I in cells)
-    length(labels) == sum(length, groups) ||
+    length(labels) != sum(length, groups) &&
         throw(ArgumentError("Catchment sink groups must be disjoint"))
     isempty(labels) && return 0
     Iend = reduce(max, keys(labels))
+    # store cells connected to main bit
     connected = Set{CartesianIndex{2}}()
+    # and disconnect bits
     fragments = Tuple{Int,Vector{CartesianIndex{2}}}[]
+    # 1. Keep one fixed piece per group
     for (g, cells) in enumerate(groups)
         components = catchment_sink_components(cells)
         isempty(components) && continue
         union!(connected, first(components))
         append!(fragments, [(g, c) for c in components[2:end]])
     end
+    # 2. Attach fragments, smallest first
+    # For each fragment, examine its neighbours:
+    #  - If none belongs to connected, leave the fragment pending.
+    #  - If it now touches its own group’s connected piece, keep its label.
+    #  - Otherwise, change the whole fragment to an adjacent connected group. Choose the group with the most eight-neighbour contacts; ties use the lowest group index.
+    #  Once attached, add those cells to connected. They can then provide a bridge for another fragment.
     sort!(fragments; by=f -> (length(f[2]), f[1], Tuple(first(f[2]))))
     pending = trues(length(fragments))
     changed = 0
     while any(pending)
         progress = false
         for k in eachindex(fragments)
-            pending[k] || continue
+            !pending[k] && continue
             original, cells = fragments[k]
             contacts = Dict{Int,Int}()
             for I in cells, J in iterate_D9(I, Iend)
-                J in connected || continue
+                !(J in connected) && continue
                 label = labels[J]
                 contacts[label] = get(contacts, label, 0) + 1
             end
@@ -207,7 +219,7 @@ function connect_catchment_sinks!(groups)
             pending[k] = false
             progress = true
         end
-        progress || throw(ArgumentError(
+        !progress && throw(ArgumentError(
             "Cannot reconnect sink groups without adding cells or moving fixed components; " *
             "use catchment_sinks(...; connect=false) for intentionally disconnected groups"))
     end
