@@ -535,4 +535,5 @@ function make_feedback_fn(phi, phim, gamma, dx)
 end
 
 include("helpers.jl")
+include("catchments.jl")
 end

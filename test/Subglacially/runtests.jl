@@ -1,8 +1,10 @@
 module Subglacially
 using WhereTheWaterFlows
 const WWF = WhereTheWaterFlows
-const WWFS = WhereTheWaterFlows.Subglacially
+const WWFS = WWF.Subglacially
 using Test
+
+include("catchments.jl")
 
 function test_against_reference(relpath::AbstractString, value)
     path = joinpath(@__DIR__, relpath)
