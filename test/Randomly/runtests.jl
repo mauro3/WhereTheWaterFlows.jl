@@ -57,8 +57,11 @@ end
 
         sa_gaussian = WWFR.make_grf_sampler(128, 128, WWFR.gaussian_kernel, 10.0)
         sa_exponential = WWFR.make_grf_sampler(128, 128, WWFR.exponential_kernel, 10.0)
+        sa_planned = WWFR.make_grf_sampler(128, 128, WWFR.gaussian_kernel, 10.0;
+                                           fftw_plan=:estimate)
         @test size(sa_gaussian()) == (128, 128)
         @test size(sa_exponential()) == (128, 128)
+        @test size(sa_planned()) == (128, 128)
     end
 end
 
