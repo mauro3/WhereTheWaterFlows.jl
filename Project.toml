@@ -1,6 +1,6 @@
 name = "WhereTheWaterFlows"
 uuid = "ea906314-1493-4d22-a0af-f886a20c9fba"
-version = "0.14.0"
+version = "0.15.0"
 authors = ["Mauro Werder <mauro3@runbox.com>, Christophe Ogier, and contributors"]
 
 [workspace]
@@ -18,7 +18,6 @@ ProgressMeter = "92933f4c-e287-5a05-a399-4b506db050ca"
 Serialization = "9e88b42a-f829-5b0c-bbe9-9e923198166b"
 StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 Statistics = "10745b16-79ce-11e8-11f9-7d13ad32a3b2"
-StatsBase = "2913bbd2-ae8a-5f71-8c99-4fb6c76f3a91"
 
 [weakdeps]
 Makie = "ee78f7c6-11fb-53f2-987a-cfe4a2b5a57a"
@@ -38,5 +37,4 @@ ProgressMeter = "1"
 Serialization = "1.11.0"
 StaticArrays = "0.11.1, 0.12, 1.0"
 Statistics = "1"
-StatsBase = "0.34"
 julia = "1.12"
