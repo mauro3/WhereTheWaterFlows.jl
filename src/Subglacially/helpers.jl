@@ -54,14 +54,6 @@ function smooth_surface(x, y, surfdem, beddem, icethicknesses, mask=surfdem.>=be
     return surface_smooth
 end
 
-"Return CartesianIndices corresponding to the 24 neighbors and the point itself."
-function iterate_D25(I::CartesianIndex, ar::AbstractMatrix)
-    R = CartesianIndices(ar)
-    two = CartesianIndex(2,2)
-    I1, Iend = first(R), last(R)
-    return max(I1, I-two):min(Iend, I+two)
-end
-
 """
     mask_contiguous(mask, IJ, out=similar(mask, Bool))
 

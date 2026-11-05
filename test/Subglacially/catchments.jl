@@ -70,13 +70,22 @@
     mask = falses(14,14);mask[sinks] .= true
     polygons = [[(0.,0.),(4.5,0.),(4.5,14.),(0.,14.)],
                 [(4.5,0.),(14.,0.),(14.,14.),(4.5,14.)]]
-    raw = WWFS.catchment_sinks(polygons,mask,1.:14.,1.:14.,sinks;
-        D9_iters=0,D25_iter=0,connect=false)
+    raw = WWFS.catchment_sinks(polygons,mask,1.:14.,1.:14.,sinks; connect=false)
     @test length(components(raw[1])) == 2
-    fixed = WWFS.catchment_sinks(polygons,mask,1.:14.,1.:14.,sinks;
-        D9_iters=0,D25_iter=0)
+    fixed = WWFS.catchment_sinks(polygons,mask,1.:14.,1.:14.,sinks)
     @test all(g -> length(components(g)) == 1,fixed)
     @test Set(vcat(fixed...)) == Set(sinks)
     @test sum(length,fixed) == length(sinks)
     @test C(4,10) in raw[1] && C(4,10) in fixed[2]
+
+    # Already-connected labels, including a one-cell catchment, must not be smoothed.
+    line = [C(i,2) for i in 2:7]
+    cut = [[(0.,0.),(2.5,0.),(2.5,14.),(0.,14.)],
+           [(2.5,0.),(14.,0.),(14.,14.),(2.5,14.)]]
+    line_mask = falses(14,14); line_mask[line] .= true
+    assigned = WWFS.catchment_sinks(cut,line_mask,1.:14.,1.:14.,line; connect=false)
+    cleaned = WWFS.catchment_sinks(cut,line_mask,1.:14.,1.:14.,line)
+    @test assigned == cleaned
+    @test cleaned[1] == [C(2,2)]
+    @test cleaned[2] == [C(i,2) for i in 3:7]
 end

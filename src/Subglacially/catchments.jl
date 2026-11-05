@@ -1,51 +1,45 @@
 # Catchment calculations
 
 """
-    catchment_sinks(ctch_polygons::Vector{Vector{T}} where T<:Point2, routing_mask, x, y, sinks=get_boundary_cells(routing_mask, true);
-                    check=true, threshold_dist=Inf,
-                    D9_iters=4, D25_iter=2, connect=true)
-    catchment_sinks(ctch_polygons::AbstractVector, routing_mask, x, y, sinks=get_boundary_cells(routing_mask, true);
-                    kws...)
+    catchment_sinks(ctch_polygons, routing_mask, x, y[, sinks];
+                    check=true, threshold_dist=Inf, connect=true)
 
-Calculate the catchment sink cells for basins given by polygons.  The
-output is intended to be fed to waterflows_subglacial via its `ctch_sinks` argument.
-This is intended to mark the cells of grounding line of a catchment as sinks.
+Assign boundary sink cells to catchment polygons and reconnect fragmented labels.
 
-Correctness check can be done with the `check_catchment_sinks` function, which is
-done by default.
-
-Input:
-- ctch_polygons::Vector{AbstractVector{<:Point2}} -- a Vector of catchment polygons, presumably
-                                             sourced from the internet.
-                                             Need to be non-overlapping
-- routing_mask - cells where water is routed set to true; assumed that boundary are all sinks
-- x,y -- coordinate vectors
-- sinks -- sink cells, by default calculated as all cells on the border of the routing_mask
+Arguments
+- `ctch_polygons`: vector of non-overlapping polygons, each a vector of `Point2`
+  vertices or coordinate pairs.
+- `routing_mask`: one-based Boolean matrix, with routed cells set to `true`.
+- `x`, `y`: coordinate vectors for the matrix's first and second dimensions, in the
+  same coordinate system and units as the polygons.
+- `sinks`: vector of `CartesianIndex{2}` raster indices; defaults to
+  `findall(get_boundary_cells(routing_mask, true))`.
 
 KW-args
-- check=true  -- do some checks (takes a bit of time)
-- threshold_dist=Inf -- probably set to something lower
-- connect=true -- reconnect fragmented labels after mode cleanup; use `false` for
-  intentionally disconnected groups or to reproduce the assignment before this repair
+- `check=true` run a consitsency check
+- `connect=true` connect disconnected parts of the different boundary groups
+- `threshold_dist=Inf` distance over which cells are searched for from the polygon
 
-Output
-- ctch_sinks -- a vector
+Return
+- `Vector{Vector{CartesianIndex{2}}}`: entry `i` contains the sink indices for
+  polygon `i`, ready for `waterflows_subglacial(...; ctch_sinks=...)`.
 
+Assign each sink to the polygon with smallest signed distance, provided that distance
+is at most `threshold_dist`. By default, apply [`connect_catchment_sinks!`](@ref) as
+the label cleanup. It preserves assigned sink cells and each nonempty group's
+largest component; it does not smooth already-connected polygon boundaries.
+Set `connect=false` to return the raw polygon assignments, including disconnected
+pieces.
 
-Algo:
-- get all boundary cells
-  (make three vectors: cartesian-index, closest catchment, distance)
-- calc signed_distance for all pixels for all catchments
-- assign groundingline cells to catchment to which it is closest
-- do mode cleanup, then reconnect fragmented labels with
-  [`connect_catchment_sinks!`](@ref), without changing the set of sink cells
+With `check=true`, run [`check_catchment_sinks`](@ref) to check assignment coverage.
+An infinite distance threshold also requires every polygon to receive a sink before
+cleanup; a finite threshold permits empty groups and unassigned distant sinks.
 """
 catchment_sinks(ctch_polygons::AbstractVector, routing_mask, x, y, sinks=findall(get_boundary_cells(routing_mask, true)); kws...) =
     catchment_sinks([Point2.(cp) for cp in ctch_polygons], routing_mask, x, y, sinks; kws...)
 function catchment_sinks(ctch_polygons::Vector{Vector{T}} where T<:Point2, routing_mask, x, y,
                          sinks=findall(get_boundary_cells(routing_mask, true));
-                         check=true, threshold_dist=Inf,
-                         D9_iters=4, D25_iter=2, connect=true)
+                         check=true, threshold_dist=Inf, connect=true)
     ## Get all cells on the boundary of the routing_mask
     # (make two vectors: closest catchment, distance)
     closest_catch = similar(sinks, Int32)
@@ -71,33 +65,6 @@ function catchment_sinks(ctch_polygons::Vector{Vector{T}} where T<:Point2, routi
 
     if threshold_dist==Inf
         @assert length(unique(closest_catch)) == length(ctch_polygons) "Not all ctch_polygons have boundary cells"
-    end
-
-    ## Do cleanup
-    # fix stray single gl-points: first do mode-filter in 9-neighborhood then 25-hood
-    for _=1:D9_iters
-        for s in sinks
-            pts = [ctch_sinks_map[s]] # that way it gets picked up by `mode` in case of ties
-            for ij in WWF.iterate_D9(s, ctch_sinks_map)
-                ij == s && continue
-                if ctch_sinks_map[ij]!=0
-                    push!(pts, ctch_sinks_map[ij])
-                end
-            end
-            ctch_sinks_map[s] = mode(pts)
-        end
-    end
-    for _=1:D25_iter # too many iterations make things worse, 2 is optimal for IMBIE catchments in Antarctica
-        for s in sinks
-            pts = [ctch_sinks_map[s]] # that way it gets picked up by `mode` in case of ties
-            for ij in iterate_D25(s, ctch_sinks_map)
-                ij == s && continue
-                if ctch_sinks_map[ij]!=0
-                    push!(pts, ctch_sinks_map[ij])
-                end
-            end
-            ctch_sinks_map[s] = mode(pts)
-        end
     end
 
     ## turn into ctch_sinks which can be fed to waterflows_subglacial

@@ -5,7 +5,6 @@ using StaticArrays
 using ProgressMeter
 using GeometryBasics: Point2
 using LinearAlgebra, Statistics
-using StatsBase: mode
 const WWF = WhereTheWaterFlows
 
 const RHOI = 910
