@@ -125,7 +125,8 @@ end
                           gamma=0.0,
                           min_lake_depth=10.0, # default min lake depth under which value are not aggregated
                           rhow=RHOW, rhoi=RHOI,
-                          catchment_storage=:blocksparse)
+                          catchment_storage=:blocksparse,
+                          catchment_blocksize=_CATCHMENT_BLOCKSIZE)
 
 Build `model`, `sample`, and `reduce!` functions for stochastic subglacial routing
 which are then used in `map_mc`.
@@ -145,9 +146,12 @@ Kwargs
              set to WWF.GAMMA for a standard value.
 - `min_lake_depth` -- threshold used for lake-occurrence masks and lake-volume vectors
 - `rhow`, `rhoi` -- water and ice density overrides
-- `catchment_storage` -- `:blocksparse` (default) for lazy-zero 50×50×1 tiles,
+- `catchment_storage` -- `:blocksparse` (default) for lazy-zero tiled storage,
   or `:dense` for a conventional Float16 array. Both retain `(x, y, group)` indexing.
   Counts and final probabilities use the same storage; other outputs are unchanged.
+- `catchment_blocksize` -- square tile size for `:blocksparse` storage; defaults to
+  50. It changes memory use and update performance, not results, and is ignored for
+  `:dense` storage.
 
 Return:
 - model(surf, bed, floatfrac, source) -> runs one model realisation returning
@@ -165,7 +169,8 @@ function make_fns_subglacial(dx,
                               gamma=0.0,
                               min_lake_depth=10.0, # default min lake depth under which value are not aggregated
                               rhow=Subglacially.RHOW, rhoi=Subglacially.RHOI,
-                              catchment_storage=:blocksparse)
+                              catchment_storage=:blocksparse,
+                              catchment_blocksize=_CATCHMENT_BLOCKSIZE)
 
     size(floatfrac) == size(surfdem) || throw(DimensionMismatch(
         "floatfrac must have the same size as surfdem"))
@@ -205,7 +210,8 @@ function make_fns_subglacial(dx,
           lake_mask_free_surface = zeros(Float32,sz),
           sc_locs = zeros(Float32,sz),
           kappas = zeros(Float32,sz),
-          catchments = _init_catchments(sz, length(ctch_sinks), catchment_storage),
+          catchments = _init_catchments(sz, length(ctch_sinks), catchment_storage;
+                                        blocksize=catchment_blocksize),
           catchment_fluxes = (total=[Float32[] for s in ctch_sinks],
                               dissipation=[Float32[] for s in ctch_sinks],
                               pressmelt=[Float32[] for s in ctch_sinks]),
@@ -282,7 +288,8 @@ end
                         drain_pits=true,
                         bnd_as_sink=true,
                         nan_as_sink=true,
-                        catchment_storage=:blocksparse)
+                        catchment_storage=:blocksparse,
+                        catchment_blocksize=_CATCHMENT_BLOCKSIZE)
 
 Build `model`, `sample`, and `reduce!` functions for stochastic subaerial routing.
 
@@ -294,9 +301,12 @@ Args
 
 Kwargs
 - `drain_pits`, `bnd_as_sink`, `nan_as_sink` -- forwarded to `WhereTheWaterFlows.waterflows`
-- `catchment_storage` -- `:blocksparse` (default) for lazy-zero 50×50×1 tiles,
+- `catchment_storage` -- `:blocksparse` (default) for lazy-zero tiled storage,
   or `:dense` for a conventional Float16 array. Both retain `(x, y, group)` indexing.
   Counts and final probabilities use the same storage; other outputs are unchanged.
+- `catchment_blocksize` -- square tile size for `:blocksparse` storage; defaults to
+  50. It changes memory use and update performance, not results, and is ignored for
+  `:dense` storage.
 
 Return
 - model(dem_, source_) -> returns `(; dem, dx, source), waterflows(...)`
@@ -310,7 +320,8 @@ function make_fns_subaerial(dx,
                             drain_pits=true,
                             bnd_as_sink=true,
                             nan_as_sink=true,
-                            catchment_storage=:blocksparse)
+                            catchment_storage=:blocksparse,
+                            catchment_blocksize=_CATCHMENT_BLOCKSIZE)
     model(dem_, source_) = ((;dem=dem_, dx, source=source_),
                             WhereTheWaterFlows.waterflows(dem_, source_ .* dx^2;
                                                           drain_pits, bnd_as_sink, nan_as_sink))
@@ -330,7 +341,8 @@ function make_fns_subaerial(dx,
         sz = size(dem)
         return (;areas_total = zeros(Float32, sz),
                 stream_length = zeros(Float32, sz),
-                catchments = _init_catchments(sz, length(ctch_sinks), catchment_storage),
+                catchments = _init_catchments(sz, length(ctch_sinks), catchment_storage;
+                                              blocksize=catchment_blocksize),
                 catchment_fluxes = [Float32[] for _ in ctch_sinks],
                 n_samples = Ref(0))
     end

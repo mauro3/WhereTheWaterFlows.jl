@@ -87,6 +87,7 @@ Subaerial wrapper (`make_fns_subaerial`):
 - routing controls: `drain_pits`, `bnd_as_sink`, `nan_as_sink`
 - sink groups for aggregation: `ctch_sinks`
 - catchment storage: `catchment_storage=:blocksparse` (default), or `:dense`
+- catchment tile size: `catchment_blocksize=50` (square tiles, `:blocksparse` only)
 
 Subglacial wrapper (`make_fns_subglacial`):
 - uncertain fields: `surfdem`, `beddem`, `floatfrac`, `source`
@@ -95,6 +96,7 @@ Subglacial wrapper (`make_fns_subglacial`):
 - physical controls: `gamma`, `rhow`, `rhoi`
 - processing controls: `mask`, `ctch_sinks`, `min_lake_depth`
 - catchment storage: `catchment_storage=:blocksparse` (default), or `:dense`
+- catchment tile size: `catchment_blocksize=50` (square tiles, `:blocksparse` only)
 
 ## Why reduction is needed
 
@@ -116,9 +118,16 @@ In WWFR wrappers, reduction happens in three stages:
 Both wrappers return `aggr.catchments` as a three-dimensional Float16 array with
 shape `(nx, ny, n_groups)`. The default is a `BlockArrays.BlockArray` containing
 50×50×1 tiles (smaller at spatial edges). Untouched tiles share lazy zeros;
-only tiles reached by a catchment are allocated. Counts are accumulated in this
+only tiles reached by a catchment are allocated. Thus for cases of catchments which 
+occupy only a small-ish fraction of the domain, this sparse storage can decrease
+ memory requirements considerably. Counts are accumulated in this
 storage and normalized in place, so final probabilities remain tiled. Tile support
 is the union over all samples, not just the last realization.
+
+Set `catchment_blocksize` in either `make_fns_*` call to use square tiles of a
+different size, for example `catchment_blocksize=25`. The default remains 50.
+The block size only affects memory use and update performance, not the numerical
+results. It is ignored when `catchment_storage=:dense`.
 
 Use ordinary indexing, such as `aggr.catchments[x, y, group]`, and
 `view(aggr.catchments, :, :, group)` for a zero-copy matrix view. Implicit zero is
@@ -304,7 +313,7 @@ using `make_fns_subglacial`.
 | `aggr.lake_mask_free_surface` | `Matrix{Float32}` | Lake-occurrence frequency (depth `> min_lake_depth`) for free-surface case [0, 1] | Fraction over samples |
 | `aggr.sc_locs` | `Matrix{Float32}` | Supercooling occurrence frequency [0, 1] | Fraction over samples |
 | `aggr.kappas` | `Matrix{Float32}` | Mean supercooling deflection | Mean over samples |
-| `aggr.catchments` | `BlockArray{Float16,3}` by default (`nx x ny x n_groups`); `Array{Float16,3}` with `catchment_storage=:dense` | Catchment-membership frequency for each `ctch_sinks` group [0, 1] | Fraction over samples |
+| `aggr.catchments` | `BlockArray{Float16,3}` by default (`nx x ny x n_groups`, `catchment_blocksize`-sized tiles); `Array{Float16,3}` with `catchment_storage=:dense` | Catchment-membership frequency for each `ctch_sinks` group [0, 1] | Fraction over samples |
 | `aggr.catchment_fluxes.total` | `Vector{Vector{Float32}}` (length `n_groups`) | Per-group total outlet flux [m^3/s] | Per-sample vectors (not averaged) |
 | `aggr.catchment_fluxes.dissipation` | `Vector{Vector{Float32}}` (length `n_groups`) | Per-group dissipation-melt flux contribution records [m^3/s] | Per-sample vectors (not averaged) |
 | `aggr.catchment_fluxes.pressmelt` | `Vector{Vector{Float32}}` (length `n_groups`) | Per-group pressure-melt flux contribution records [m^3/s] | Per-sample vectors (not averaged) |

@@ -94,6 +94,53 @@ occupied(A) = count(B -> B isa Array, WWFR.blocks(A))
     @test_throws ErrorException WWFR.map_mc(nothing,nothing,nothing,2049;progressmeter=false)
 end
 
+@testset "Configurable block size" begin
+    sz = (123,117)
+    blocksize = 32
+    counts = WWFR._init_catchments(sz,4,:blocksparse;blocksize)
+    dense = WWFR._init_catchments(sz,4,:dense)
+    @test size(WWFR.blocks(counts))==(4,4,4)
+    @test size(WWFR.blocks(counts)[1,1,1])==(32,32,1)
+    @test size(WWFR.blocks(counts)[4,4,1])==(27,21,1)
+    @test size(WWFR.blocks(counts)[1,4,1])==(32,21,1)
+    @test size(WWFR.blocks(counts)[4,1,1])==(27,32,1)
+    @test occupied(counts)==0
+
+    mask = falses(sz)
+    for I in ((1,1),(32,32),(33,33),(64,64),(65,65),(96,96),(97,97),(123,117))
+        mask[I...] = true
+    end
+    for group in 1:4
+        WWFR._accumulate_catchment!(counts,mask,group)
+        WWFR._accumulate_catchment!(dense,mask,group)
+    end
+    @test counts==dense
+    @test counts[32,32,1]==1
+    @test counts[33,33,1]==1
+    @test counts[123,117,4]==1
+    @test occupied(counts)==16
+    @test WWFR.blocks(counts)[4,4,1] isa Array
+    @test WWFR._normalize_catchments!(counts,2)===counts
+    WWFR._normalize_catchments!(dense,2)
+    @test counts==dense
+    @test counts[123,117,4]==0.5
+    @test occupied(counts)==16
+
+    # The default remains 50x50.
+    @test size(WWFR.blocks(WWFR._init_catchments(sz,4,:blocksparse)))==(3,3,4)
+    # A block larger than the whole domain yields one partial tile.
+    small = WWFR._init_catchments((10,12),1,:blocksparse;blocksize=50)
+    @test size(WWFR.blocks(small))==(1,1,1)
+    @test size(WWFR.blocks(small)[1,1,1])==(10,12,1)
+    WWFR._accumulate_catchment!(small,trues(10,12),1)
+    @test all(==(1),small)
+
+    @test WWFR._init_catchments(sz,1,:dense;blocksize=7) isa Array{Float16,3}
+    @test_throws ArgumentError WWFR._init_catchments(sz,1,:blocksparse;blocksize=0)
+    @test_throws ArgumentError WWFR._init_catchments(sz,1,:blocksparse;blocksize=-5)
+    @test_throws ArgumentError WWFR._init_catchments(sz,1,:blocksparse;blocksize=2.5)
+end
+
 @testset "Native-shaped catchments without dense values" begin
     counts=WWFR._init_catchments((11061,9001),198,:blocksparse)
     empty_bytes=Base.summarysize(counts)
@@ -129,15 +176,18 @@ end
     uncertain=WWFR.Uncertainty(absuc=1.0,correlation_length=400.0)
     baseline=WWF.waterflows(bed)
     groups=[baseline.sinks,[CartesianIndex(51,51)],baseline.sinks,CartesianIndex{2}[]]
-    for kind in (:subaerial,:subglacial), gamma in (0.0,-0.31)
+    for kind in (:subaerial,:subglacial), gamma in (0.0,-0.31), blocksize in (50,16)
         build(storage) = kind==:subaerial ?
             WWFR.make_fns_subaerial(200.0,bed,uncertain,source,fixed,groups;
-                catchment_storage=storage) :
+                catchment_storage=storage,catchment_blocksize=blocksize) :
             WWFR.make_fns_subglacial(200.0,surface,fixed,bed,uncertain,ff,fixed,
-                source,fixed,groups;gamma,catchment_storage=storage)
+                source,fixed,groups;gamma,catchment_storage=storage,
+                catchment_blocksize=blocksize)
         model,sample,reduce_sparse! = build(:blocksparse)
         _,_,reduce_dense! = build(:dense)
         sparse,dense=reduce_sparse!(),reduce_dense!()
+        @test size(WWFR.blocks(sparse.catchments))==
+              (cld(nx,blocksize),cld(ny,blocksize),length(groups))
         Random.seed!(731)
         for _ in 1:3
             res=model(sample()...)
