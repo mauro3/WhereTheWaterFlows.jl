@@ -1,13 +1,7 @@
 [deps]
 CairoMakie = "13f3f980-e62b-5c42-98c6-ff1f3baf88f0"
-# Pinned to avoid https://github.com/JuliaMath/FFTA.jl/issues/146
-FFTA = "b86e33f2-c0db-4aa1-a6e0-ab43e668529e"
 Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
 Statistics = "10745b16-79ce-11e8-11f9-7d13ad32a3b2"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 Serialization = "9e88b42a-f829-5b0c-bbe9-9e923198166b"
 WhereTheWaterFlows = "ea906314-1493-4d22-a0af-f886a20c9fba"
-
-[compat]
-# FFTA 0.3.2 is ambiguous with FFTW for rfft/irfft; see issue 146.
-FFTA = "=0.3.1"
