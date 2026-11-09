@@ -115,3 +115,5 @@
     @test cleaned[1] == [C(2,2)]
     @test cleaned[2] == [C(i,2) for i in 3:7]
 end
+
+include("gl-ordering.jl")

@@ -237,3 +237,190 @@ function connect_catchment_sinks!(groups)
     end
     return changed
 end
+
+# Circular order in (dimension 1, dimension 2), not raster-scan order.
+const D8_POS = (
+    CartesianIndex(1, 0), CartesianIndex(1, 1), CartesianIndex(0, 1),
+    CartesianIndex(-1, 1), CartesianIndex(-1, 0), CartesianIndex(-1, -1),
+    CartesianIndex(0, -1), CartesianIndex(1, -1),
+)
+const D4_POS = D8_POS[1:2:8]
+
+function in_region(I, g, mask, region)
+    checkbounds(Bool, mask, I) || return false
+    return region == :inside ? mask[I] && !(I in g) : !mask[I]
+end
+
+# Test the cells immediately beside the step, not other GL cells.
+# "Left" uses the rotation (-d[2], d[1]) throughout these walks.
+function touches_side(I, J, g, mask, region, side)
+    d = J - I
+    sign = side == :left ? 1 : -1
+    if d[1] == 0 || d[2] == 0
+        normal = sign * CartesianIndex(-d[2], d[1])
+        return in_region(I + normal, g, mask, region) ||
+               in_region(J + normal, g, mask, region)
+    end
+    # A diagonal step has one shared neighbour on each side.
+    K = I + (sign * d[1] * d[2] > 0 ? CartesianIndex(0, d[2]) :
+                                              CartesianIndex(d[1], 0))
+    return in_region(K, g, mask, region)
+end
+
+"""
+    step_gl(previous, I, g, mask; region=:inside, side=:left, visited=(), boundary=g)
+
+Choose a neighbour relative to the arrival direction, or return `nothing`.
+
+Inside steps are D4 and must touch interior on `side`. Outside steps are D8;
+prefer the outside on `side`, then allow remaining branches for complete pickup.
+Pass the allowed GL cells as a set `g`; `visited` excludes cells already recorded.
+Use `boundary` for the complete GL set when walking just one outlet group.
+`previous` must be a D4 neighbour of `I` for inside steps, or a D8 neighbour otherwise.
+"""
+function step_gl(previous, I, g, mask; region=:inside, side=:left, visited=(), boundary=g)
+    offsets = region == :inside ? D4_POS : D8_POS
+    back = findfirst(==(previous - I), offsets)
+    turn = side == :left ? -1 : 1
+    for hugging in (true, false)
+        region == :inside && !hugging && break
+        for n in 1:length(offsets)
+            J = I + offsets[mod1(back + turn * n, length(offsets))]
+            J in g && !(J in visited) || continue
+            touches_side(I, J, boundary, mask, region, side) == hugging || continue
+            return J
+        end
+    end
+    return nothing
+end
+
+function trace_inside(g, mask, start, side;
+                      previous, traversed=nothing, boundary=g)
+    path = [start]
+    steps = Set{Tuple{CartesianIndex{2}, CartesianIndex{2}}}()
+    I = start
+    while true
+        J = step_gl(previous, I, g, mask; side, boundary)
+        (J === nothing || J == previous || (I, J) in steps) && break
+        push!(steps, (I, J))
+        # Store both trace directions with interior on the left.
+        traversed === nothing || push!(traversed, side == :left ? (I, J) : (J, I))
+        push!(path, J)
+        previous, I = I, J
+    end
+    return path
+end
+
+"""
+    walk_gl_inside(gl, mask, start=first(gl); boundary=Set(gl))
+
+Follow the local D4 inside walk in both directions, recording each cell once.
+
+Supply nonempty GL cell indices `gl` and a Boolean routing `mask` with active cells
+set to `true`. Choose a `start` in `gl` touching interior. Interior is an active cell
+outside `boundary`; supply the complete GL set when `gl` is only one outlet group.
+This local walk may omit appendices and other inside walks.
+
+See also [`walk_gl`](@ref) to discover all walks or select the longest.
+"""
+function walk_gl_inside(gl, mask, start=first(gl); boundary=Set(gl))
+    g = Set(gl)
+    start in g || error("Start is not on the grounding line: $start")
+    any(d -> in_region(start + d, boundary, mask, :inside), D8_POS) ||
+        error("Start does not touch interior: $start")
+    # Choose a real seed edge before tracing, so the incoming cell is never invented.
+    previous = start + first(D4_POS)
+    side = :left
+    J = step_gl(previous, start, g, mask; side, boundary)
+    if J === nothing
+        side = :right
+        J = step_gl(previous, start, g, mask; side, boundary)
+    end
+    J === nothing && return [start]
+    forward = trace_inside(g, mask, J, side; previous=start, boundary)
+    backward = trace_inside(g, mask, start, side == :left ? :right : :left;
+                            previous=J, boundary)
+    return unique([reverse(backward); forward])
+end
+
+"""
+    walk_gl_outside(gl, mask, start=first(gl))
+
+Visit every cell of a D8-connected GL once, following the outside first.
+
+Supply nonempty GL cell indices `gl` and a Boolean routing `mask`, with `false`
+cells marking exterior. Start at a cell in `gl`; throw if it cannot reach all cells.
+Use a stack to return from branches without recording cells twice. Consecutive
+output cells can therefore jump when a branch has been exhausted.
+
+See also [`walk_gl`](@ref), [`walk_gl_inside`](@ref).
+"""
+function walk_gl_outside(gl, mask, start=first(gl))
+    g = Set(gl)
+    start in g || error("Start is not on the grounding line: $start")
+    path, visited = [start], Set([start])
+    stack = [(start + first(D8_POS), start)]
+    while !isempty(stack)
+        previous, I = last(stack)
+        J = step_gl(previous, I, g, mask; region=:outside, side=:right, visited)
+        if J === nothing
+            pop!(stack)
+        else
+            push!(path, J)
+            push!(visited, J)
+            push!(stack, (I, J))
+        end
+    end
+    length(path) == length(g) || error("GL is not D8-connected from $start")
+    return path
+end
+
+"""
+    walk_gl(gl, mask, start=first(gl); cull_inside=true, boundary=Set(gl))
+
+Return inside walks and the complete outside ordering as `(; inside, outside)`.
+
+Supply nonempty, D8-connected GL cell indices `gl` and a Boolean routing `mask`.
+Active non-GL cells are interior; inactive cells are exterior. Supply the complete GL
+set as `boundary` when `gl` contains only one outlet group, so other groups' GL cells
+are not classified as interior. Neither the mask nor the cell lists are changed.
+
+By default, `inside` is the longest D4 walk as a vector of unique cells (first on
+ties). With `cull_inside=false`, return all discovered walks as separate vectors;
+walks may share junctions. Return an empty `inside` if no GL cell touches interior.
+Inside walks may omit appendices. Discover them along the outside ordering even
+when `start` is on an appendix or a smaller inside walk.
+
+The `outside` vector visits every GL cell once, starting at `start`. Consecutive
+output cells may jump after unrecorded backtracking; it is not a continuous polyline.
+
+See also [`walk_gl_inside`](@ref), [`walk_gl_outside`](@ref).
+"""
+function walk_gl(gl, mask, start=first(gl); cull_inside=true, boundary=Set(gl))
+    outside = walk_gl_outside(gl, mask, start)
+    g = Set(gl)
+    walks = Vector{CartesianIndex{2}}[]
+    traversed = Set{Tuple{CartesianIndex{2}, CartesianIndex{2}}}()
+    for I in outside
+        any(d -> in_region(I + d, boundary, mask, :inside), D8_POS) || continue
+        for d in D4_POS
+            J = I + d
+            J in g && !((I, J) in traversed) || continue
+            touches_side(I, J, boundary, mask, :inside, :left) || continue
+            push!(traversed, (I, J))
+            forward = trace_inside(g, mask, J, :left; previous=I, traversed, boundary)
+            backward = trace_inside(g, mask, I, :right; previous=J, traversed, boundary)
+            path = unique([reverse(backward); forward])
+            push!(walks, path)
+        end
+    end
+    # Retain inside-touching cells with no inside step, without duplicating endpoints.
+    covered = Set(Iterators.flatten(walks))
+    for I in outside
+        I in covered && continue
+        any(d -> in_region(I + d, boundary, mask, :inside), D8_POS) || continue
+        push!(walks, [I])
+    end
+    inside = cull_inside ? (isempty(walks) ? CartesianIndex{2}[] : argmax(length, walks)) : walks
+    return (; inside, outside)
+end

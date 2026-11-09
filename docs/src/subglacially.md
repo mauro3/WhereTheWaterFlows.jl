@@ -158,6 +158,38 @@ also allows overlapping groups if that is useful for a specific application.
 For real datasets, `WWFS.catchment_sinks` is usually the most practical
 approach: it derives sink-group partitions from outlet polygons.
 
+## Ordering grounding-line cells
+
+`WWFS.walk_gl` orders a nonempty, D8-connected set of grounding-line (GL) cells
+without changing their labels or the Boolean routing mask. It returns
+`(; inside, outside)`: the longest D4 inside walk by default, and all GL cells once
+in the outside ordering. Use `cull_inside=false` to retain all inside walks as
+separate vectors; different walks can share junction cells.
+
+```@example gl_ordering
+using WhereTheWaterFlows
+const WWF = WhereTheWaterFlows
+const WWFS = WWF.Subglacially
+
+mask = falses(7, 7)
+mask[2:6, 2:6] .= true
+gl = findall(WWFS.get_boundary_cells(mask, true))
+ordered = WWFS.walk_gl(gl, mask)
+@assert length(ordered.inside) == length(ordered.outside) == 16
+(length(ordered.inside), length(ordered.outside))
+```
+
+When ordering a single outlet group, pass the complete boundary set as
+`boundary=Set(vcat(groups...))`, not just that group's cells. Interior means an
+active cell outside the complete boundary; exterior means an inactive cell.
+Inside walks may omit appendices without interior neighbours. Outside traversal
+backtracks through branches without repeating output cells, so consecutive output
+cells can jump: do not treat this ordering as a continuous polyline.
+
+`WWFS.walk_gl_inside` follows only the local inside walk at a chosen start;
+`WWFS.walk_gl_outside` returns only the complete outside ordering. These functions
+live in `Subglacially/catchments.jl`; their synthetic tests require no Antarctic data.
+
 ## Suggested examples
 
 - `examples/wwfs-simple.jl`: quick intro
