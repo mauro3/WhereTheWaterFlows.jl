@@ -5,6 +5,8 @@
     @test isempty(components(CartesianIndex{2}[]))
     @test components([C(1,2),C(2,1)]) == [[C(1,2),C(2,1)]]
     @test length(components([C(1,1),C(2,2),C(3,3)])) == 1
+    @test length(components([C(1,1),C(2,2),C(3,3)]; diagonal=false)) == 3
+    @test components([C(1,2),C(2,1)]; diagonal=false) == [[C(1,2)],[C(2,1)]]
     ring = [C(i,j) for i in 1:3 for j in 1:3 if (i,j)!=(2,2)]
     @test length(components(ring)) == 1
     branch = vcat([C(i,2) for i in 1:5],[C(3,3),C(3,4),C(3,5)])
@@ -36,14 +38,38 @@
     @test repair!(chain) == 3
     @test chain == [[C(i,2) for i in 1:9],[C(i,2) for i in 12:17]]
 
-    # Prefer most contacts; break equal-contact ties by group index.
+    # Prefer most D4 contacts; diagonal contacts cannot break a strong-contact tie.
     tie = [[C(1,1),C(1,2),C(5,5)],[C(3,5),C(4,5)],[C(6,5),C(7,5)]]
     majority = deepcopy(tie)
     push!(majority[3],C(6,6))
     @test repair!(tie) == 1
     @test C(5,5) in tie[2]
     @test repair!(majority) == 1
-    @test C(5,5) in majority[3]
+    @test C(5,5) in majority[2]
+
+    # Strong contact to another label beats weak contact to the original label.
+    strong = [[C(1,1),C(1,2),C(1,3),C(2,4)], [C(3,4),C(4,4)]]
+    before = deepcopy(strong)
+    @test repair!(strong) == 1
+    @test C(2,4) in strong[2]
+    @test all(g -> length(components(g; diagonal=false)) == 1, strong)
+    @test Set(vcat(strong...)) == Set(vcat(before...))
+    @test repair!(strong) == 0
+
+    # Exhaust strong bridges before allowing an otherwise immediately available diagonal.
+    bridge = [[C(1,1),C(1,2),C(1,3),C(2,4)], [C(5,4),C(6,4),C(7,4)],
+              [C(3,4),C(4,4),C(10,10),C(10,11),C(10,12)]]
+    @test repair!(bridge) == 3
+    @test all(I -> I in bridge[2], [C(2,4),C(3,4),C(4,4)])
+    @test repair!(bridge) == 0
+
+    # The boundary itself may require a diagonal: retain it instead of fabricating cells.
+    weak = [[C(1,1),C(1,2),C(1,3),C(2,4)]]
+    before = deepcopy(weak)
+    @test repair!(weak) == 0
+    @test weak == before
+    @test length(components(weak[1]; diagonal=false)) == 2
+    @test length(components(weak[1])) == 1
 
     # A fragment can attach to another group's main component diagonally.
     diagonal = [[C(1,1),C(1,2),C(1,3),C(5,5)], [C(6,6),C(6,7)]]

@@ -27,7 +27,7 @@ Return
 Assign each sink to the polygon with smallest signed distance, provided that distance
 is at most `threshold_dist`. By default, apply [`connect_catchment_sinks!`](@ref) as
 the label cleanup. It preserves assigned sink cells and each nonempty group's
-largest component; it does not smooth already-connected polygon boundaries.
+largest D4 component, preferring strong connections with diagonal fallback.
 Set `connect=false` to return the raw polygon assignments, including disconnected
 pieces.
 
@@ -103,9 +103,11 @@ function check_catchment_sinks(ctch_sinks_map, ctch_polygons, sinks)
 end
 
 """
-    catchment_sink_components(cells)
+    catchment_sink_components(cells; diagonal=true)
 
-Return the eight-neighbour-connected components of a sink-cell group, largest first.
+Return connected components of a sink-cell group, largest first.
+
+Use eight-neighbour connectivity by default, or D4 with `diagonal=false`.
 
 Arguments
 - `cells` as a vector of `CartesianIndex{2}` sink-cell indices
@@ -116,7 +118,7 @@ Return
 Preserve the input. Empty groups have no components; ties are broken by cell indices.
 This checks connectivity, not along-boundary ordering or whether a group is unbranched.
 """
-function catchment_sink_components(cells)
+function catchment_sink_components(cells; diagonal=true)
     remaining = Set(cells)
     components = Vector{Vector{eltype(cells)}}()
     isempty(remaining) && return components
@@ -130,6 +132,7 @@ function catchment_sink_components(cells)
             I = pop!(stack)
             push!(component, I)
             for J in iterate_D9(I, Iend)
+                !diagonal && sum(abs, Tuple(J-I)) != 1 && continue
                 if J in remaining
                     delete!(remaining, J)
                     push!(stack, J)
@@ -157,12 +160,14 @@ Arguments
 Return
 - `Int` counts cells whose catchment index changed.
 
-Keep the largest eight-connected component of each nonempty group fixed. Process
-smaller fragments first, attaching whole fragments to an adjacent connected group.
-Prefer the original label whenever it has become reachable; otherwise choose the
-label with most eight-neighbour contacts, breaking ties by group index. Do not add or
-remove sink cells, populate empty groups, or change an already connected assignment.
-This is topological label cleanup, not independent validation of basin boundaries.
+Keep the largest D4 component of each nonempty group fixed. Process smaller
+fragments first, exhausting D4 attachments before allowing a diagonal attachment.
+After each diagonal attachment, retry D4 attachments. Within each connectivity tier,
+prefer the original label, then most contacts, then lowest group index. D8-only
+appendices remain possible where the underlying boundary has no D4 connection.
+Do not add or remove sink cells or populate empty groups. Cells in an originally
+D4-connected group keep their label. This is topological label cleanup, not
+independent validation of basin boundaries.
 
 Require disjoint cell lists. Throw `ArgumentError` without modifying the input if a
 fragment cannot reach any group's fixed component, for example on an isolated island
@@ -183,41 +188,41 @@ function connect_catchment_sinks!(groups)
     fragments = Tuple{Int,Vector{CartesianIndex{2}}}[]
     # 1. Keep one fixed piece per group
     for (g, cells) in enumerate(groups)
-        components = catchment_sink_components(cells)
+        components = catchment_sink_components(cells; diagonal=false)
         isempty(components) && continue
         union!(connected, first(components))
         append!(fragments, [(g, c) for c in components[2:end]])
     end
-    # 2. Attach fragments, smallest first
-    # For each fragment, examine its neighbours:
-    #  - If none belongs to connected, leave the fragment pending.
-    #  - If it now touches its own group’s connected piece, keep its label.
-    #  - Otherwise, change the whole fragment to an adjacent connected group. Choose the group with the most eight-neighbour contacts; ties use the lowest group index.
-    #  Once attached, add those cells to connected. They can then provide a bridge for another fragment.
+    # 2. Exhaust strong attachments before taking one weak step and trying again.
     sort!(fragments; by=f -> (length(f[2]), f[1], Tuple(first(f[2]))))
     pending = trues(length(fragments))
     changed = 0
     while any(pending)
         progress = false
-        for k in eachindex(fragments)
-            !pending[k] && continue
-            original, cells = fragments[k]
-            contacts = Dict{Int,Int}()
-            for I in cells, J in iterate_D9(I, Iend)
-                !(J in connected) && continue
-                label = labels[J]
-                contacts[label] = get(contacts, label, 0) + 1
+        for diagonal in (false, true)
+            for k in eachindex(fragments)
+                !pending[k] && continue
+                original, cells = fragments[k]
+                contacts = Dict{Int,Int}()
+                for I in cells, J in iterate_D9(I, Iend)
+                    !diagonal && sum(abs, Tuple(J-I)) != 1 && continue
+                    !(J in connected) && continue
+                    label = labels[J]
+                    contacts[label] = get(contacts, label, 0) + 1
+                end
+                isempty(contacts) && continue
+                destination = haskey(contacts, original) ? original :
+                    first(sort!(collect(keys(contacts)); by=g -> (-contacts[g], g)))
+                for I in cells
+                    labels[I] = destination
+                end
+                changed += destination == original ? 0 : length(cells)
+                union!(connected, cells)
+                pending[k] = false
+                progress = true
+                diagonal && break
             end
-            isempty(contacts) && continue
-            destination = haskey(contacts, original) ? original :
-                first(sort!(collect(keys(contacts)); by=g -> (-contacts[g], g)))
-            for I in cells
-                labels[I] = destination
-            end
-            changed += destination == original ? 0 : length(cells)
-            union!(connected, cells)
-            pending[k] = false
-            progress = true
+            progress && break
         end
         !progress && throw(ArgumentError(
             "Cannot reconnect sink groups without adding cells or moving fixed components; " *
