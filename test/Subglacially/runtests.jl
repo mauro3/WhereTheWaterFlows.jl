@@ -80,7 +80,7 @@ end
     for dp=[true,false], bap=[true,false], gamma=[0, WWFS.GAMMA], avoid_sc=[true,false]
         # dp=[true,false][1]; bap=[true,false][1]; gamma=[0, WWFS.GAMMA][1]; avoid_sc=[true,false][2]
         # @show dp, bap, gamma, avoid_sc
-        out = WWFS.waterflows_subglacial(surfdem, beddem, dx, floatfrac, source; drain_pits=dp, bnd_as_sink=true, nan_as_sink=bap, gamma=gamma, avoid_sc=avoid_sc)
+        out = WWFS.waterflows_subglacial(surfdem, beddem, dx, floatfrac, source; drain_pits=dp, bnd_as_sink=true, nan_as_sink=bap, gamma=gamma, avoid_sc=avoid_sc, rhoi=910)
         (;slen, dir, nout, nin, sinks, pits, c, bnds, area, phi) = out.routing
         area = area.total
         (;sc_locs, kappas, dir_og) = out.pressmelt

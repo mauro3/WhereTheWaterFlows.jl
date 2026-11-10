@@ -105,7 +105,7 @@ Only populated when `ctch_sinks` is non-empty:
 | `gamma` | `GAMMA` (≈−0.31) | Röthlisberger constant controlling deflection strength; set to `0` to disable |
 | `avoid_sc` | `false` | If `true`, supercooled cells become barriers (mass is lost there) |
 | `ctch_sinks` | `[]` | Sink-area sets for per-catchment flux diagnostics |
-| `rhow`, `rhoi` | 1000, 910 | Water and ice densities [kg m⁻³] |
+| `rhow`, `rhoi` | 1000, 917 | Water and ice densities [kg m⁻³] |
 | `drain_pits`, `bnd_as_sink`, `nan_as_sink` | `true` | Inherited from core routing |
 
 ## Defining outlet groups (`ctch_sinks`)

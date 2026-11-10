@@ -40,7 +40,7 @@ flotation_fraction = 0.95 # subglacial water pressure as fraction of ice overbur
                           # likely ∈ (0.6. 1.0)
 day = 24*60*60 # seconds in a day
 rho_w = 1000 # density water
-rho_i = 910 # density ice
+rho_i = 917 # density ice
 g = 9.81 # accel. due to gravity
 # hydraulic potential (in m H2O)
 phi = bed + flotation_fraction * rho_i/rho_w * (surface - bed)

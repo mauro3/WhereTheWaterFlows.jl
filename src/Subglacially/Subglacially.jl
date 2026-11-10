@@ -7,10 +7,7 @@ using GeometryBasics: Point2
 using LinearAlgebra, Statistics
 const WWF = WhereTheWaterFlows
 
-const RHOI = 910
-# note: BedMachine Antarctica uses 917 and uses ice-equivalent surface elevations. Eq S7
-# https://static-content.springer.com/esm/art%3A10.1038%2Fs41561-019-0510-8/MediaObjects/41561_2019_510_MOESM1_ESM.pdf
-
+const RHOI = 917
 const RHOW = 1000
 const LFUSION = 333.55e3 # latent heat of fusion
 
@@ -323,7 +320,7 @@ end
                                gamma=-0.31,
                                ctch_sinks=[],
                                rhow = 1000.0,
-                               rhoi = 910.0,
+                               rhoi = 917.0,
                                drain_pits=true,
                                bnd_as_sink=true,
                                nan_as_sink=true)
@@ -350,7 +347,7 @@ kwargs:
                       means that source in those cells will just vanish, i.e. mass is lost.  Probably
                       the default ==false is more physical as waterflow should continue just
                       not in R-channel. Thus recommended to set to false.
-- rhow, rhoi -- mean density of water and glacier ice (1000, 910)
+- rhow, rhoi -- mean density of water and glacier ice (1000, 917)
 - ctch_sinks -- List of sink-areas for which catchments will be calculated.  Each sink can be given as
                 a vector of `CartesianIndex` or as `CartesianIndices`.  Note, sink-areas and catchments can be
                 overlapping, if desired.
