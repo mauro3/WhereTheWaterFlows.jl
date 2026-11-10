@@ -1,3 +1,4 @@
+include("api-public.jl")
 include("core/runtests.jl")
 include("catchment-performance.jl")
 include("Subglacially/runtests.jl")

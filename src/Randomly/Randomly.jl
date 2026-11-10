@@ -8,8 +8,8 @@ using ProgressMeter
 include("grf.jl")
 include("blocksparse.jl")
 
-export Uncertainty, map_mc, make_fns_subaerial, make_fns_subglacial
-export find_next_2357, pad, depad, distance_squared, gaussian_kernel, exponential_kernel, make_kernel, make_grf_sampler
+export Uncertainty, map_mc, make_fns_subaerial, make_fns_subglacial,
+       gaussian_kernel, exponential_kernel
 
 """
 Type to hold the uncertainty information for a field.
@@ -325,6 +325,7 @@ function make_fns_subaerial(dx,
                             nan_as_sink=true,
                             catchment_storage=:blocksparse,
                             catchment_blocksize=_CATCHMENT_BLOCKSIZE)
+
     model(dem_, source_) = ((;dem=dem_, dx, source=source_),
                             WhereTheWaterFlows.waterflows(dem_, source_ .* dx^2;
                                                           drain_pits, bnd_as_sink, nan_as_sink))

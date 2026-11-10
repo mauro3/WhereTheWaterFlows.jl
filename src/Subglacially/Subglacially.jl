@@ -1,4 +1,12 @@
 module Subglacially
+
+export waterflows_subglacial, phi_fn, lake_depth
+export smooth_surface, catchment_sinks
+
+public mask_contiguous, get_boundary_cells
+public catchment_sink_components, connect_catchment_sinks!, walk_gl
+public RHOI, RHOW, GRAV, LFUSION, GAMMA
+
 using ..WhereTheWaterFlows: WhereTheWaterFlows, PIT, SINK, BARRIER, dir2ind, diagonal_fac, d8dir_feature,
     on_outer_boundary, ind2dir, iterate_D9, flowsinto, diagonal_fac
 using StaticArrays

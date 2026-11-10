@@ -4,8 +4,6 @@
 
 using FFTW, Primes
 
-export make_grf_sampler
-
 """
     find_next_2357(n::Integer) -> Integer
 

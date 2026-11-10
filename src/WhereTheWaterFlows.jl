@@ -5,6 +5,9 @@ using OffsetArrays: Origin, no_offset_view
 
 export waterflows
 
+public Subglacially, Randomly
+public PIT, SINK, BARRIER, dir2ind, dir2vec, ind2dir, showme
+
 const I11 = CartesianIndex(1,1)
 const I22 = CartesianIndex(2,2)
 # Special direction constants (do not define any <1!)
