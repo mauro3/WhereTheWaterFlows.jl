@@ -13,15 +13,20 @@ which produce spatially correlated noise.
 Typical usage is:
 
 1. define uncertainty models for uncertain fields,
-2. build `model`, `sample`, and `reduce!` with `make_fns_*`,
+2. build `model`, `sample`, `initialize`, `aggregate!`, and `finalize!` with `make_fns_*`,
 3. run Monte Carlo with `map_mc`.
 
 The key design idea is that `map_mc` is generic: it does not know anything
-about routing fields. It only calls three functions you provide:
+about routing fields. It calls five functions you provide:
 
 - `sample()`: generate one stochastic input realization,
 - `model(args...)`: run one deterministic forward model,
-- `reduce!`: aggregate outputs over many realizations.
+- `initialize()`: create fresh aggregate storage,
+- `aggregate!(aggr, output)`: accumulate one realization in place,
+- `finalize!(aggr)`: normalize aggregate storage in place.
+
+Both wrappers return the named tuple `(; model, sample, initialize, aggregate!, finalize!)`.
+Use named destructuring to select the callbacks needed by your workflow.
 
 ## Uncertainty model
 
@@ -78,7 +83,7 @@ Kernel choice:
 ## What can be configured
 
 High-level Monte Carlo controls:
-- `map_mc(model, sample, reduce!, n; progressmeter=true)`
+- `map_mc(model, sample, initialize, aggregate!, finalize!, n; progressmeter=true)`
 - `n`: number of realizations (`n <= 2048` enforced)
 - `progressmeter`: set `false` for quiet batch/CI runs
 
@@ -101,15 +106,18 @@ Subglacial wrapper (`make_fns_subglacial`):
 ## Why reduction is needed
 
 A Monte Carlo run can easily produce hundreds of large 2D outputs. Storing all
-realizations is expensive and often unnecessary. `reduce!` keeps only summary
+realizations is expensive and often unnecessary. Aggregation keeps only summary
 statistics (means, frequencies, selected per-sample vectors), which is both
 memory-efficient and directly useful for interpretation.
 
 In WWFR wrappers, reduction happens in three stages:
 
-1. `reduce!()` initializes aggregate storage.
-2. `reduce!(aggr, sample_output)` updates aggregate values per realization.
-3. `reduce!(aggr)` finalizes (typically divides accumulated maps by `n`).
+1. `initialize()` initializes aggregate storage.
+2. `aggregate!(aggr, sample_output)` updates aggregate values per realization.
+3. `finalize!(aggr)` finalizes (typically divides accumulated maps by `n`).
+
+`map_mc` calls initialization and finalization once each. It returns the original
+aggregate storage; return values from the two mutating callbacks are ignored.
 
 ## How outputs are reduced
 
@@ -147,7 +155,7 @@ updates and finalization explicitly avoid these materializations.
 
 ### Subaerial
 
-The reduction function returned by `make_fns_subaerial` accumulates:
+The `aggregate!` function returned by `make_fns_subaerial` accumulates:
 - `areas_total += output.area`
 - `stream_length += output.slen`
 - `catchments[:, :, i] += catchment(output.dir, ctch_sinks[i])`
@@ -158,7 +166,7 @@ means/frequencies) and flux vectors remain per-sample records by design.
 
 ### Subglacial
 
-The reduction function returned by `make_fns_subglacial` accumulates:
+The `aggregate!` function returned by `make_fns_subglacial` accumulates:
 routed maps and diagnostics (`areas_total`,
 `lake_depth_*`, `lake_mask_*`, `sc_locs`, `kappas`, `catchments`) and appends
 sink-flux records to vectors (`catchment_fluxes.total/dissipation/pressmelt`).
@@ -216,13 +224,15 @@ This enables statistics like:
 ## Defining custom `make_fns_*`
 
 The built-in `make_fns_subaerial`/`make_fns_subglacial` are templates. If your
-model has different outputs, constraints, or diagnostics, define your own trio:
+model has different outputs, constraints, or diagnostics, define your own callbacks:
 
 - `model(args...)`
 - `sample()`
-- `reduce!` (three-method interface)
+- `initialize()`
+- `aggregate!(aggr, out)`
+- `finalize!(aggr)`
 
-then call `map_mc(model, sample, reduce!, n)`.
+then call `map_mc(model, sample, initialize, aggregate!, finalize!, n)`.
 
 Minimal skeleton:
 
@@ -230,29 +240,28 @@ Minimal skeleton:
 model(a, b) = my_forward_model(a, b)
 sample() = (draw_a(), draw_b())
 
-function reduce!()
-    return (sumfield = 0.0, n = Ref(0))
+function initialize()
+    return (sumfield = Ref(0.0), n = Ref(0))
 end
 
-function reduce!(aggr, out)
-    aggr.sumfield += out.metric
+function aggregate!(aggr, out)
+    aggr.sumfield[] += out.metric
     aggr.n[] += 1
     return aggr
 end
 
-function reduce!(aggr)
-    aggr.sumfield /= aggr.n[]
+function finalize!(aggr)
+    aggr.sumfield[] /= aggr.n[]
     return aggr
 end
 ```
 
-The `reduce!` function has three methods: 0-arg method sets up the storage needed
-in the reduction (this gets called once at the beginning of the mc-iterations); the
-2-arg method is called after each forward model evaluation and reduces/aggregates the
-forward model output into what is stored; the 1-arg method is then called at the end
-to finalize the aggregated results.
+`initialize` creates storage once at the beginning of the Monte Carlo run.
+`aggregate!` updates it after each forward model evaluation, and `finalize!`
+normalizes the result at the end. Use mutable storage (arrays, `Ref`s, or a mutable
+struct) for values updated in place.
 
-Note: only `reduce!` is allowed to not be thread-safe, `model` and `sample` need to be thread-safe.
+`model` and `sample` must be thread-safe; aggregation is serialized.
 
 ## Minimal subaerial example
 
@@ -274,12 +283,12 @@ source_uc = WWFR.Uncertainty(absuc=0.0, reluc=0.2, correlation_length=15 * dx)
 
 ctch_sinks = [CartesianIndices((1:n, 1:1))[:]]
 
-model, sample, reduce! = WWFR.make_fns_subaerial(dx,
+(; model, sample, initialize, aggregate!, finalize!) = WWFR.make_fns_subaerial(dx,
                                                  dem, dem_uc,
                                                  source, source_uc,
                                                  ctch_sinks)
 
-aggr = WWFR.map_mc(model, sample, reduce!, 100; progressmeter=false)
+aggr = WWFR.map_mc(model, sample, initialize, aggregate!, finalize!, 100; progressmeter=false)
 
 mu, sd = mean(aggr.catchment_fluxes[1]), std(aggr.catchment_fluxes[1])
 hist(aggr.catchment_fluxes[1],

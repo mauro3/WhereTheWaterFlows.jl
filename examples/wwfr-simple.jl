@@ -14,12 +14,12 @@ source_uc = WWFR.Uncertainty(absuc=0, reluc=0.25, correlation_length=n/5*dx) # u
 dem_uc = WWFR.Uncertainty() # no uncertainty on DEM
 ctch_sinks = [CartesianIndices((2:2, 2:n-1))[:]] # aggregate all discharge going into the left domain margin
 
-model, sample, reduce! = WWFR.make_fns_subaerial(dx,
+(; model, sample, initialize, aggregate!, finalize!) = WWFR.make_fns_subaerial(dx,
                                                  dem, dem_uc,
                                                  source, source_uc,
                                                  ctch_sinks)
 
-aggr = WWFR.map_mc(model, sample, reduce!, 20, progressmeter=false)
+aggr = WWFR.map_mc(model, sample, initialize, aggregate!, finalize!, 20; progressmeter=false)
 
 println("WhereTheWaterFlowsRandomly simple example (WWF + uncertain source)")
 println("samples: ", aggr.n_samples[])

@@ -116,7 +116,7 @@ source_uc = WWFR.Uncertainty()
 ctch_sinks = [CartesianIndices((1:10, 1:length(y)))[:], CartesianIndices((1:10, 1:length(y)÷2))[:]]
 
 
-model, sample, reduce! = WWFR.make_fns_subglacial(step(x),
+(; model, sample, initialize, aggregate!, finalize!) = WWFR.make_fns_subglacial(step(x),
                                                    surfdem, surfdem_uc,
                                                    beddem, beddem_uc,
                                                    floatfrac, floatfrac_uc,
@@ -125,7 +125,7 @@ model, sample, reduce! = WWFR.make_fns_subglacial(step(x),
                                                    gamma=[0,WWFS.GAMMA][2],
                                                    mask)
 input, output = model(sample()...)
-aggr = WWFR.map_mc(model, sample, reduce!, 20)
+aggr = WWFR.map_mc(model, sample, initialize, aggregate!, finalize!, 20)
 WWF.plt_area(x, y, aggr.areas_total)
 # WWF.plt_area(x, y, aggr.sc_locs, prefn=x->x)
 WWF.plt_area(x, y, aggr.catchments[:,:,2], prefn=x->x)

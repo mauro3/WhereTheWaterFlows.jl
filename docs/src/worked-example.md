@@ -133,7 +133,8 @@ uncertainty with a 100 m spatial correlation length through the routing model
 using the WWFR workflow:
 
 1. Describe each uncertain field with `WWFR.Uncertainty`.
-2. Build `model`, `sample`, and `reduce!` with `WWFR.make_fns_subglacial`.
+2. Build `model`, `sample`, `initialize`, `aggregate!`, and `finalize!` with
+   `WWFR.make_fns_subglacial`.
 3. Run the Monte Carlo loop with `WWFR.map_mc`.
 
 ```@example unteraar
@@ -148,7 +149,7 @@ source_uc    = WWFR.Uncertainty()
 
 floatfrac_arr = fill(Float32(1.0), nx, ny)
 
-model, sample, reduce! = WWFR.make_fns_subglacial(
+(; model, sample, initialize, aggregate!, finalize!) = WWFR.make_fns_subglacial(
     dx,
     surfdem,      surfdem_uc,
     beddem_clean, beddem_uc,
@@ -158,7 +159,7 @@ model, sample, reduce! = WWFR.make_fns_subglacial(
     gamma = WWFS.GAMMA,
 )
 
-aggr = WWFR.map_mc(model, sample, reduce!, 10; progressmeter=false)
+aggr = WWFR.map_mc(model, sample, initialize, aggregate!, finalize!, 10; progressmeter=false)
 
 println("MC samples completed:        ", aggr.n_samples[])
 println("Mean max discharge [m³/s]:   ",
