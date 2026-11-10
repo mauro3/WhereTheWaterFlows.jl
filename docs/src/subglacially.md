@@ -186,9 +186,6 @@ Inside walks may omit appendices without interior neighbours. Outside traversal
 backtracks through branches without repeating output cells, so consecutive output
 cells can jump: do not treat this ordering as a continuous polyline.
 
-`WWFS.walk_gl_inside` follows only the local inside walk at a chosen start;
-`WWFS.walk_gl_outside` returns only the complete outside ordering. These functions
-live in `Subglacially/catchments.jl`; their synthetic tests require no Antarctic data.
 
 ## Suggested examples
 
