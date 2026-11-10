@@ -5,7 +5,6 @@ using StaticArrays
 using ProgressMeter
 using GeometryBasics: Point2
 using LinearAlgebra, Statistics
-using StatsBase: mode
 const WWF = WhereTheWaterFlows
 
 const RHOI = 910
@@ -535,4 +534,5 @@ function make_feedback_fn(phi, phim, gamma, dx)
 end
 
 include("helpers.jl")
+include("catchments.jl")
 end
