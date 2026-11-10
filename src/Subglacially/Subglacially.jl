@@ -360,6 +360,9 @@ kwargs:
                 a vector of `CartesianIndex` or as `CartesianIndices`.  Note, sink-areas and catchments can be
                 overlapping, if desired.
 
+Local melt/freeze feedback is zero wherever `surfdem <= beddem`. Such cells remain
+routable and keep their supplied external source; no source masking is applied here.
+
 All input grids must have one-based indices; offset-indexed grids are not supported.
 
 Returns one nested NamedTuple with keys:
@@ -398,7 +401,7 @@ function waterflows_subglacial(surfdem::AbstractMatrix, beddem::AbstractMatrix, 
     # total flux, extra flux, dissipation-melt-rate, pressure-melt-rate
     inputs = (source*dx^2, fill!(similar(surfdem), 0), fill!(similar(surfdem), 0), fill!(similar(surfdem), 0))
 
-    feedback_fn = make_feedback_fn(phi, phim, gamma, dx)
+    feedback_fn = make_feedback_fn(phi, phim, gamma, dx, thick_orig)
 
     area, slen, dir, nout, nin, sinks, pits, c, bnds, (sc_locs, kappas, dir_) =
         WWF.waterflows((phi, phim), inputs;
@@ -516,10 +519,13 @@ function melt_rates(Q::Number, phi::AbstractMatrix, phim::AbstractMatrix, gamma,
 end
 
 """
-    make_feedback_fn(phi, phim, gamma, dx)
+    make_feedback_fn(phi, phim, gamma, dx, thickness)
 
 Make the feedback_fn as used by WWF with the appropriate closures and
-taking care of https://github.com/JuliaLang/julia/issues/15276 (if needed)
+taking care of https://github.com/JuliaLang/julia/issues/15276 (if needed).
+
+Use `has_ice` from the current geometry. Ice-free cells transmit discharge unchanged,
+without local melt/freeze feedback; supplied external source is retained.
 
 It returns:
 - total discharge
@@ -527,10 +533,13 @@ It returns:
 - dissipation melt rate (m/s)
 - pressure melt rate (m/s)
 """
-function make_feedback_fn(phi, phim, gamma, dx)
+function make_feedback_fn(phi, phim, gamma, dx, thickness)
     return function (uparea, ij, dir)
         Q_total, Q_extra = uparea[1], uparea[2]
         Q_total = max(Q_total, 0)
+        if thickness[ij]<=0
+            return Q_total, Q_extra, 0.0, 0.0
+        end
         # don't do  Q_extra = max(Q_extra, 0) as the extra may well be negative
         disspation_melt_rate, press_melt_rate =
             melt_rates(Q_total, phi, phim, gamma, ij, dir, dx)

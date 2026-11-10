@@ -108,6 +108,52 @@ end
     end
 end
 
+@testset "Automatic ice-free feedback gate retains prescribed source" begin
+    WWFR = WWF.Randomly
+    bed = [2000. - 1000i + 5j for i in 1:7,j in 1:9]
+    surface = bed .+ 50.
+    source = fill(1e-8,7,9)
+    original_source = copy(source)
+    plain = WWF.waterflows(bed,source .* 500^2)
+    for gamma in (0.,-0.31)
+        noice = WWFS.waterflows_subglacial(bed,bed,500.,1.,source;gamma)
+        @test noice.routing.dir == plain.dir
+        @test noice.routing.area.total == plain.area
+        @test all(iszero,noice.routing.area.dissipation_melt_rate)
+        @test all(iszero,noice.routing.area.pressure_melt_rate)
+        @test sum(noice.routing.area.total[I] for I in noice.routing.sinks) ≈ sum(source)*500^2
+        @test source == original_source
+        ice = WWFS.waterflows_subglacial(surface,bed,500.,1.,source;gamma)
+        @test any(!iszero,ice.routing.area.dissipation_melt_rate)
+    end
+    fixed = WWFR.Uncertainty()
+    (;model,initialize,aggregate!,finalize!) = WWFR.make_fns_subglacial(500.,
+        surface,fixed,bed,fixed,ones(7,9),fixed,source,fixed,[];gamma=-.31)
+    # Factory reference has ice, but the current model call does not.
+    fields,noice = model(bed,bed,ones(7,9),source)
+    @test fields.source === source
+    @test all(iszero,noice.routing.area.dissipation_melt_rate)
+    current_sample() = (bed,bed,ones(7,9),source)
+    aggr = WWFR.map_mc(model,current_sample,initialize,aggregate!,finalize!,2;progressmeter=false)
+    @test all(iszero,aggr.melt_rate)
+    @test aggr.areas_total ≈ plain.area rtol=1e-6
+    @test aggr.n_samples[]==2
+end
+
+@testset "Surface smoothing half-window stays within thickness" begin
+    grid = 0.:500.:3000.
+    surface = [1000. + i^2 + j^2 for i in 1:7, j in 1:7]
+    for H in (250.,300.,499.999,500.,750.,999.999,1000.)
+        bed = surface .- H
+        result = WWFS.smooth_surface(grid,grid,surface,bed,1.)
+        radius = floor(Int,H/500.)
+        @test result[4,4] ≈ sum(surface[4-radius:4+radius,4-radius:4+radius]) / (2radius+1)^2
+        @test radius * 500 <= H
+        H < 500 && @test result == surface
+    end
+    @test WWFS.smooth_surface(grid,grid,surface,surface .- 900.,0.5) == surface
+end
+
 @testset "One-based input grids" begin
     WWFS = WWF.Subglacially
     dem = [3.0 2 1; 4 5 2; 6 7 3]

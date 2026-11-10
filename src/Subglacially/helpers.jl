@@ -37,20 +37,26 @@ function boxcar(A::AbstractArray{T,N}, window::AbstractArray{<:Integer,N},
 end
 
 """
-    smooth_surface(x, y, surfdem, beddem, icethicknesses, mask= surfdem.>=beddem; minwindow=0)
+    smooth_surface(x, y, surfdem, beddem, icethicknesses,
+                   mask=surfdem.>=beddem; minwindow=0)
 
-Smooth the surface DEM of ±`icethicknesses`.  Only smoothes where
-there is ice and only using ice-covered cells.
+Smooth the surface DEM over ±`icethicknesses` local ice thicknesses.
+
+Only smoothes where mask==true and only using those cells, by default the ice covered cells
+form the mask.
+
+Round the half-window down to whole grid steps, so it does not exceed the requested
+length (unless enlarged by `minwindow`). With `icethicknesses=1` and `minwindow=0`,
+ice thinner than one grid step is not smoothed.
 """
 function smooth_surface(x, y, surfdem, beddem, icethicknesses, mask=surfdem.>=beddem; minwindow=0)
     dx = x[2]-x[1]
     @assert y[2]-y[1]==dx
     thickness = surfdem .- beddem
     thickness[isnan.(thickness)] .= 0
-    window = round.(Int, icethicknesses .* thickness ./ dx)
+    window = floor.(Int, icethicknesses .* thickness ./ dx)
     window[window.<minwindow] .= minwindow
-    surface_smooth = boxcar(surfdem, 
-    window, mask)
+    surface_smooth = boxcar(surfdem, window, mask)
     return surface_smooth
 end
 
