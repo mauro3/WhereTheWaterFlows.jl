@@ -317,8 +317,8 @@ using `make_fns_subglacial`.
 | `aggr.catchment_fluxes.total` | `Vector{Vector{Float32}}` (length `n_groups`) | Per-group total outlet flux [m^3/s] | Per-sample vectors (not averaged) |
 | `aggr.catchment_fluxes.dissipation` | `Vector{Vector{Float32}}` (length `n_groups`) | Per-group dissipation-melt flux contribution records [m^3/s] | Per-sample vectors (not averaged) |
 | `aggr.catchment_fluxes.pressmelt` | `Vector{Vector{Float32}}` (length `n_groups`) | Per-group pressure-melt flux contribution records [m^3/s] | Per-sample vectors (not averaged) |
-| `aggr.lake_vol_fixed_surface` | `Vector{Float32}` (length `n_samples`) | Domain-summed lake depth above threshold (fixed-surface case), sample by sample | Per-sample vector (not averaged) |
-| `aggr.lake_vol_free_surface` | `Vector{Float32}` (length `n_samples`) | Domain-summed lake depth above threshold (free-surface case), sample by sample | Per-sample vector (not averaged) |
+| `aggr.lake_vol_fixed_surface` | `Vector{Float32}` (length `n_samples`) | Lake volume [m^3]: `dx^2` times the sum of full depths `> min_lake_depth` (fixed-surface case) | Per-sample vector (not averaged) |
+| `aggr.lake_vol_free_surface` | `Vector{Float32}` (length `n_samples`) | Lake volume [m^3]: `dx^2` times the sum of full depths `> min_lake_depth` (free-surface case) | Per-sample vector (not averaged) |
 | `aggr.n_samples[]` | `Int` (`Ref`) | Number of Monte Carlo realizations accumulated | Final count |
 
 Notes:

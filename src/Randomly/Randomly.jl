@@ -144,7 +144,8 @@ Kwargs
 - `mask` -- routing mask passed to `Subglacially.waterflows_subglacial`
 - `gamma` -- pressure-melting deflection parameter; defaults to `0.0` when omitted. Otherwise
              set to WWF.GAMMA for a standard value.
-- `min_lake_depth` -- threshold used for lake-occurrence masks and lake-volume vectors
+- `min_lake_depth` -- strict depth threshold for lake occurrence and volume; volumes
+  sum full qualifying depths times `dx^2`, not excess depths above the threshold
 - `rhow`, `rhoi` -- water and ice density overrides
 - `catchment_storage` -- `:blocksparse` (default) for lazy-zero tiled storage,
   or `:dense` for a conventional Float16 array. Both retain `(x, y, group)` indexing.
@@ -239,8 +240,10 @@ function make_fns_subglacial(dx,
         aggr.lake_depth_free_surface .+= depth_free_surface
         aggr.lake_mask_free_surface .+= depth_free_surface.>min_lake_depth
 
-        push!(aggr.lake_vol_fixed_surface, sum(Float32.(depth_fixed_surface[depth_fixed_surface .> min_lake_depth])))
-        push!(aggr.lake_vol_free_surface, sum(Float32.(depth_free_surface[depth_free_surface .> min_lake_depth])))
+        push!(aggr.lake_vol_fixed_surface,
+              sum(Float32.(depth_fixed_surface[depth_fixed_surface .> min_lake_depth])) * dx^2)
+        push!(aggr.lake_vol_free_surface,
+              sum(Float32.(depth_free_surface[depth_free_surface .> min_lake_depth])) * dx^2)
 
         aggr.sc_locs .+= sc_locs
         aggr.kappas .+= kappas

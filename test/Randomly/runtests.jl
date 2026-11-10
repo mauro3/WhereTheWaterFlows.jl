@@ -117,6 +117,51 @@ end
         1.0, surface, uc, bed, uc, ones(2, 3), uc, source, uc, [])
 end
 
+@testset "Subglacial lake-volume reducer" begin
+    fixed_depth = Float32[20 30; 10 0]
+    free_depth = Float32[30 10; 0 20]
+    shallow = Float32[10 0; 5 10]
+    field = zeros(Float32, 2, 2)
+    uc = WWFR.Uncertainty()
+
+    for (dx, volume) in ((500.0, 12_500_000f0), (1000.0, 50_000_000f0))
+        _, _, reduce! = WWFR.make_fns_subglacial(
+            dx, field, uc, field, uc, ones(Float32, 2, 2), uc, field, uc,
+            [[CartesianIndex(1, 1)]]; min_lake_depth=10.0)
+        aggr = reduce!()
+        # Synthetic model outputs isolate aggregation from routing physics.
+        for (fixed, free) in ((fixed_depth, free_depth), (shallow, shallow))
+            output = (
+                routing=(area=(total=fill(2f0, 2, 2), extra=fill(3f0, 2, 2),
+                               dissipation_melt_rate=fill(4f0, 2, 2),
+                               pressure_melt_rate=fill(5f0, 2, 2)),),
+                pressmelt=(sc_locs=trues(2, 2), kappas=fill(6f0, 2, 2)),
+                lakes=(depth_fixed_surface=fixed, depth_free_surface=free),
+                sink_catchments=(masks=[trues(2, 2)],
+                                fluxes=(total=[7f0], dissipation=[8f0], pressmelt=[9f0])))
+            reduce!(aggr, (nothing, output))
+        end
+        # Equality to the threshold is excluded; a sample with no qualifying
+        # cells contributes zero. Finalization must not average or rescale volumes.
+        @test aggr.lake_vol_fixed_surface == Float32[volume, 0]
+        @test aggr.lake_vol_free_surface == Float32[volume, 0]
+        reduce!(aggr)
+        @test aggr.n_samples[] == 2
+        @test aggr.lake_vol_fixed_surface == Float32[volume, 0]
+        @test aggr.lake_vol_free_surface == Float32[volume, 0]
+        @test aggr.lake_depth_fixed_surface == (fixed_depth .+ shallow) ./ 2
+        @test aggr.lake_depth_free_surface == (free_depth .+ shallow) ./ 2
+        @test aggr.lake_mask_fixed_surface == Float32[0.5 0.5; 0 0]
+        @test aggr.lake_mask_free_surface == Float32[0.5 0; 0 0.5]
+        @test aggr.areas_total == fill(2f0, 2, 2)
+        @test aggr.areas_extra == fill(3f0, 2, 2)
+        @test aggr.melt_rate == fill(9f0, 2, 2)
+        @test aggr.catchment_fluxes == (total=[Float32[7, 7]],
+                                       dissipation=[Float32[8, 8]],
+                                       pressmelt=[Float32[9, 9]])
+    end
+end
+
 @testset "Stochastic Subglacial" begin
     n = 100
     x, beddem = peaks2_nan_edge(n)
