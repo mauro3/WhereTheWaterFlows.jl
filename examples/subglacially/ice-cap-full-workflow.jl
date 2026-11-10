@@ -213,7 +213,7 @@ fig3b = heatmap(x, y, phi_filled .- out.routing.phi)
 #
 # Workflow:
 #   a) Describe each uncertain field with WWFR.Uncertainty.
-#   b) Build model / sample / reduce! with WWFR.make_fns_subglacial.
+#   b) Build model / sample / initialize / aggregate! / finalize! callbacks.
 #   c) Run the Monte Carlo loop with WWFR.map_mc.
 # ─────────────────────────────────────────────────────────────────────────────
 println("\n── Monte Carlo bed-uncertainty propagation ───────────────────────────")
@@ -226,7 +226,7 @@ source_uc    = WWFR.Uncertainty()   # melt source treated as exact
 # make_fns_subglacial requires floatfrac as an array (not a scalar).
 floatfrac_arr = fill(Float32(1.0), nx, ny)
 
-model, sample, reduce! = WWFR.make_fns_subglacial(
+(; model, sample, initialize, aggregate!, finalize!) = WWFR.make_fns_subglacial(
     dx,
     surfdem,       surfdem_uc,
     beddem_clean,  beddem_uc,
@@ -240,7 +240,7 @@ model, sample, reduce! = WWFR.make_fns_subglacial(
 # 20 samples is deliberately small for quick execution.
 # Use 50–200 samples for stable statistics in production.
 n_samples = 20
-aggr = WWFR.map_mc(model, sample, reduce!, n_samples)
+aggr = WWFR.map_mc(model, sample, initialize, aggregate!, finalize!, n_samples)
 
 println("Samples completed:            ", aggr.n_samples[])
 println("Mean max discharge [m³/s]:    ",

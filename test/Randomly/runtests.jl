@@ -7,6 +7,33 @@ const WWFR = WhereTheWaterFlows.Randomly
 const WWFS = WhereTheWaterFlows.Subglacially
 const WWF = WhereTheWaterFlows
 
+@testset "Monte Carlo callback lifecycle" begin
+    for n in (1, 3)
+        events = Symbol[]
+        storage = (sum=Ref(0.0), n=Ref(0))
+        initialize() = (push!(events, :initialize); storage)
+        sample() = (push!(events, :sample); (2.0, 3.0))
+        model(a, b) = (push!(events, :model); a + b)
+        function aggregate!(aggr, out)
+            push!(events, :aggregate)
+            aggr.sum[] += out
+            aggr.n[] += 1
+            return nothing
+        end
+        function finalize!(aggr)
+            push!(events, :finalize)
+            aggr.sum[] /= aggr.n[]
+            return nothing
+        end
+        aggr = WWFR.map_mc(model, sample, initialize, aggregate!, finalize!, n;
+                          progressmeter=false)
+        @test aggr === storage
+        @test aggr.sum[] == 5.0
+        @test aggr.n[] == n
+        @test events == [:initialize; repeat([:sample, :model, :aggregate], n); :finalize]
+    end
+end
+
 include("blocksparse.jl")
 
 const _offset = [0.2, 0.5]
@@ -125,10 +152,10 @@ end
     uc = WWFR.Uncertainty()
 
     for (dx, volume) in ((500.0, 12_500_000f0), (1000.0, 50_000_000f0))
-        _, _, reduce! = WWFR.make_fns_subglacial(
+        (; initialize, aggregate!, finalize!) = WWFR.make_fns_subglacial(
             dx, field, uc, field, uc, ones(Float32, 2, 2), uc, field, uc,
             [[CartesianIndex(1, 1)]]; min_lake_depth=10.0)
-        aggr = reduce!()
+        aggr = initialize()
         # Synthetic model outputs isolate aggregation from routing physics.
         for (fixed, free) in ((fixed_depth, free_depth), (shallow, shallow))
             output = (
@@ -139,13 +166,13 @@ end
                 lakes=(depth_fixed_surface=fixed, depth_free_surface=free),
                 sink_catchments=(masks=[trues(2, 2)],
                                 fluxes=(total=[7f0], dissipation=[8f0], pressmelt=[9f0])))
-            reduce!(aggr, (nothing, output))
+            aggregate!(aggr, (nothing, output))
         end
         # Equality to the threshold is excluded; a sample with no qualifying
         # cells contributes zero. Finalization must not average or rescale volumes.
         @test aggr.lake_vol_fixed_surface == Float32[volume, 0]
         @test aggr.lake_vol_free_surface == Float32[volume, 0]
-        reduce!(aggr)
+        finalize!(aggr)
         @test aggr.n_samples[] == 2
         @test aggr.lake_vol_fixed_surface == Float32[volume, 0]
         @test aggr.lake_vol_free_surface == Float32[volume, 0]
@@ -182,7 +209,7 @@ end
     floatfrac_uc = WWFR.Uncertainty(absuc=0, reluc=0.0, correlation_length=1e3)
     source_uc = WWFR.Uncertainty()
 
-    model, sample, reduce! = WWFR.make_fns_subglacial(dx,
+    (; model, sample, initialize, aggregate!, finalize!) = WWFR.make_fns_subglacial(dx,
                                                       surfdem, surfdem_uc,
                                                       beddem, beddem_uc,
                                                       floatfrac, floatfrac_uc,
@@ -204,7 +231,7 @@ end
     @test output.routing.c == out_ref.routing.c
     @test output.pressmelt.kappas == out_ref.pressmelt.kappas
 
-    aggr = WWFR.map_mc(model, sample, reduce!, 3)
+    aggr = WWFR.map_mc(model, sample, initialize, aggregate!, finalize!, 3)
     @test size(aggr.areas_total) == size(surfdem)
     @test size(aggr.lake_depth_free_surface) == size(surfdem)
     @test length(aggr.catchment_fluxes.total) == length(ctch_sinks)
@@ -218,14 +245,14 @@ end
     sinks = WWF.waterflows(dem).sinks
     # Including an upstream point in the all-outlets group must not count it twice.
     groups = [sinks, [sinks; CartesianIndex(3, 3)], [CartesianIndex(3, 3)], CartesianIndex{2}[]]
-    model, _, reduce! = WWFR.make_fns_subaerial(
+    (; model, initialize, aggregate!) = WWFR.make_fns_subaerial(
         dx, dem, WWFR.Uncertainty(), baseline, WWFR.Uncertainty(), groups)
-    aggr = reduce!()
+    aggr = initialize()
     expected = zeros(Float16, size(dem)..., length(groups))
     for scale in (1.0, 2.0)
         source = scale .* reshape(collect(1.0:25.0), size(dem))
         res = model(dem, source)
-        reduce!(aggr, res)
+        aggregate!(aggr, res)
         out = res[2]
         total = sum(source) * dx^2
         @test aggr.catchment_fluxes[1][end] ≈ total
@@ -243,7 +270,7 @@ end
 
     # Reuse the same scratch storage with a different direction field.
     res = model(reverse(dem; dims=1), baseline)
-    reduce!(aggr, res)
+    aggregate!(aggr, res)
     for (i, group) in enumerate(groups)
         c = WWF.catchment(res[2].dir, group)
         @views expected[:,:,i] .+= c
@@ -262,7 +289,7 @@ end
     dem_uc = WWFR.Uncertainty(absuc=0, reluc=0.0, correlation_length=10.0)
     source_uc = WWFR.Uncertainty()
 
-    model, sample, reduce! = WWFR.make_fns_subaerial(dx,
+    (; model, sample, initialize, aggregate!, finalize!) = WWFR.make_fns_subaerial(dx,
                                                      dem, dem_uc,
                                                      source, source_uc,
                                                      ctch_sinks)
@@ -274,7 +301,7 @@ end
     @test output.c == out_ref.c
     @test output.slen == out_ref.slen
 
-    aggr = WWFR.map_mc(model, sample, reduce!, 3)
+    aggr = WWFR.map_mc(model, sample, initialize, aggregate!, finalize!, 3)
     @test size(aggr.areas_total) == size(dem)
     @test size(aggr.catchments, 3) == length(ctch_sinks)
     @test aggr.n_samples[] == 3

@@ -91,7 +91,7 @@ occupied(A) = count(B -> B isa Array, WWFR.blocks(A))
     @test all(==(Float16(2048)),exact)
     WWFR._normalize_catchments!(exact,2048)
     @test all(isone,exact)
-    @test_throws ErrorException WWFR.map_mc(nothing,nothing,nothing,2049;progressmeter=false)
+    @test_throws ErrorException WWFR.map_mc(nothing,nothing,nothing,nothing,nothing,2049;progressmeter=false)
 end
 
 @testset "Configurable block size" begin
@@ -183,9 +183,12 @@ end
             WWFR.make_fns_subglacial(200.0,surface,fixed,bed,uncertain,ff,fixed,
                 source,fixed,groups;gamma,catchment_storage=storage,
                 catchment_blocksize=blocksize)
-        model,sample,reduce_sparse! = build(:blocksparse)
-        _,_,reduce_dense! = build(:dense)
-        sparse,dense=reduce_sparse!(),reduce_dense!()
+        sparse_fns = build(:blocksparse)
+        dense_fns = build(:dense)
+        (; model, sample) = sparse_fns
+        @test keys(sparse_fns) == keys(dense_fns) ==
+              (:model, :sample, :initialize, :aggregate!, :finalize!)
+        sparse,dense=sparse_fns.initialize(),dense_fns.initialize()
         @test size(WWFR.blocks(sparse.catchments))==
               (cld(nx,blocksize),cld(ny,blocksize),length(groups))
         Random.seed!(731)
@@ -194,13 +197,13 @@ end
             if kind==:subglacial
                 @test all(M -> M isa BitMatrix,res[2].sink_catchments.masks)
             end
-            reduce_sparse!(sparse,res)
-            reduce_dense!(dense,res)
+            sparse_fns.aggregate!(sparse,res)
+            dense_fns.aggregate!(dense,res)
             @test Array(sparse.catchments)==dense.catchments
         end
         parent_before=WWFR.blocks(sparse.catchments)[1,1,1]
-        reduce_sparse!(sparse)
-        reduce_dense!(dense)
+        sparse_fns.finalize!(sparse)
+        dense_fns.finalize!(dense)
         @test WWFR.blocks(sparse.catchments)[1,1,1] === parent_before
         for field in keys(dense)
             actual,expected=getproperty(sparse,field),getproperty(dense,field)

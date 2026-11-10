@@ -101,14 +101,14 @@ floatfrac_uc = WWFR.Uncertainty(absuc=0, reluc=0.05, correlation_length=0.5e3, c
 basal_melt = ones(size(surfdem));
 basal_melt_uc = WWFR.Uncertainty()
 mask = trues(size(surfdem))
-model, sample, reduce! = WWFR.make_fns_subglacial(step(x),
+(; model, sample, initialize, aggregate!, finalize!) = WWFR.make_fns_subglacial(step(x),
                                                   surfdem, surfdem_uc,
                                                   beddem, beddem_uc,
                                                   floatfrac, floatfrac_uc,
                                                   basal_melt, basal_melt_uc,
                                                   ctch_sinks;
                                                   mask)
-@time aggr = WWFR.map_mc(model, sample, reduce!, 10);
+@time aggr = WWFR.map_mc(model, sample, initialize, aggregate!, finalize!, 10);
 WWF.plt_area(x, y, aggr.areas_total; sinks)
 WWF.plt_area(x, y, aggr.lake_depth_free_surface; prefn=x->x)
 # WWF.plt_area(x, y, aggr.sc_locs, prefn=x->x)

@@ -74,30 +74,28 @@ function make_field_realization(field, sampler, uncert::Uncertainty)
 end
 
 """
-    map_mc(model, sample, reduce!, n)
+    map_mc(model, sample, initialize, aggregate!, finalize!, n; progressmeter=true)
 
-A general Monte Carlo `map` function
+Run Monte Carlo sampling and aggregate model outputs in place.
 
 Args
 - model   -- the model function, runs with `output = model(sample()...)`
 - sample  -- `input = sample()` returns a new sample to use as input to model
-- reduce! -- aggregates the model output with `reduce!(aggr, output)`.  Also initializes
-                the aggregate storage with `aggr = reduce!()` and finalizes it
-                with `reduce!(aggr)`.
-- n -- number of samples to take
-       (must be <= 2048; Float16 aggregation for catchment frequencies loses
-         precision for larger counts)
+- initialize -- called once to create aggregation storage (no arguments)
+- aggregate! -- called as `aggregate!(aggr, model(sample()...))` for each of the `n` realizations
+- finalize! -- called as `finalize!(aggr)` once at the end and updates `aggr` in-place.
 
-Thread safety: only `reduce!` is allowed to not be thread-safe.
+The sample count must be at most 2048 because catchment frequencies use Float16
+counts. Set `progressmeter=false` to suppress progress updates.
 """
-function map_mc(model, sample, reduce!, n; progressmeter=true)
+function map_mc(model, sample, initialize, aggregate!, finalize!, n; progressmeter=true)
     n>2048 && error("""Cannot take more than 2048 samples as otherwise
                        the aggregation for the catchment probabilities does not work anymore
                        as Float16 are used.""")
 
     lockobj = Threads.ReentrantLock()
-    # initialize aggregate! storage
-    aggr = reduce!()
+    # initialize aggregate storage
+    aggr = initialize()
     p = Progress(n)
     # Threading issues:
     # - excessive memory usage (mem-leak? Maybe fixed now with hand-rolled GRF)
@@ -105,12 +103,12 @@ function map_mc(model, sample, reduce!, n; progressmeter=true)
         input = sample()
         res = model(input...)
         lock(lockobj) do
-            reduce!(aggr, res)
+            aggregate!(aggr, res)
         end
         progressmeter && next!(p)
     end
     # finalize aggregate
-    reduce!(aggr)
+    finalize!(aggr)
     return aggr
 end
 
@@ -128,8 +126,7 @@ end
                           catchment_storage=:blocksparse,
                           catchment_blocksize=_CATCHMENT_BLOCKSIZE)
 
-Build `model`, `sample`, and `reduce!` functions for stochastic subglacial routing
-which are then used in `map_mc`.
+Build a named tuple of callbacks for stochastic subglacial routing with `map_mc`.
 
 Args
 - `dx` -- grid spacing
@@ -154,11 +151,13 @@ Kwargs
   50. It changes memory use and update performance, not results, and is ignored for
   `:dense` storage.
 
-Return:
-- model(surf, bed, floatfrac, source) -> runs one model realisation returning
-  `(;surf, bed, dx, floatfrac, source), waterflows_subglacial(...)`
-- sample() -> surf, bed, float, source
-- reduce! -> three-method reduction function (`reduce!()`, `reduce!(aggr, out)`, `reduce!(aggr)`).
+Return `(; model, sample, initialize, aggregate!, finalize!)`:
+- `model(surf, bed, floatfrac, source)` returns
+  `(;surf, bed, dx, floatfrac, source), waterflows_subglacial(...)`.
+- `sample()` returns `surf, bed, float, source`.
+- `initialize()` creates fresh aggregate storage.
+- `aggregate!(aggr, out)` accumulates one model output in place.
+- `finalize!(aggr)` normalizes accumulated maps, leaving per-sample vectors unchanged.
 """
 function make_fns_subglacial(dx,
                               surfdem::AbstractMatrix, surfdem_uc,
@@ -199,7 +198,7 @@ function make_fns_subglacial(dx,
     end
 
     # initialize storage
-    function reduce!()
+    function initialize()
         # TODO maybe use Float16 (but that only goes to 65000!)
         sz = size(surfdem)
         (;areas_total = zeros(Float32,sz),
@@ -223,7 +222,7 @@ function make_fns_subglacial(dx,
     end
 
     # aggregate values
-    function reduce!(aggr, res)
+    function aggregate!(aggr, res)
         # unpack
         input, output = res
         (;area) = output.routing
@@ -261,7 +260,7 @@ function make_fns_subglacial(dx,
 
     # Finalize by taking the mean (except for the catchment_fluxes, which are separate records
     # for each forward model run)
-    function reduce!(aggr)
+    function finalize!(aggr)
         n = aggr.n_samples[]
         aggr.areas_total ./= n
         aggr.areas_extra ./= n
@@ -280,7 +279,7 @@ function make_fns_subglacial(dx,
         return aggr
     end
 
-    return model, sample, reduce!
+    return (; model, sample, initialize, aggregate!, finalize!)
 end
 
 """
@@ -294,7 +293,7 @@ end
                         catchment_storage=:blocksparse,
                         catchment_blocksize=_CATCHMENT_BLOCKSIZE)
 
-Build `model`, `sample`, and `reduce!` functions for stochastic subaerial routing.
+Build a named tuple of callbacks for stochastic subaerial routing with `map_mc`.
 
 Args
 - `dx` -- grid spacing
@@ -311,10 +310,12 @@ Kwargs
   50. It changes memory use and update performance, not results, and is ignored for
   `:dense` storage.
 
-Return
-- model(dem_, source_) -> returns `(; dem, dx, source), waterflows(...)`
-- sample() -> returns one sampled `(dem_, source_)`
-- reduce! -> three-method reduction function (`reduce!()`, `reduce!(aggr, out)`, `reduce!(aggr)`).
+Return `(; model, sample, initialize, aggregate!, finalize!)`:
+- `model(dem_, source_)` returns `(; dem, dx, source), waterflows(...)`.
+- `sample()` returns one sampled `(dem_, source_)`.
+- `initialize()` creates fresh aggregate storage.
+- `aggregate!(aggr, out)` accumulates one model output in place.
+- `finalize!(aggr)` normalizes accumulated maps, leaving per-sample vectors unchanged.
 """
 function make_fns_subaerial(dx,
                             dem, dem_uc,
@@ -341,7 +342,7 @@ function make_fns_subaerial(dx,
     end
 
     # initialize storage
-    function reduce!()
+    function initialize()
         sz = size(dem)
         return (;areas_total = zeros(Float32, sz),
                 stream_length = zeros(Float32, sz),
@@ -351,9 +352,9 @@ function make_fns_subaerial(dx,
                 n_samples = Ref(0))
     end
 
-    # aggreate values
+    # aggregate values
     catchment_mask = similar(BitArray, axes(dem)) # scratch storage to avoid allocations
-    function reduce!(aggr, res)
+    function aggregate!(aggr, res)
         (input, output) = res
         aggr.areas_total .+= output.area
         aggr.stream_length .+= output.slen
@@ -370,7 +371,7 @@ function make_fns_subaerial(dx,
     end
 
     # finalize output
-    function reduce!(aggr)
+    function finalize!(aggr)
         n = aggr.n_samples[]
         aggr.areas_total ./= n
         aggr.stream_length ./= n
@@ -378,7 +379,7 @@ function make_fns_subaerial(dx,
         return aggr
     end
 
-    return model, sample, reduce!
+    return (; model, sample, initialize, aggregate!, finalize!)
 end
 
 end

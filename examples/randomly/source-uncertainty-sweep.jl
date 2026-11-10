@@ -19,12 +19,12 @@ function run_case(absuc, reluc, ondem; n_samples=24, n=100, dx=100.0)
 
     ctch_sinks = [CartesianIndices((2:2, 2:n-1))[:]]
 
-    model, sample, reduce! = WWFR.make_fns_subaerial(dx,
+    (; model, sample, initialize, aggregate!, finalize!) = WWFR.make_fns_subaerial(dx,
                                                      dem, dem_uc,
                                                      source, source_uc,
                                                      ctch_sinks)
 
-    aggr = WWFR.map_mc(model, sample, reduce!, n_samples, progressmeter=false)
+    aggr = WWFR.map_mc(model, sample, initialize, aggregate!, finalize!, n_samples; progressmeter=false)
 
     max_area = maximum(aggr.areas_total)
     max_slen = maximum(aggr.stream_length)
