@@ -201,7 +201,7 @@ end
     mask[3:5, 2:5] .= true
     mask[2, 5] = true  # Another outlet's GL allows the old group-local trace to turn back.
     gl = [CI(3, j) for j in 2:5]
-    half = WWFS.trace_inside(Set(gl), mask, CI(3, 3), :right; previous=CI(3, 2))
+    half = WWFS.trace_inside(Set(gl), mask, CI(3, 3), :right, CI(3, 2))
     @test half == [CI(3, j) for j in 3:5]
     @test allunique(half)
     for start in gl

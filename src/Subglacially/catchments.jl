@@ -1,5 +1,7 @@
 # Catchment calculations
 
+const CI = CartesianIndex{2}
+
 """
     catchment_sinks(ctch_polygons, routing_mask, x, y[, sinks];
                     check=true, threshold_dist=Inf, connect=true)
@@ -177,15 +179,15 @@ can be retained with `catchment_sinks(...; connect=false)`.
 function connect_catchment_sinks!(groups)
     isempty(groups) && return 0
     # label each cell's group. Of form: CartesianIndex(12, 34) => 5
-    labels = Dict{CartesianIndex{2},Int}(I => g for (g, cells) in enumerate(groups) for I in cells)
+    labels = Dict{CI,Int}(I => g for (g, cells) in enumerate(groups) for I in cells)
     length(labels) != sum(length, groups) &&
         throw(ArgumentError("Catchment sink groups must be disjoint"))
     isempty(labels) && return 0
     Iend = reduce(max, keys(labels))
     # store cells connected to main bit
-    connected = Set{CartesianIndex{2}}()
+    connected = Set{CI}()
     # and disconnect bits
-    fragments = Tuple{Int,Vector{CartesianIndex{2}}}[]
+    fragments = Tuple{Int,Vector{CI}}[]
     # 1. Keep one fixed piece per group
     for (g, cells) in enumerate(groups)
         components = catchment_sink_components(cells; diagonal=false)
@@ -240,30 +242,53 @@ end
 
 # Circular order in (dimension 1, dimension 2), not raster-scan order.
 const D8_POS = (
-    CartesianIndex(1, 0), CartesianIndex(1, 1), CartesianIndex(0, 1),
-    CartesianIndex(-1, 1), CartesianIndex(-1, 0), CartesianIndex(-1, -1),
-    CartesianIndex(0, -1), CartesianIndex(1, -1),
+    CI(1, 0), CI(1, 1), CI(0, 1),
+    CI(-1, 1), CI(-1, 0), CI(-1, -1),
+    CI(0, -1), CI(1, -1),
 )
 const D4_POS = D8_POS[1:2:8]
 
-function in_region(I, g, mask, region)
+# Determine if I is in region :inside (within mask minus gl-cells) or
+# in :outside (where mask==false). I outside size(mask) returns false.
+function in_region(I::CI, g::Set, mask, region::Symbol)
     checkbounds(Bool, mask, I) || return false
     return region == :inside ? mask[I] && !(I in g) : !mask[I]
 end
 
-# Test the cells immediately beside the step, not other GL cells.
-# "Left" uses the rotation (-d[2], d[1]) throughout these walks.
-function touches_side(I, J, g, mask, region, side)
+"""
+    touches_side(I, J, g, mask, region, side) -> Bool
+
+Test whether `region` touches `side` of the directed step `I -> J`.
+
+Supply distinct D8-neighbouring 2D indices `I` and `J`, a Boolean routing `mask`,
+and the complete GL cell set `g`, including other outlets' GL cells. Use
+`region=:inside` for mask==true excluding `g`, or `:outside` for mask==false cells.
+Out-of-bounds cells satisfy neither region. Choose `side=:left` or `:right`.
+
+WWF treats the first matrix dimension (rows) as x and the second (columns) as y.
+Left is defined in that Cartesian frame: for `d = J - I = (dx, dy)`, the left
+normal is `(-dy, dx)`; right uses the opposite normal, not ordinary matrix-display
+orientation. For example, a step `(1, 0)` has its left side towards `(0, 1)`.
+
+For a non-diagonal step, test the cells offset by that normal from both endpoints;
+return `true` if either is in `region`, not necessarily both. For a diagonal step,
+test the single shared cardinal neighbour on the requested side. Only these
+side-neighbours are classified; membership of `I` and `J` in `g` is assumed but not checked.
+
+See also [`in_region`](@ref), [`step_gl`](@ref).
+"""
+function touches_side(I::CI, J::CI, g::Set, mask, region::Symbol, side::Symbol)
     d = J - I
     sign = side == :left ? 1 : -1
+    # a non-diagonal step
     if d[1] == 0 || d[2] == 0
-        normal = sign * CartesianIndex(-d[2], d[1])
+        normal = sign * CI(-d[2], d[1])
         return in_region(I + normal, g, mask, region) ||
                in_region(J + normal, g, mask, region)
     end
     # A diagonal step has one shared neighbour on each side.
-    K = I + (sign * d[1] * d[2] > 0 ? CartesianIndex(0, d[2]) :
-                                              CartesianIndex(d[1], 0))
+    K = I + (sign * d[1] * d[2] > 0 ? CI(0, d[2]) :
+                                              CI(d[1], 0))
     return in_region(K, g, mask, region)
 end
 
@@ -278,7 +303,7 @@ Pass the allowed GL cells as a set `g`; `visited` excludes cells already recorde
 Use `boundary` for the complete GL set when walking just one outlet group.
 `previous` must be a D4 neighbour of `I` for inside steps, or a D8 neighbour otherwise.
 """
-function step_gl(previous, I, g, mask; region=:inside, side=:left, visited=(), boundary=g)
+function step_gl(previous::CI, I::CI, g::Set, mask; region=:inside, side=:left, visited=(), boundary=g)
     offsets = region == :inside ? D4_POS : D8_POS
     back = findfirst(==(previous - I), offsets)
     turn = side == :left ? -1 : 1
@@ -294,10 +319,20 @@ function step_gl(previous, I, g, mask; region=:inside, side=:left, visited=(), b
     return nothing
 end
 
-function trace_inside(g, mask, start, side;
-                      previous, traversed=nothing, boundary=g)
+"""
+    trace_inside(g, mask, start, side, previous; traversed=nothing, boundary=g)
+
+Trace a D4 GL path from `start`, keeping interior on `side`.
+
+Use `previous` to define the arrival direction and `boundary` to classify interior.
+Stop at a dead end, a U-turn, or before repeating a directed edge. Return the cell
+sequence including `start`; cells may repeat. Optionally add edges to `traversed`,
+oriented with interior on the left.
+"""
+function trace_inside(g::Set, mask, start::CI, side::Symbol, previous::CI;
+                      traversed=nothing, boundary=g)
     path = [start]
-    steps = Set{Tuple{CartesianIndex{2}, CartesianIndex{2}}}()
+    steps = Set{Tuple{CI, CI}}()
     I = start
     while true
         J = step_gl(previous, I, g, mask; side, boundary)
@@ -323,7 +358,9 @@ This local walk may omit appendices and other inside walks.
 
 See also [`walk_gl`](@ref) to discover all walks or select the longest.
 """
-function walk_gl_inside(gl, mask, start=first(gl); boundary=Set(gl))
+function walk_gl_inside(gl::AbstractVector, mask, start=first(gl); boundary=Set(gl))
+    # Do
+    # 
     g = Set(gl)
     start in g || error("Start is not on the grounding line: $start")
     any(d -> in_region(start + d, boundary, mask, :inside), D8_POS) ||
@@ -337,9 +374,8 @@ function walk_gl_inside(gl, mask, start=first(gl); boundary=Set(gl))
         J = step_gl(previous, start, g, mask; side, boundary)
     end
     J === nothing && return [start]
-    forward = trace_inside(g, mask, J, side; previous=start, boundary)
-    backward = trace_inside(g, mask, start, side == :left ? :right : :left;
-                            previous=J, boundary)
+    forward = trace_inside(g, mask, J, side, start; boundary)
+    backward = trace_inside(g, mask, start, side == :left ? :right : :left, J; boundary)
     return unique([reverse(backward); forward])
 end
 
@@ -399,8 +435,8 @@ See also [`walk_gl_inside`](@ref), [`walk_gl_outside`](@ref).
 function walk_gl(gl, mask, start=first(gl); cull_inside=true, boundary=Set(gl))
     outside = walk_gl_outside(gl, mask, start)
     g = Set(gl)
-    walks = Vector{CartesianIndex{2}}[]
-    traversed = Set{Tuple{CartesianIndex{2}, CartesianIndex{2}}}()
+    walks = Vector{CI}[]
+    traversed = Set{Tuple{CI, CI}}()
     for I in outside
         any(d -> in_region(I + d, boundary, mask, :inside), D8_POS) || continue
         for d in D4_POS
@@ -408,8 +444,8 @@ function walk_gl(gl, mask, start=first(gl); cull_inside=true, boundary=Set(gl))
             J in g && !((I, J) in traversed) || continue
             touches_side(I, J, boundary, mask, :inside, :left) || continue
             push!(traversed, (I, J))
-            forward = trace_inside(g, mask, J, :left; previous=I, traversed, boundary)
-            backward = trace_inside(g, mask, I, :right; previous=J, traversed, boundary)
+            forward = trace_inside(g, mask, J, :left, I; traversed, boundary)
+            backward = trace_inside(g, mask, I, :right, J; traversed, boundary)
             path = unique([reverse(backward); forward])
             push!(walks, path)
         end
@@ -421,6 +457,6 @@ function walk_gl(gl, mask, start=first(gl); cull_inside=true, boundary=Set(gl))
         any(d -> in_region(I + d, boundary, mask, :inside), D8_POS) || continue
         push!(walks, [I])
     end
-    inside = cull_inside ? (isempty(walks) ? CartesianIndex{2}[] : argmax(length, walks)) : walks
+    inside = cull_inside ? (isempty(walks) ? CI[] : argmax(length, walks)) : walks
     return (; inside, outside)
 end
