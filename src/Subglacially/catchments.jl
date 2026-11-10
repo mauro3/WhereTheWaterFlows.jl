@@ -248,8 +248,12 @@ const D8_POS = (
 )
 const D4_POS = D8_POS[1:2:8]
 
-# Determine if I is in region :inside (within mask minus gl-cells) or
-# in :outside (where mask==false). I outside size(mask) returns false.
+"""
+    in_region(I::CI, g::Set, mask, region::Symbol)
+
+Determine if I is in region :inside (within mask minus gl-cells) or
+in :outside (where mask==false). I outside size(mask) returns false.
+"""
 function in_region(I::CI, g::Set, mask, region::Symbol)
     checkbounds(Bool, mask, I) || return false
     return region == :inside ? mask[I] && !(I in g) : !mask[I]
