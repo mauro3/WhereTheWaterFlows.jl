@@ -4,12 +4,14 @@ using ..WhereTheWaterFlows
 using ..Subglacially
 
 using ProgressMeter
+using Random
 
 include("grf.jl")
 include("blocksparse.jl")
+include("seeding.jl")
 
 export Uncertainty, map_mc, make_fns_subaerial, make_fns_subglacial,
-       gaussian_kernel, exponential_kernel
+       gaussian_kernel, exponential_kernel, SeededSample, make_sample_seeds
 
 """
 Type to hold the uncertainty information for a field.
@@ -40,10 +42,22 @@ function Uncertainty(; absuc=0,
                        covariance_fn, Float64.(abs_bounds))
 end
 
+"""
+    make_sampler(dx, field, uncert) -> sampler
+
+Build a GRF sampler for a field's uncertainty on a grid with spacing `dx`.
+
+Call `sampler(rng::AbstractRNG)` to use an explicit generator, or `sampler()` for
+`Random.default_rng()`. Correlation lengths are converted from physical to cell units.
+All-zero absolute and relative uncertainties skip kernel setup, FFTs and random draws.
+Amplitude scaling and perturbation bounds are applied by [`make_field_realization`](@ref).
+
+This is an internal helper, not supported public API.
+"""
 function make_sampler(dx, field, uncert)
     if iszero(uncert.absuc) && iszero(uncert.reluc)
         # Keep the usual scaling/bounds path, but avoid kernel setup and FFTs.
-        return () -> fill!(similar(field), zero(eltype(field)))
+        return (rng=Random.default_rng()) -> fill!(similar(field), zero(eltype(field)))
     end
     (;correlation_length, covariance_fn) = uncert
     len = correlation_length/dx
@@ -55,12 +69,23 @@ end
 
 """
     make_field_realization(field, sampler, uncert::Uncertainty)
+    make_field_realization(rng::AbstractRNG, field, sampler, uncert::Uncertainty)
 
-Make a realization of a field.
+Draw and scale a perturbation, apply its bounds, and add it to `field`.
+
+The three-argument method calls `sampler()` and retains compatibility with custom
+zero-argument samplers. The explicit-RNG method calls `sampler(rng)` instead.
+Bounds constrain the perturbation, not the final field value. This is an internal
+helper, not supported public API.
 """
-function make_field_realization(field, sampler, uncert::Uncertainty)
+make_field_realization(field, sampler, uncert::Uncertainty) =
+    _field_realization(field, sampler(), uncert)
+
+make_field_realization(rng::AbstractRNG, field, sampler, uncert::Uncertainty) =
+    _field_realization(field, sampler(rng), uncert)
+
+function _field_realization(field, s, uncert::Uncertainty)
     (;absuc, reluc, abs_bounds) = uncert
-    s = sampler()
 
     # scale amplitude with the error
     @. s = s*absuc + field*s*reluc
@@ -74,24 +99,54 @@ function make_field_realization(field, sampler, uncert::Uncertainty)
 end
 
 """
-    map_mc(model, sample, initialize, aggregate!, finalize!, n; progressmeter=true)
+    map_mc(model, sample, initialize, aggregate!, finalize!, n;
+           progressmeter=true, seeds=nothing, sample_ids=1:n)
 
 Run Monte Carlo sampling and aggregate model outputs in place.
 
-Args
-- model   -- the model function, runs with `output = model(sample()...)`
-- sample  -- `input = sample()` returns a new sample to use as input to model
-- initialize -- called once to create aggregation storage (no arguments)
-- aggregate! -- called as `aggregate!(aggr, model(sample()...))` for each of the `n` realizations
-- finalize! -- called as `finalize!(aggr)` once at the end and updates `aggr` in-place.
+# Arguments
+- `model`: deterministic model called with the sampled positional arguments.
+- `sample`: zero-argument sampler, or `sample(; seeds)` in seeded mode.
+- `initialize`: zero-argument callback creating fresh aggregate storage once.
+- `aggregate!`: accumulate one model output with `aggregate!(aggr, output)`.
+- `finalize!`: normalize storage once with `finalize!(aggr)`; its return is ignored.
+- `n`: number of draws, from 1 to 2048 (Float16 catchment-count limit).
 
-The sample count must be at most 2048 because catchment frequencies use Float16
-counts. Set `progressmeter=false` to suppress progress updates.
+With `seeds=nothing`, call `model(sample()...)` and return the original initialized
+storage. Set `progressmeter=false` to suppress progress updates.
+
+With `seeds`, supply one per-field record per draw, for example from
+[`make_sample_seeds`](@ref). Call `sample(; seeds=seeds[i])`, require a
+[`SeededSample`](@ref), and run `model(draw.fields...)`. The sampler must use a
+consistent seed schema and RNG type. `initialize()` must return a fresh named tuple;
+the returned aggregate extends it with:
+
+- `sample_ids::Vector{Int}`: draw IDs in accumulation order, defaulting to `1:n`.
+- `sample_seeds`: actual seed records returned by the sampler in that order.
+- `rng_type`: the sampler's RNG type, stored once per ensemble.
+
+`seeds` and `sample_ids` must each have length `n`. IDs label outputs; they do not
+alter the supplied seeds. Specify original IDs when selecting/reordering records.
+Metadata is appended after `aggregate!` returns successfully and is not normalized.
+
+# Extended help
+
+Draws run sequentially; aggregation is lock-protected. This function does not provide
+checkpoint files, transactional rollback or in-place continuation of saved aggregates.
+A failing callback may partially mutate storage. A checkpoint inside `aggregate!`
+precedes the current draw's metadata append. Workflows own saving/restart coordination.
+For replay, retain the seed records together with matching inputs, code/dependencies,
+RNG, grid/covariance and FFT settings; cross-version bitwise identity is not promised.
 """
-function map_mc(model, sample, initialize, aggregate!, finalize!, n; progressmeter=true)
+function map_mc(model, sample, initialize, aggregate!, finalize!, n;
+                progressmeter=true, seeds=nothing, sample_ids=1:n)
+    n > 0 || throw(ArgumentError("Sample count must be positive"))
     n>2048 && error("""Cannot take more than 2048 samples as otherwise
                        the aggregation for the catchment probabilities does not work anymore
                        as Float16 are used.""")
+    seeded = !isnothing(seeds)
+    seeded && length(seeds) != n && throw(DimensionMismatch("Expected $n seed records"))
+    length(sample_ids) == n || throw(DimensionMismatch("Expected $n sample IDs"))
 
     lockobj = Threads.ReentrantLock()
     # initialize aggregate storage
@@ -99,11 +154,30 @@ function map_mc(model, sample, initialize, aggregate!, finalize!, n; progressmet
     p = Progress(n)
     # Threading issues:
     # - excessive memory usage (mem-leak? Maybe fixed now with hand-rolled GRF)
-    for _=1:n
-        input = sample()
-        res = model(input...)
+    for i=1:n
+        input = seeded ? sample(; seeds=seeds[i]) : sample()
+        if seeded
+            input isa SeededSample || throw(ArgumentError(
+                "A seeded sampler must return SeededSample"))
+            if i == 1
+                aggr isa NamedTuple || throw(ArgumentError(
+                    "Seeded accumulation requires a named-tuple aggregate"))
+                aggr = merge(aggr, (;sample_ids=Int[],
+                    sample_seeds=typeof(input.seeds)[], rng_type=input.rng_type))
+            end
+            input.rng_type === aggr.rng_type || throw(ArgumentError(
+                "All samples must use the same RNG type"))
+            input.seeds isa eltype(aggr.sample_seeds) || throw(ArgumentError(
+                "All samples must use the same seed-record schema"))
+        end
+        fields = seeded ? input.fields : input
+        res = model(fields...)
         lock(lockobj) do
             aggregate!(aggr, res)
+            if seeded
+                push!(aggr.sample_ids, sample_ids[i])
+                push!(aggr.sample_seeds, input.seeds)
+            end
         end
         progressmeter && next!(p)
     end
@@ -154,7 +228,10 @@ Kwargs
 Return `(; model, sample, initialize, aggregate!, finalize!)`:
 - `model(surf, bed, floatfrac, source)` returns
   `(;surf, bed, dx, floatfrac, source), waterflows_subglacial(...)`.
-- `sample()` returns `surf, bed, float, source`.
+- `sample()` returns `surf, bed, float, source`. `sample(; seeds)` accepts the named
+  tuple `(;surface, bed, floatfrac, source)` of integer seeds and returns a
+  [`SeededSample`](@ref), using fresh Xoshiro generators. `:floatfrac` seeds the
+  flotation-fraction perturbation, not a pressure field in Pa.
 - `initialize()` creates fresh aggregate storage.
 - `aggregate!(aggr, out)` accumulates one model output in place.
 - `finalize!(aggr)` normalizes accumulated maps, leaving per-sample vectors unchanged.
@@ -188,12 +265,23 @@ function make_fns_subglacial(dx,
         beddem_grf_sampler = make_sampler(dx, beddem, beddem_uc)
         floatfrac_grf_sampler = make_sampler(dx, floatfrac, floatfrac_uc)
         source_grf_sampler = make_sampler(dx, source, source_uc)
-        function ()
-            surf = make_field_realization(surfdem, surfdem_grf_sampler, surfdem_uc)
-            bed = make_field_realization(beddem, beddem_grf_sampler, beddem_uc)
-            float = make_field_realization(floatfrac, floatfrac_grf_sampler, floatfrac_uc)
-            src = make_field_realization(source, source_grf_sampler, source_uc)
-            return surf, bed, float, src
+        function (;seeds=nothing)
+            if isnothing(seeds)
+                surf = make_field_realization(surfdem, surfdem_grf_sampler, surfdem_uc)
+                bed = make_field_realization(beddem, beddem_grf_sampler, beddem_uc)
+                float = make_field_realization(floatfrac, floatfrac_grf_sampler, floatfrac_uc)
+                src = make_field_realization(source, source_grf_sampler, source_uc)
+                return surf, bed, float, src
+            end
+            surf = make_field_realization(Xoshiro(seeds.surface),
+                surfdem, surfdem_grf_sampler, surfdem_uc)
+            bed = make_field_realization(Xoshiro(seeds.bed),
+                beddem, beddem_grf_sampler, beddem_uc)
+            float = make_field_realization(Xoshiro(seeds.floatfrac),
+                floatfrac, floatfrac_grf_sampler, floatfrac_uc)
+            src = make_field_realization(Xoshiro(seeds.source),
+                source, source_grf_sampler, source_uc)
+            return SeededSample((surf, bed, float, src), seeds)
         end
     end
 
@@ -312,7 +400,9 @@ Kwargs
 
 Return `(; model, sample, initialize, aggregate!, finalize!)`:
 - `model(dem_, source_)` returns `(; dem, dx, source), waterflows(...)`.
-- `sample()` returns one sampled `(dem_, source_)`.
+- `sample()` returns one sampled `(dem_, source_)`. `sample(; seeds)` accepts the
+  named tuple `(;dem, source)` of integer seeds and returns a [`SeededSample`](@ref),
+  using fresh Xoshiro generators.
 - `initialize()` creates fresh aggregate storage.
 - `aggregate!(aggr, out)` accumulates one model output in place.
 - `finalize!(aggr)` normalizes accumulated maps, leaving per-sample vectors unchanged.
@@ -334,10 +424,15 @@ function make_fns_subaerial(dx,
     sample = let
         dem_sampler = make_sampler(dx, dem, dem_uc)
         source_sampler = make_sampler(dx, source, source_uc)
-        function ()
-            dem_ = make_field_realization(dem, dem_sampler, dem_uc)
-            src_ = make_field_realization(source, source_sampler, source_uc)
-            return dem_, src_
+        function (;seeds=nothing)
+            if isnothing(seeds)
+                dem_ = make_field_realization(dem, dem_sampler, dem_uc)
+                src_ = make_field_realization(source, source_sampler, source_uc)
+                return dem_, src_
+            end
+            dem_ = make_field_realization(Xoshiro(seeds.dem), dem, dem_sampler, dem_uc)
+            src_ = make_field_realization(Xoshiro(seeds.source), source, source_sampler, source_uc)
+            return SeededSample((dem_, src_), seeds)
         end
     end
 

@@ -93,35 +93,50 @@ function make_kernel(kernel_fn, nx, ny, len)
 end
 
 """
-    eq18(nx::Int, ny::Int, len::Number, kernel::Array) -> Array
+    eq18([rng::AbstractRNG], nx::Int, ny::Int, len::Number, kernel::Array) -> Array
 
-Draws a sample of the Gaussian random field using the precomputed kernel.
+Draw a Gaussian random field using the precomputed kernel.
+
+Use the supplied RNG or the task-local default when omitted.
 """
-function eq18(nx, ny, len, kernel)
+eq18(nx, ny, len, kernel) = eq18(Random.default_rng(), nx, ny, len, kernel)
+
+function eq18(rng::AbstractRNG, nx, ny, len, kernel)
     nnx, nny, padding = pad(nx, ny, len)
-    Z = randn(typeof(len), nnx, nny)
+    Z = randn(rng, typeof(len), nnx, nny)
     tmp = rfft(Z)
     tmp .*= kernel
     return depad(irfft(tmp, nnx), nx, ny, padding)
 end
 
 # Same as above but using planned FFTW for better performance
-function eq18_plannedfftw(nx, ny, len, kernel, p_rfft, p_irfft)
+eq18_plannedfftw(nx, ny, len, kernel, p_rfft, p_irfft) =
+    eq18_plannedfftw(Random.default_rng(), nx, ny, len, kernel, p_rfft, p_irfft)
+
+function eq18_plannedfftw(rng::AbstractRNG, nx, ny, len, kernel, p_rfft, p_irfft)
     nnx, nny, padding = pad(nx, ny, len)
-    Z = randn(typeof(len), nnx, nny)
+    Z = randn(rng, typeof(len), nnx, nny)
     tmp = p_rfft * Z
     tmp .*= kernel
     return depad(p_irfft * tmp, nx, ny, padding)
 end
 
 """
-    make_grf_sampler(nx::Int, ny::Int, kernel_fn::Function, len::Number) -> Function
+    make_grf_sampler(nx, ny, kernel_fn, len; T=Float64, fftw_plan=nothing) -> sampler
 
-Creates a sampler function for generating Gaussian random fields (GRF) using pre-specified parameters.
+Build a Gaussian random field sampler with cached covariance setup.
 
-# KW-arguments:
-- `fftw_plan`: if not `nothing` then FFTW is planned for improved performance.
-               Use `:estimate` or `:measure` (recommended) to use a plan.
+`nx`, `ny` are grid dimensions and `len` is the correlation length in cells.
+Call `sampler(rng::AbstractRNG)` for an explicit generator or `sampler()` for
+`Random.default_rng()`. Each call creates a new field and advances only that RNG.
+Use a freshly seeded generator to replay a field; reusing a consumed one advances it.
+
+`T` controls floating-point precision. `fftw_plan` may be `nothing` (unplanned),
+`:estimate`, or `:measure`. Planning uses a zero buffer and consumes no random draws;
+this changes historical planned streams that used a random setup array. Reproducibility
+requires matching grid/padding, covariance, precision, RNG and FFT configuration.
+
+This is an internal helper, not supported public API.
 """
 function make_grf_sampler(nx, ny, kernel_fn, len; T=Float64, fftw_plan=nothing)
     if min(nx÷3, ny÷3)<len
@@ -131,7 +146,7 @@ function make_grf_sampler(nx, ny, kernel_fn, len; T=Float64, fftw_plan=nothing)
         let
             l = max(T(len), eps(T)) # l==0 leads to NaNs
             ker = make_kernel(kernel_fn, nx, ny, l) # pre-compute kernel
-            return () -> eq18(nx, ny, l, ker)
+            return (rng=Random.default_rng()) -> eq18(rng, nx, ny, l, ker)
         end
     elseif fftw_plan in [:estimate, :measure]
         let
@@ -140,10 +155,11 @@ function make_grf_sampler(nx, ny, kernel_fn, len; T=Float64, fftw_plan=nothing)
             flags = fftw_plan==:estimate ? FFTW.ESTIMATE : FFTW.MEASURE
             nnx, nny, _ = pad(nx, ny, l)
             # plan it
-            tmp = randn(nnx, nny)
+            tmp = zeros(T, nnx, nny)
             p_rfft = plan_rfft(tmp; flags)
             p_irfft = plan_irfft(p_rfft*tmp, nnx; flags)
-            return () -> eq18_plannedfftw(nx, ny, l, ker, p_rfft, p_irfft)
+            return (rng=Random.default_rng()) ->
+                eq18_plannedfftw(rng, nx, ny, l, ker, p_rfft, p_irfft)
         end
     else
         error("Unrecognized fftw_plan value: $fftw_plan")

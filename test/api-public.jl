@@ -26,7 +26,8 @@ end
 
 @testset "Submodule public API" begin
     @test Set(filter(name -> Base.isexported(WWFR, name), names(WWFR))) == Set((:Randomly, :Uncertainty, :map_mc,
-        :make_fns_subaerial, :make_fns_subglacial, :gaussian_kernel, :exponential_kernel))
+        :make_fns_subaerial, :make_fns_subglacial, :gaussian_kernel, :exponential_kernel,
+        :SeededSample, :make_sample_seeds))
     @test Set(filter(name -> Base.isexported(WWFS, name), names(WWFS))) == Set((:Subglacially, :waterflows_subglacial,
         :phi_fn, :lake_depth, :smooth_surface, :catchment_sinks))
 
