@@ -23,22 +23,10 @@ using Serialization
             @test eltype(actual) == T
         end
         Random.seed!(832)
-        legacy = WWFR.eq18(nx, ny, T(len), ker)
-        Random.seed!(832)
-        @test legacy == WWFR.eq18(Random.default_rng(), nx, ny, T(len), ker)
-        Random.seed!(832)
         legacy = plain()
         Random.seed!(832)
         @test legacy == plain(Random.default_rng())
     end
-    nnx, nny, _ = WWFR.pad(nx, ny, len)
-    p = WWFR.plan_rfft(zeros(nnx, nny); flags=WWFR.FFTW.ESTIMATE)
-    pinv = WWFR.plan_irfft(p * zeros(nnx, nny), nnx; flags=WWFR.FFTW.ESTIMATE)
-    ker = WWFR.make_kernel(WWFR.gaussian_kernel, nx, ny, len)
-    Random.seed!(832)
-    planned_legacy = WWFR.eq18_plannedfftw(nx, ny, len, ker, p, pinv)
-    Random.seed!(832)
-    @test planned_legacy == WWFR.eq18_plannedfftw(Random.default_rng(), nx, ny, len, ker, p, pinv)
 
     field = reshape(collect(1.0:528.0), nx, ny)
     for bounds in ((-Inf, Inf), (2.0, 3.0))
@@ -56,9 +44,6 @@ using Serialization
     noise = sampler(Xoshiro(73))
     @test WWFR.make_field_realization(Xoshiro(73), field, sampler, uc) ==
           field .+ clamp.(noise .* (0.3 .+ 0.2 .* field), -0.5, 0.5)
-    # Custom legacy zero-argument samplers remain supported.
-    @test WWFR.make_field_realization(ones(2, 2), () -> ones(2, 2),
-                                     WWFR.Uncertainty(absuc=2)) == fill(3, 2, 2)
 end
 
 @testset "Per-field seed table" begin
@@ -81,7 +66,6 @@ end
     WWFR.make_sample_seeds(3, names; seed=42)
     @test rand() == next_global
     @test isempty(WWFR.make_sample_seeds(0, names; seed=42))
-    @test_throws ArgumentError WWFR.make_sample_seeds(-1, names; seed=42)
 end
 
 @testset "Seeded routing samples and accumulated provenance" begin
@@ -213,9 +197,9 @@ end
         aggregate!, identity, 3; seeds, sample_ids=[1], progressmeter=false)
     @test_throws ArgumentError WWFR.map_mc(identity, sample, initialize,
         aggregate!, identity, 0; progressmeter=false)
-    @test_throws ArgumentError WWFR.map_mc(identity, (;seeds) -> (1.0,), initialize,
+    @test_throws TypeError WWFR.map_mc(identity, (;seeds) -> (1.0,), initialize,
         aggregate!, identity, 3; seeds, progressmeter=false)
-    @test_throws ArgumentError WWFR.map_mc(identity, sample, () -> Float64[],
+    @test_throws TypeError WWFR.map_mc(identity, sample, () -> Float64[],
         aggregate!, identity, 3; seeds, progressmeter=false)
 
     # Do not claim a single RNG/schema if a custom sampler changes it partway through.

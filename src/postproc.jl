@@ -126,74 +126,67 @@ function catchment_flux(cellarea, c::Union{BitArray, AbstractMatrix{<:Bool}})
 end
 
 """
-    last_visit_fluxes(dir, terminals, labels, source; nlabels=nothing)
+    last_visit_fluxes(dir, terminals, labels, source; nlabels=maximum(labels))
 
-Allocate each labelled source to its last same-label cell downstream.
+Allocate each labelled source to the last cell with the same label on its flow path.
 
-Supply a draining D8 forest, its unique terminals, nonnegative integer region
-`labels`, and additive source weights on the same one-based grid. Label zero is
-ignored. Regions may be disconnected and paths may leave and re-enter a region.
-A positive-labelled terminal acts as a last-visit location at that terminal.
-All intended source cells must drain to one of the supplied terminals.
+Paths may leave and re-enter a region; label `0` means no region. Only cells draining
+to one of the `terminals` (e.g. the sinks) are visited. Routing is not changed.
 
-Return `cells`, their region `labels`, accumulated `flux`, total `source_flux`
-per region, and `visited_cells`. Include zero-flux last-visit cells. Specify
-`nlabels` to retain absent region IDs in `source_flux`. No feedback or routing
-changes are applied; this allocates the supplied source on existing directions.
+# Arguments
+- `dir`: D8 flow directions.
+- `terminals`: cells where the flow trees end, each given once.
+- `labels`: integer region labels (`0..nlabels`), same size as `dir`.
+- `source`: source per cell, same size as `dir`.
+- `nlabels`: number of regions; set it to keep absent regions in `source_flux`.
 
-Traverse each tree once, using a downstream-most anchor per label on the current
-path. Restore anchors when returning from branches. Storage is one grid of source
-precision, a label-sized anchor table, sparse outputs and the recursion stack.
+# Returns
+Named tuple with
+- `cells`, `labels`, `flux`: the last-visit cells, their label and allocated flux
+  (zero-flux cells included).
+- `source_flux`: total source per label.
+- `visited_cells`: number of cells visited.
 """
 function last_visit_fluxes(dir::AbstractMatrix, terminals,
                            labels::AbstractMatrix{<:Integer}, source::AbstractMatrix;
-                           nlabels=nothing)
+                           nlabels=maximum(labels))
     Base.require_one_based_indexing(dir, labels, source)
     axes(dir) == axes(labels) == axes(source) ||
         throw(DimensionMismatch("Directions, labels and source grids differ"))
-    lo, hi = extrema(labels)
-    n = isnothing(nlabels) ? Int(hi) : Int(nlabels)
-    0 <= lo <= hi <= n || throw(ArgumentError("Labels must lie between zero and nlabels"))
+    0 <= minimum(labels) && maximum(labels) <= nlabels ||
+        throw(ArgumentError("Labels must lie between zero and nlabels"))
     T = float(eltype(source))
-    storage = (;dir, labels, source, anchors=zeros(Int,n),
-               flux=zeros(T,size(dir)), source_flux=zeros(T,n),
-               linear=LinearIndices(dir), cells=CartesianIndex{2}[], regions=Int[])
-    visited = 0
-    for terminal in terminals
-        visited += _last_visit_fluxes!(storage, terminal)
-    end
-    return (;cells=storage.cells, labels=storage.regions,
-            flux=storage.flux[storage.cells], source_flux=storage.source_flux,
-            visited_cells=visited)
+    s = (;dir, labels, source,
+         anchors=zeros(Int, nlabels), # per label: index into `cells` of the current anchor
+         cells=CartesianIndex{2}[], regions=Int[], flux=T[], source_flux=zeros(T, nlabels))
+    visited = sum(I -> _last_visit_fluxes!(s, I), terminals; init=0)
+    return (;cells=s.cells, labels=s.regions, flux=s.flux,
+            source_flux=s.source_flux, visited_cells=visited)
 end
 
 function _last_visit_fluxes!(s, I)
-    # The first occurrence while walking upstream is the LAST one downstream.
-    # Keep it for descendants, including paths that leave and re-enter the label.
-    @inbounds label = Int(s.labels[I])
-    previous = 0
+    # Walk upstream (depth first) from the terminal. The first cell of a label met on
+    # the way up is the last one on the way down: it becomes that label's anchor for
+    # all upstream cells, until the walk returns past it.
+    label = s.labels[I]
+    is_anchor = label > 0 && s.anchors[label] == 0
+    if is_anchor
+        push!(s.cells, I)
+        push!(s.regions, label)
+        push!(s.flux, 0)
+        s.anchors[label] = length(s.cells)
+    end
     if label > 0
-        @inbounds previous = s.anchors[label]
-        if previous == 0
-            @inbounds s.anchors[label] = s.linear[I]
-            push!(s.cells,I)
-            push!(s.regions,label)
-        end
-        @inbounds begin
-            value = s.source[I]
-            s.flux[s.anchors[label]] += value
-            s.source_flux[label] += value
-        end
+        s.flux[s.anchors[label]] += s.source[I]
+        s.source_flux[label] += s.source[I]
     end
     visited = 1
-    for J in iterate_D9(I,s.dir)
-        I == J && continue
-        if flowsinto(J,s.dir[J],I)
-            visited += _last_visit_fluxes!(s,J)
+    for J in iterate_D9(I, s.dir)
+        if J != I && flowsinto(J, s.dir[J], I)
+            visited += _last_visit_fluxes!(s, J)
         end
     end
-    # A sibling branch must never inherit an anchor from the branch just finished.
-    label > 0 && (@inbounds s.anchors[label] = previous)
+    is_anchor && (s.anchors[label] = 0) # sibling branches need their own anchor
     return visited
 end
 

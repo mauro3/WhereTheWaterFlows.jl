@@ -13,7 +13,7 @@ const WWFR = WWF.Randomly
         :catchments, :catchment_flux, :prune_catchments,
         :plt_dir, :plt_dir!, :plt_area, :plt_area!, :plt_sinks, :plt_sinks!,
         :plt_bnds, :plt_bnds!, :plt_catchments, :plt_catchments!, :plt_it))
-    for name in (:Subglacially, :Randomly, :PIT, :SINK, :BARRIER,
+    for name in (:Subglacially, :Randomly, :PIT, :SINK, :BARRIER, :last_visit_fluxes,
                  :dir2ind, :dir2vec, :ind2dir, :showme)
         @test Base.ispublic(WWF, name)
         @test !Base.isexported(WWF, name)

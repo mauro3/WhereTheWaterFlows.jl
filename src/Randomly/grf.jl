@@ -93,14 +93,10 @@ function make_kernel(kernel_fn, nx, ny, len)
 end
 
 """
-    eq18([rng::AbstractRNG], nx::Int, ny::Int, len::Number, kernel::Array) -> Array
+    eq18(rng::AbstractRNG, nx::Int, ny::Int, len::Number, kernel::Array) -> Array
 
 Draw a Gaussian random field using the precomputed kernel.
-
-Use the supplied RNG or the task-local default when omitted.
 """
-eq18(nx, ny, len, kernel) = eq18(Random.default_rng(), nx, ny, len, kernel)
-
 function eq18(rng::AbstractRNG, nx, ny, len, kernel)
     nnx, nny, padding = pad(nx, ny, len)
     Z = randn(rng, typeof(len), nnx, nny)
@@ -110,9 +106,6 @@ function eq18(rng::AbstractRNG, nx, ny, len, kernel)
 end
 
 # Same as above but using planned FFTW for better performance
-eq18_plannedfftw(nx, ny, len, kernel, p_rfft, p_irfft) =
-    eq18_plannedfftw(Random.default_rng(), nx, ny, len, kernel, p_rfft, p_irfft)
-
 function eq18_plannedfftw(rng::AbstractRNG, nx, ny, len, kernel, p_rfft, p_irfft)
     nnx, nny, padding = pad(nx, ny, len)
     Z = randn(rng, typeof(len), nnx, nny)
@@ -127,16 +120,10 @@ end
 Build a Gaussian random field sampler with cached covariance setup.
 
 `nx`, `ny` are grid dimensions and `len` is the correlation length in cells.
-Call `sampler(rng::AbstractRNG)` for an explicit generator or `sampler()` for
-`Random.default_rng()`. Each call creates a new field and advances only that RNG.
-Use a freshly seeded generator to replay a field; reusing a consumed one advances it.
+Call as `sampler([rng])`; `rng` defaults to `Random.default_rng()`.
 
-`T` controls floating-point precision. `fftw_plan` may be `nothing` (unplanned),
-`:estimate`, or `:measure`. Planning uses a zero buffer and consumes no random draws;
-this changes historical planned streams that used a random setup array. Reproducibility
-requires matching grid/padding, covariance, precision, RNG and FFT configuration.
-
-This is an internal helper, not supported public API.
+`T` sets the precision. `fftw_plan` is `nothing` (unplanned), `:estimate` or
+`:measure`; planning consumes no random numbers. Internal helper.
 """
 function make_grf_sampler(nx, ny, kernel_fn, len; T=Float64, fftw_plan=nothing)
     if min(nx÷3, ny÷3)<len

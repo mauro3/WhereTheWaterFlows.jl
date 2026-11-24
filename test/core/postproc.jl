@@ -96,3 +96,22 @@ end
     @test prune_catchments(fill(-1, 2, 3), 2) == fill(-1, 2, 3)
     @test size(prune_catchments(zeros(Int, 0, 0), 2)) == (0, 0)
 end
+
+@testset "last_visit_fluxes" begin
+    # Column 1 flows to the terminal (1,1); column 2 flows left into column 1.
+    dir = fill(WWF.ind2dir(CartesianIndex(-1, 0)), 6, 2)
+    dir[:, 2] .= WWF.ind2dir(CartesianIndex(0, -1))
+    dir[1, 1] = WWF.SINK
+    # Label 1 is left and re-entered along column 1; (1,2) is a sibling branch.
+    labels = zeros(Int, 6, 2)
+    labels[:, 1] = [0, 1, 2, 1, 1, 0]
+    labels[1, 2] = 1
+    source = ones(6, 2)
+    out = WWF.last_visit_fluxes(dir, [CartesianIndex(1, 1)], labels, source; nlabels=3)
+    @test out.cells == CartesianIndex.([(2, 1), (3, 1), (1, 2)])
+    @test out.labels == [1, 2, 1]
+    @test out.flux == [3, 1, 1]
+    @test out.source_flux == [4, 1, 0]
+    @test out.visited_cells == 12
+    @test_throws ArgumentError WWF.last_visit_fluxes(dir, [CartesianIndex(1, 1)], -labels, source)
+end
