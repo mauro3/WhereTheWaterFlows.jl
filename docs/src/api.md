@@ -14,6 +14,12 @@ High-level guides:
 
 ## Public API
 
+`WWF.last_visit_fluxes(dir, terminals, labels, source)` allocates labelled sources
+at their last same-label cells downstream on an existing draining D8 forest. It
+handles disconnected regions, re-entry and branches in one traversal per tree,
+without additional feedback or changes to the routing. Unlike ordinary flow
+accumulation, its sparse result locates each source only once, at its last visit.
+
 ### WhereTheWaterFlows
 
 ```@autodocs
