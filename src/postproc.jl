@@ -1,6 +1,7 @@
 # Misc post-processing functions
 
 export catchment, catchment!, catchments, catchment_flux, prune_catchments, fill_dem
+public last_visit_fluxes
 
 """
     prune_catchments(catchments, minsize)
@@ -122,6 +123,71 @@ function catchment_flux(cellarea, c::Union{BitArray, AbstractMatrix{<:Bool}})
       total += cellarea[i]
     end
     return total
+end
+
+"""
+    last_visit_fluxes(dir, terminals, labels, source; nlabels=maximum(labels))
+
+Allocate each labelled source to the last cell with the same label on its flow path.
+
+Paths may leave and re-enter a region; label `0` means no region. Only cells draining
+to one of the `terminals` (e.g. the sinks) are visited. Routing is not changed.
+
+# Arguments
+- `dir`: D8 flow directions.
+- `terminals`: cells where the flow trees end, each given once.
+- `labels`: integer region labels (`0..nlabels`), same size as `dir`.
+- `source`: source per cell, same size as `dir`.
+- `nlabels`: number of regions; set it to keep absent regions in `source_flux`.
+
+# Returns
+Named tuple with
+- `cells`, `labels`, `flux`: the last-visit cells, their label and allocated flux
+  (zero-flux cells included).
+- `source_flux`: total source per label.
+- `visited_cells`: number of cells visited.
+"""
+function last_visit_fluxes(dir::AbstractMatrix, terminals,
+                           labels::AbstractMatrix{<:Integer}, source::AbstractMatrix;
+                           nlabels=maximum(labels))
+    Base.require_one_based_indexing(dir, labels, source)
+    axes(dir) == axes(labels) == axes(source) ||
+        throw(DimensionMismatch("Directions, labels and source grids differ"))
+    0 <= minimum(labels) && maximum(labels) <= nlabels ||
+        throw(ArgumentError("Labels must lie between zero and nlabels"))
+    T = float(eltype(source))
+    s = (;dir, labels, source,
+         anchors=zeros(Int, nlabels), # per label: index into `cells` of the current anchor
+         cells=CartesianIndex{2}[], regions=Int[], flux=T[], source_flux=zeros(T, nlabels))
+    visited = sum(I -> _last_visit_fluxes!(s, I), terminals; init=0)
+    return (;cells=s.cells, labels=s.regions, flux=s.flux,
+            source_flux=s.source_flux, visited_cells=visited)
+end
+
+function _last_visit_fluxes!(s, I)
+    # Walk upstream (depth first) from the terminal. The first cell of a label met on
+    # the way up is the last one on the way down: it becomes that label's anchor for
+    # all upstream cells, until the walk returns past it.
+    label = s.labels[I]
+    is_anchor = label > 0 && s.anchors[label] == 0
+    if is_anchor
+        push!(s.cells, I)
+        push!(s.regions, label)
+        push!(s.flux, 0)
+        s.anchors[label] = length(s.cells)
+    end
+    if label > 0
+        s.flux[s.anchors[label]] += s.source[I]
+        s.source_flux[label] += s.source[I]
+    end
+    visited = 1
+    for J in iterate_D9(I, s.dir)
+        if J != I && flowsinto(J, s.dir[J], I)
+            visited += _last_visit_fluxes!(s, J)
+        end
+    end
+    is_anchor && (s.anchors[label] = 0) # sibling branches need their own anchor
+    return visited
 end
 
 """

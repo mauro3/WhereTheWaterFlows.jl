@@ -80,12 +80,97 @@ Kernel choice:
 - `exponential_kernel`: rougher, shorter-scale structure for same nominal length
 - custom kernel: pass any `kernel_fn(nx, ny, len)` compatible function
 
+## [Seeded sampling and replay](@id SeededSampling)
+
+By default, samples are drawn from Julia's global RNG, so a single draw can only be
+reproduced by replaying the whole sequence. Alternatively, pass a table of per-draw,
+per-field seeds to `map_mc`; any draw can then be regenerated on its own.
+
+```@example seeded_sampling
+using WhereTheWaterFlows, Random
+const WWF = WhereTheWaterFlows
+const WWFR = WWF.Randomly
+
+nx, ny, dx = 24, 22, 100.0
+dem = [1000.0 - 5i - j for i in 1:nx, j in 1:ny]
+source = fill(1e-8, nx, ny)
+dem_uc = WWFR.Uncertainty()
+source_uc = WWFR.Uncertainty(reluc=0.1, correlation_length=2dx)
+ctch_sinks = [WWF.waterflows(dem).sinks]
+
+(; model, sample, initialize, aggregate!, finalize!) = WWFR.make_fns_subaerial(
+    dx, dem, dem_uc, source, source_uc, ctch_sinks)
+seeds = WWFR.make_sample_seeds(8, (:dem, :source); seed=42)
+aggr = WWFR.map_mc(model, sample, initialize, aggregate!, finalize!, 8;
+                   seeds, progressmeter=false)
+
+# Replay draw 3 on its own
+draw = sample(; seeds=aggr.sample_seeds[3])
+replayed = model(draw.fields...)
+
+(; ids=aggr.sample_ids, rng_type=aggr.rng_type)
+```
+
+In seeded mode `sample(; seeds)` returns a
+[`WWFR.SeededSample`](@ref WhereTheWaterFlows.Randomly.SeededSample) holding
+`.fields` (the model arguments), `.seeds` and `.rng_type`. Each field gets its own
+`Random.Xoshiro`. The seed-record keys of the built-in wrappers are:
+
+| Wrapper | Seed record keys |
+|---|---|
+| `make_fns_subaerial` | `(:dem, :source)` |
+| `make_fns_subglacial` | `(:surface, :bed, :floatfrac, :source)` |
+
+`initialize()` must then return a named tuple; `map_mc` returns it extended with
+`sample_ids`, `sample_seeds` (both in accumulation order, matching the per-sample flux
+vectors) and `rng_type`. These are not touched by `finalize!`.
+
+To run a subset or a reordered batch, pass the selected seeds and their original IDs:
+
+```@example seeded_sampling
+all_seeds = WWFR.make_sample_seeds(1000, (:dem, :source); seed=42)
+ids = [73, 1000, 12]
+selected = WWFR.map_mc(model, sample, initialize, aggregate!, finalize!, length(ids);
+    seeds=all_seeds[ids], sample_ids=ids, progressmeter=false)
+selected.sample_ids
+```
+
+A field's seeds depend only on the master seed and the field name. So changing `n`, or
+adding, removing or reordering other fields, keeps them; this allows paired comparisons
+of runs that differ in one uncertain field. The same seed gives the same field only for
+the same grid, kernel, correlation length, precision and code/package versions, so
+record those along with the seeds. Zero uncertainty consumes no random numbers.
+
+A custom sampler opts in by accepting `sample(; seeds)` and returning a
+`SeededSample`; the model, `aggregate!` and `finalize!` are unchanged:
+
+```@example custom_seeded_sampling
+using WhereTheWaterFlows, Random
+const WWF = WhereTheWaterFlows
+const WWFR = WWF.Randomly
+
+function sample(; seeds)
+    rng = MersenneTwister(seeds.forcing)
+    return WWFR.SeededSample((randn(rng),), seeds; rng_type=MersenneTwister)
+end
+initialize() = (; values=Float64[])
+aggregate!(aggr, value) = push!(aggr.values, value)
+finalize!(aggr) = nothing
+seeds = WWFR.make_sample_seeds(3, (:forcing,); seed=42)
+aggr = WWFR.map_mc(identity, sample, initialize, aggregate!, finalize!, 3;
+                   seeds, progressmeter=false)
+@assert aggr.values[2] == randn(aggr.rng_type(aggr.sample_seeds[2].forcing))
+```
+
 ## What can be configured
 
 High-level Monte Carlo controls:
-- `map_mc(model, sample, initialize, aggregate!, finalize!, n; progressmeter=true)`
-- `n`: number of realizations (`n <= 2048` enforced)
+- `map_mc(model, sample, initialize, aggregate!, finalize!, n;
+  progressmeter=true, seeds=nothing, sample_ids=1:n)`
+- `n`: number of realizations (`1 <= n <= 2048` enforced)
 - `progressmeter`: set `false` for quiet batch/CI runs
+- `seeds`: one per-field seed record per draw, enabling seeded mode
+- `sample_ids`: one integer ID per draw, used for seeded metadata (not RNG derivation)
 
 Subaerial wrapper (`make_fns_subaerial`):
 - uncertain fields: `dem`, `source`
@@ -116,8 +201,9 @@ In WWFR wrappers, reduction happens in three stages:
 2. `aggregate!(aggr, sample_output)` updates aggregate values per realization.
 3. `finalize!(aggr)` finalizes (typically divides accumulated maps by `n`).
 
-`map_mc` calls initialization and finalization once each. It returns the original
-aggregate storage; return values from the two mutating callbacks are ignored.
+`map_mc` calls initialization and finalization once each and returns the aggregate
+storage (in seeded mode extended by the seed metadata). Return values from the two
+mutating callbacks are ignored.
 
 ## How outputs are reduced
 
@@ -261,7 +347,7 @@ end
 normalizes the result at the end. Use mutable storage (arrays, `Ref`s, or a mutable
 struct) for values updated in place.
 
-`model` and `sample` must be thread-safe; aggregation is serialized.
+`map_mc` currently runs samples sequentially.
 
 ## Minimal subaerial example
 
@@ -332,6 +418,8 @@ using `make_fns_subglacial`.
 
 Notes:
 
+- Seeded runs also contain `sample_ids`, `sample_seeds` and `rng_type`, see
+  [Seeded sampling and replay](@ref SeededSampling).
 - For `aggr.catchment_fluxes.*`, element `i` is the flux distribution for outlet
   group `i`; each inner vector has length `aggr.n_samples`.
 - If `ctch_sinks` is empty, `aggr.catchments` has zero groups and
@@ -342,7 +430,8 @@ Notes:
 - Use `absuc` for additive error floors; `reluc` for proportional uncertainty.
 - Keep `correlation_length` meaningfully smaller than domain size (as a rule of
   thumb, at least around 3x smaller than domain extent).
-- Set `Random.seed!` before building samplers for reproducible runs.
+- Use [seed records](@ref SeededSampling) for reproducible runs and replay of single
+  draws.
 - Start with small `n` while validating model setup; scale up after checks.
 
 ## Examples

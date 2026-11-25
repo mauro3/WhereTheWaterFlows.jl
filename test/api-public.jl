@@ -13,7 +13,7 @@ const WWFR = WWF.Randomly
         :catchments, :catchment_flux, :prune_catchments,
         :plt_dir, :plt_dir!, :plt_area, :plt_area!, :plt_sinks, :plt_sinks!,
         :plt_bnds, :plt_bnds!, :plt_catchments, :plt_catchments!, :plt_it))
-    for name in (:Subglacially, :Randomly, :PIT, :SINK, :BARRIER,
+    for name in (:Subglacially, :Randomly, :PIT, :SINK, :BARRIER, :last_visit_fluxes,
                  :dir2ind, :dir2vec, :ind2dir, :showme)
         @test Base.ispublic(WWF, name)
         @test !Base.isexported(WWF, name)
@@ -26,7 +26,8 @@ end
 
 @testset "Submodule public API" begin
     @test Set(filter(name -> Base.isexported(WWFR, name), names(WWFR))) == Set((:Randomly, :Uncertainty, :map_mc,
-        :make_fns_subaerial, :make_fns_subglacial, :gaussian_kernel, :exponential_kernel))
+        :make_fns_subaerial, :make_fns_subglacial, :gaussian_kernel, :exponential_kernel,
+        :SeededSample, :make_sample_seeds))
     @test Set(filter(name -> Base.isexported(WWFS, name), names(WWFS))) == Set((:Subglacially, :waterflows_subglacial,
         :phi_fn, :lake_depth, :smooth_surface, :catchment_sinks))
 
